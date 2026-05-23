@@ -1,7 +1,12 @@
 from abc import ABC, abstractmethod
+from utils.http import BaseHTTPClient
 
+class SocialAccountService(BaseHTTPClient, ABC):
+    BASE_URL = ""
 
-class SocialAccountService(ABC):
+    def __init__(self):
+        super().__init__(base_url=self.BASE_URL)
+
     @classmethod
     @abstractmethod
     def refresh_access_token(self, refresh_token: str) -> list[str]:

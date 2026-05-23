@@ -1,8 +1,7 @@
-import requests
 from django.conf import settings
 
 from integrations.providers.base import SocialAccountService
-
+from utils.http import APIError
 
 class InstagramService(SocialAccountService):
     APP_ID = settings.INSTAGRAM_APP_ID
@@ -27,55 +26,65 @@ class InstagramService(SocialAccountService):
 
     @classmethod
     def _get_short_lived_token(cls, auth_code, redirect_uri):
-        url = "https://api.instagram.com/oauth/access_token"
-        data = {
-            "client_id": cls.APP_ID,
-            "client_secret": cls.APP_SECRET,
-            "grant_type": "authorization_code",
-            "redirect_uri": redirect_uri,
-            "code": auth_code,
-        }
-
-        response = requests.post(url, data=data)
-        response_data = response.json()
+        try:
+            response_data = cls().post(
+                "https://api.instagram.com/oauth/access_token",
+                data={
+                    "client_id": cls.APP_ID,
+                    "client_secret": cls.APP_SECRET,
+                    "grant_type": "authorization_code",
+                    "redirect_uri": redirect_uri,
+                    "code": auth_code,
+                },
+            )
+        except APIError as e:
+            raise ValueError(str(e)) from e
 
         if "access_token" not in response_data:
-            raise ValueError(response_data.get("error_message", "Could not get short-lived token"))
+            raise ValueError(
+                response_data.get("error_message", "Could not get short-lived token")
+            )
 
         return response_data
 
     @classmethod
     def _get_long_lived_token(cls, short_lived_token):
-        url = f"{cls.BASE_URL}/access_token"
-        params = {
-            "grant_type": "ig_exchange_token",
-            "client_secret": cls.APP_SECRET,
-            "access_token": short_lived_token,
-        }
-
-        response = requests.get(url, params=params)
-        response_data = response.json()
+        try:
+            response_data = cls().get(
+                "/access_token",
+                params={
+                    "grant_type": "ig_exchange_token",
+                    "client_secret": cls.APP_SECRET,
+                    "access_token": short_lived_token,
+                },
+            )
+        except APIError as e:
+            raise ValueError(str(e)) from e
 
         if "access_token" not in response_data:
-            raise ValueError(response_data.get("error", {}).get("message", "Could not get long-lived token"))
+            raise ValueError(
+                response_data.get("error", {}).get("message", "Could not get long-lived token")
+            )
 
         return response_data
 
     @classmethod
     def refresh_access_token(cls, long_lived_token: str):
-        url = f"{cls.BASE_URL}/refresh_access_token"
-
-        response = requests.get(
-            url,
-            params={
-                "grant_type": "ig_refresh_token",
-                "access_token": long_lived_token,
-            },
-        )
-        response_data = response.json()
+        try:
+            response_data = cls().get(
+                "/refresh_access_token",
+                params={
+                    "grant_type": "ig_refresh_token",
+                    "access_token": long_lived_token,
+                },
+            )
+        except APIError as e:
+            raise ValueError(str(e)) from e
 
         if "access_token" not in response_data:
-            raise ValueError(response_data.get("error", {}).get("message", "Unknown error"))
+            raise ValueError(
+                response_data.get("error", {}).get("message", "Unknown error")
+            )
 
         return {
             "access_token": response_data["access_token"],

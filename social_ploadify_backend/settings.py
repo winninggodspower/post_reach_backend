@@ -38,6 +38,7 @@ INSTALLED_APPS = [
 
     # Custom user app
     'users',
+    'base',
     'social_accounts',
     'integrations',
 
