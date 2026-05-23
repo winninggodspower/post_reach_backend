@@ -1,7 +1,7 @@
 import requests
 from django.conf import settings
 
-from social_accounts.services import SocialAccountService
+from integrations.providers.base import SocialAccountService
 
 
 class InstagramService(SocialAccountService):

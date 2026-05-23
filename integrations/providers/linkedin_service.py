@@ -1,7 +1,8 @@
 import requests
 from django.conf import settings
 
-from social_accounts.services import SocialAccountService
+from integrations.providers.base import SocialAccountService
+
 
 class LinkedinService(SocialAccountService):
     CLIENT_ID = settings.LINKEDIN_CLIENT_ID
@@ -11,9 +12,7 @@ class LinkedinService(SocialAccountService):
     @classmethod
     def exchange_code_for_token(cls, code, redirect_uri):
         url = cls.BASE_URL + "/accessToken"
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
         data = {
             "grant_type": "authorization_code",
             "code": code,
@@ -34,5 +33,4 @@ class LinkedinService(SocialAccountService):
 
     @classmethod
     def refresh_access_token(cls, refresh_token):
-        # LinkedIn does not support refresh tokens in the same way as other platforms.
         return None

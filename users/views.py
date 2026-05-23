@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
-from social_accounts.google_auth_helper import GoogleAuthHelper
+from integrations.services.google_auth_service import GoogleAuthService
 from .serializers import GoogleAuthSerializer, RegisterUserSerializer
 
 from django.contrib.auth import get_user_model
@@ -24,7 +24,7 @@ class GoogleLoginView(APIView):
 
         try:
 
-            google_helper = GoogleAuthHelper(
+            google_helper = GoogleAuthService(
                 redirect_uri=serializer.validated_data['redirect_uri']
             )
 

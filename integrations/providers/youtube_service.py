@@ -1,14 +1,11 @@
-from datetime import datetime, timedelta
-
 import google_auth_oauthlib
 import googleapiclient.discovery
 import oauthlib.oauth2.rfc6749.errors
 from django.conf import settings
-from django.utils import timezone
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
-from social_accounts.services import SocialAccountService
+from integrations.providers.base import SocialAccountService
 
 
 class YoutubeService(SocialAccountService):

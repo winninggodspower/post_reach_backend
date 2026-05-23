@@ -3,11 +3,11 @@ from datetime import timedelta
 from django.utils import timezone
 
 from social_accounts.models import SocialAccount
-from social_accounts.services.facebook_service import FacebookService
-from social_accounts.services.instagram_service import InstagramService
-from social_accounts.services.linkedin_service import LinkedinService
-from social_accounts.services.tiktok_service import TiktokService
-from social_accounts.services.youtube_service import YoutubeService
+from integrations.providers.facebook_service import FacebookService
+from integrations.providers.instagram_service import InstagramService
+from integrations.providers.linkedin_service import LinkedinService
+from integrations.providers.tiktok_service import TiktokService
+from integrations.providers.youtube_service import YoutubeService
 
 
 class SocialAccountConnectionService:

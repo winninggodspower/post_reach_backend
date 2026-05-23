@@ -5,8 +5,8 @@ from django.db.models import UniqueConstraint
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from social_accounts.services.instagram_service import InstagramService
-from social_accounts.services.youtube_service import YoutubeService
+from integrations.providers.instagram_service import InstagramService
+from integrations.providers.youtube_service import YoutubeService
 from social_accounts.utils.encryption import decrypt_text, encrypt_text
 from social_ploadify_backend.models import UUIDTimestampedModel
 

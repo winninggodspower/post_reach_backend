@@ -3,9 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 
-from integrations.services.social_account_connection_service import (
-    SocialAccountConnectionService,
-)
+from social_accounts.services.social_account_connection_service import SocialAccountConnectionService
 from social_accounts.serializers import FacebookAuthCodeSerializer, GoogleAuthCodeSerializer, InstagramAuthCodeSerializer
 from social_ploadify_backend.responses import CustomErrorResponse, CustomSuccessResponse
 from social_accounts.serializers import LinkedinAuthCodeSerializer
