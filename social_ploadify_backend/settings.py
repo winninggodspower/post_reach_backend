@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     # Custom user app
     'users',
     'social_accounts',
+    'integrations',
 
     # Third-party apps
     'rest_framework',

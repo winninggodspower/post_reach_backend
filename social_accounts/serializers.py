@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from social_accounts.models import SocialAccount
+from social_accounts.models import Brand, SocialAccount
 
 
 class SocialAccountSerializer(serializers.ModelSerializer):
@@ -24,25 +24,25 @@ class GoogleAuthCodeSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
     redirect_uri = serializers.URLField(required=True)
     brand = serializers.PrimaryKeyRelatedField(
-        queryset=SocialAccount.objects.all(),
+        queryset=Brand.objects.all(),
     )
 
 class FacebookAuthCodeSerializer(serializers.Serializer):
     short_lived_access_token = serializers.CharField(required=True)
     brand = serializers.PrimaryKeyRelatedField(
-        queryset=SocialAccount.objects.all(),
+        queryset=Brand.objects.all(),
     )
 
 class InstagramAuthCodeSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
     redirect_uri = serializers.URLField(required=True)
     brand = serializers.PrimaryKeyRelatedField(
-        queryset=SocialAccount.objects.all(),
+        queryset=Brand.objects.all(),
     )
 
 class LinkedinAuthCodeSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
     redirect_uri = serializers.URLField(required=True)
     brand = serializers.PrimaryKeyRelatedField(
-        queryset=SocialAccount.objects.all(),
+        queryset=Brand.objects.all(),
     )
