@@ -79,7 +79,7 @@ REST_FRAMEWORK = {
 }
 
 
-ROOT_URLCONF = 'social_ploadify_backend.urls'
+ROOT_URLCONF = 'post_reach_backend.urls'
 
 TEMPLATES = [
     {
@@ -97,7 +97,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'social_ploadify_backend.wsgi.application'
+WSGI_APPLICATION = 'post_reach_backend.wsgi.application'
 
 
 # Database

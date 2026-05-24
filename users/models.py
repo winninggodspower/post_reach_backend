@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Q
 from django.contrib.auth.models import AbstractUser
 
-from social_ploadify_backend.models import UUIDModel, UUIDTimestampedModel
+from post_reach_backend.models import UUIDModel, UUIDTimestampedModel
 from users.managers import UserManager
 
 # Create your models here.

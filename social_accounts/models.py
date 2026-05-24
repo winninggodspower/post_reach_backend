@@ -8,7 +8,7 @@ from django.utils.dateparse import parse_datetime
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.utils.encryption import decrypt_text, encrypt_text
-from social_ploadify_backend.models import UUIDTimestampedModel
+from post_reach_backend.models import UUIDTimestampedModel
 
 # Create your models here.
 class Brand(UUIDTimestampedModel):
