@@ -1,18 +1,29 @@
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework import status
 
 from integrations.services.google_auth_service import GoogleAuthService
 from users.services import UserService
+from utils.responses import ErrorResponse, SuccessResponse
 from .serializers import (
-    AuthTokenSerializer,
+    AuthResponseSerializer,
     GoogleAuthSerializer,
     RegisterUserSerializer,
     SignInSerializer,
+    UserResponseSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
 )
 
 # Create your views here.
+def get_auth_response_data(user):
+    return {
+        'user': UserSerializer(user).data,
+        'tokens': UserService.get_auth_tokens(user),
+    }
+
+
 class RegisterUserView(APIView):
     serializer_class = RegisterUserSerializer
 
@@ -21,7 +32,7 @@ class RegisterUserView(APIView):
         operation_description="Create a user with email, optional handle, and password.",
         request_body=RegisterUserSerializer,
         responses={
-            201: AuthTokenSerializer,
+            201: AuthResponseSerializer,
             400: "Validation error",
         },
     )
@@ -38,10 +49,15 @@ class RegisterUserView(APIView):
                 password=serializer.validated_data['password'],
             )
         except ValueError as exc:
-            return Response({'detail': exc.args[0]}, status=status.HTTP_400_BAD_REQUEST)
+            return ErrorResponse(
+                message="Registration failed.",
+                errors={'detail': exc.args[0]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        return Response(
-            UserService.get_auth_tokens(user),
+        return SuccessResponse(
+            data=get_auth_response_data(user),
+            message="Registration successful.",
             status=status.HTTP_201_CREATED,
         )
 
@@ -57,7 +73,7 @@ class SignInView(APIView):
         ),
         request_body=SignInSerializer,
         responses={
-            200: AuthTokenSerializer,
+            200: AuthResponseSerializer,
             400: "Validation error",
         },
     )
@@ -72,13 +88,19 @@ class SignInView(APIView):
                 request=request,
             )
         except ValueError as exc:
-            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return ErrorResponse(
+                message="Sign in failed.",
+                errors={'detail': str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        tokens = UserService.get_auth_tokens(user)
-        return Response(tokens)
+        return SuccessResponse(
+            data=get_auth_response_data(user),
+            message="Sign in successful.",
+        )
 
 
-class GoogleLoginView(APIView):
+class GoogleSignInView(APIView):
     serializer_class = GoogleAuthSerializer
 
     @swagger_auto_schema(
@@ -89,7 +111,7 @@ class GoogleLoginView(APIView):
         ),
         request_body=GoogleAuthSerializer,
         responses={
-            200: AuthTokenSerializer,
+            200: AuthResponseSerializer,
             400: "Invalid Google auth request",
             500: "Unexpected authentication error",
         },
@@ -111,22 +133,72 @@ class GoogleLoginView(APIView):
             first_name = user_info['first_name']
             last_name = user_info['last_name']
 
-            user, created = UserService.get_or_create_social_user(
+            user, _created = UserService.get_or_create_social_user(
                 email=email,
                 first_name=first_name,
                 last_name=last_name,
             )
 
-            # Return JWT token
-            return Response(UserService.get_auth_tokens(user))
+            return SuccessResponse(
+                data=get_auth_response_data(user),
+                message="Google sign in successful.",
+            )
 
         except ValueError as e:
-            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return ErrorResponse(
+                message="Google sign in failed.",
+                errors={'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         except Exception as e:
             # Catch any other unexpected errors
             print(f"Authentication error: {e}")  # Log the full exception for debugging
-            return Response(
-                {'detail': 'An unexpected error occurred during authentication.'},
+            return ErrorResponse(
+                message='An unexpected error occurred during authentication.',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Get current user",
+        operation_description="Return the authenticated user's profile data.",
+        responses={
+            200: UserResponseSerializer,
+            401: "Authentication credentials were not provided or are invalid.",
+        },
+    )
+    def get(self, request):
+        return SuccessResponse(
+            data=UserSerializer(request.user).data,
+            message="User data retrieved successfully.",
+        )
+
+    @swagger_auto_schema(
+        operation_summary="Update current user",
+        operation_description=(
+            "Update editable profile fields for the authenticated user."
+        ),
+        request_body=UserUpdateSerializer,
+        responses={
+            200: UserResponseSerializer,
+            400: "Validation error",
+            401: "Authentication credentials were not provided or are invalid.",
+        },
+    )
+    def patch(self, request):
+        serializer = UserUpdateSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return SuccessResponse(
+            data=UserSerializer(request.user).data,
+            message="User data updated successfully.",
+        )

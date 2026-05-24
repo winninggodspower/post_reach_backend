@@ -1,15 +1,11 @@
-from rest_framework.response import Response
+from utils.responses import ErrorResponse, SuccessResponse
 
 
-class CustomSuccessResponse(Response):
+class CustomSuccessResponse(SuccessResponse):
     def __init__(self, data, status=200, **kwargs):
-        resp = {"status": "success"}
-        resp.update(data)
-        super().__init__(data=resp, status=status, **kwargs)
+        super().__init__(data=data, status=status, **kwargs)
 
 
-class CustomErrorResponse(Response):
+class CustomErrorResponse(ErrorResponse):
     def __init__(self, data, status=400, **kwargs):
-        resp = {"status": "error"}
-        resp.update(data)
-        super().__init__(data=resp, status=status, **kwargs)
+        super().__init__(errors=data, status=status, **kwargs)
