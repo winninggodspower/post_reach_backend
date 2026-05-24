@@ -22,7 +22,7 @@ class APIResponse(Response):
         super().__init__(data=body, status=status, **kwargs)
 
 
-class SuccessResponse(APIResponse):
+class CustomSuccessResponse(APIResponse):
     def __init__(self, data=None, message=None, status=200, **kwargs):
         super().__init__(
             success=True,
@@ -33,7 +33,7 @@ class SuccessResponse(APIResponse):
         )
 
 
-class ErrorResponse(APIResponse):
+class CustomErrorResponse(APIResponse):
     def __init__(self, message=None, errors=None, status=400, **kwargs):
         super().__init__(
             success=False,

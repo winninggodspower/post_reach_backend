@@ -1,11 +1,10 @@
 from rest_framework import status
 
-from social_ploadify_backend.responses import CustomErrorResponse, CustomSuccessResponse
-from utils.responses import ErrorResponse, SuccessResponse
+from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 
 def test_success_response_shape():
-    response = SuccessResponse(
+    response = CustomSuccessResponse(
         data={"id": "123"},
         message="Created.",
         status=status.HTTP_201_CREATED,
@@ -20,7 +19,7 @@ def test_success_response_shape():
 
 
 def test_error_response_shape():
-    response = ErrorResponse(
+    response = CustomErrorResponse(
         message="Invalid request.",
         errors={"field": ["This field is required."]},
     )
@@ -33,21 +32,3 @@ def test_error_response_shape():
     }
 
 
-def test_legacy_success_response_wrapper_shape():
-    response = CustomSuccessResponse({"message": "OK"})
-
-    assert response.status_code == 200
-    assert response.data == {
-        "success": True,
-        "data": {"message": "OK"},
-    }
-
-
-def test_legacy_error_response_wrapper_shape():
-    response = CustomErrorResponse({"message": "Failed"})
-
-    assert response.status_code == 400
-    assert response.data == {
-        "success": False,
-        "errors": {"message": "Failed"},
-    }

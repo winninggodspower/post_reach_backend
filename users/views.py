@@ -5,7 +5,7 @@ from rest_framework import status
 
 from integrations.services.google_auth_service import GoogleAuthService
 from users.services import UserService
-from utils.responses import ErrorResponse, SuccessResponse
+from utils.responses import CustomErrorResponse, CustomSuccessResponse
 from .serializers import (
     AuthResponseSerializer,
     GoogleAuthSerializer,
@@ -49,13 +49,13 @@ class RegisterUserView(APIView):
                 password=serializer.validated_data['password'],
             )
         except ValueError as exc:
-            return ErrorResponse(
+            return CustomErrorResponse(
                 message="Registration failed.",
                 errors={'detail': exc.args[0]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return SuccessResponse(
+        return CustomSuccessResponse(
             data=get_auth_response_data(user),
             message="Registration successful.",
             status=status.HTTP_201_CREATED,
@@ -88,13 +88,13 @@ class SignInView(APIView):
                 request=request,
             )
         except ValueError as exc:
-            return ErrorResponse(
+            return CustomErrorResponse(
                 message="Sign in failed.",
                 errors={'detail': str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return SuccessResponse(
+        return CustomSuccessResponse(
             data=get_auth_response_data(user),
             message="Sign in successful.",
         )
@@ -139,13 +139,13 @@ class GoogleSignInView(APIView):
                 last_name=last_name,
             )
 
-            return SuccessResponse(
+            return CustomSuccessResponse(
                 data=get_auth_response_data(user),
                 message="Google sign in successful.",
             )
 
         except ValueError as e:
-            return ErrorResponse(
+            return CustomErrorResponse(
                 message="Google sign in failed.",
                 errors={'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -154,7 +154,7 @@ class GoogleSignInView(APIView):
         except Exception as e:
             # Catch any other unexpected errors
             print(f"Authentication error: {e}")  # Log the full exception for debugging
-            return ErrorResponse(
+            return CustomErrorResponse(
                 message='An unexpected error occurred during authentication.',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -172,7 +172,7 @@ class CurrentUserView(APIView):
         },
     )
     def get(self, request):
-        return SuccessResponse(
+        return CustomSuccessResponse(
             data=UserSerializer(request.user).data,
             message="User data retrieved successfully.",
         )
@@ -198,7 +198,7 @@ class CurrentUserView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        return SuccessResponse(
+        return CustomSuccessResponse(
             data=UserSerializer(request.user).data,
             message="User data updated successfully.",
         )

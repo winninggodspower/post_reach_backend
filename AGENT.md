@@ -15,7 +15,7 @@ Conventions
 - Business logic: place in service modules under `*/services/`. Views/controllers should be thin and delegate to services.
 - Service classes: use `*Service` named classes with staticmethods or instance methods for logic.
 - External integrations: wrap third-party API calls in integration/service modules (e.g., `GoogleAuthService`) so they can be mocked in tests.
-- Responses: use the project's response wrappers (`utils.responses.SuccessResponse` / `ErrorResponse` or legacy wrappers in `social_ploadify_backend.responses`).
+- Responses: use the project's response wrappers (`utils.responses.SuccessResponse` / `ErrorResponse` or legacy wrappers in `post_reach_bacend.responses`).
 
 Testing rules
 - Test framework: `pytest` + `pytest-django`. Use the fixtures in `conftest.py`.
@@ -33,9 +33,9 @@ Testing rules
   - Use fixtures where appropriate; avoid creating DB records in setup beyond necessary fixtures.
 
 Swagger / API docs
-- Project uses `drf_yasg` — see `social_ploadify_backend/swagger.py` and `@swagger_auto_schema` usage in views.
+- Project uses `drf_yasg` — see `post_reach_bacend/swagger.py` and `@swagger_auto_schema` usage in views.
 - Requirement: every new or changed API endpoint must have a `swagger_auto_schema` annotation describing request/response serializers and operation summary/description.
-- Update the global schema if you add new top-level API routes (register in `social_ploadify_backend/swagger.py` or urls if required).
+- Update the global schema if you add new top-level API routes (register in `post_reach_bacend/swagger.py` or urls if required).
 
 Pull request checklist for agents
 - Code: follow the service-first pattern. Keep views thin.
