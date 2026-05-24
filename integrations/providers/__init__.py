@@ -1,4 +1,3 @@
-from .base import SocialAccountService
 from .facebook_service import FacebookService
 from .instagram_service import InstagramService
 from .linkedin_service import LinkedinService

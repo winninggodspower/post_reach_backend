@@ -8,6 +8,7 @@ from google.oauth2.credentials import Credentials
 from integrations.providers.base import SocialAccountService
 
 
+
 class YoutubeService(SocialAccountService):
     CLIENT_ID = settings.GOOGLE_CLIENT_ID
     CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET

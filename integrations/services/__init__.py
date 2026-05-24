@@ -1,1 +1,1 @@
-from .social_account_connection_service import SocialAccountConnectionService
+from .google_auth_service import GoogleAuthService
