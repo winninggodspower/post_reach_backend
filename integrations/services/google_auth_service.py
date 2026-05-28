@@ -2,6 +2,7 @@ import google_auth_oauthlib
 from google.oauth2 import id_token
 import requests
 from django.conf import settings
+from utils.custom_logger import log_exceptions
 
 
 class GoogleAuthService:
@@ -19,6 +20,7 @@ class GoogleAuthService:
             "https://www.googleapis.com/auth/userinfo.profile",
         ]
 
+    @log_exceptions()
     def verify_and_get_user_info(self, auth_code):
         client_config = {
             "web": {

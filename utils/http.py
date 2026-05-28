@@ -10,10 +10,9 @@ from typing import Any, Dict, List, Optional, TypeVar, Union
 
 import httpx
 
-from utils.logger import get_logger
+from utils.custom_logger import CustomLogger
 
 T = TypeVar("T")
-logger = get_logger(__name__)
 
 __all__ = [
     "BaseHTTPClient",
@@ -80,14 +79,6 @@ class BaseHTTPClient:
         self.verify_ssl = verify_ssl
         self.auth = auth
 
-        if not logger.handlers:
-            handler = logging.StreamHandler(sys.stdout)
-            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-            logger.setLevel(logging.INFO)
-            logger.propagate = False
-
     def _get_retry_delay(self, attempt: int) -> float:
         return min(0.1 * (2**attempt), 5.0)
 
@@ -123,7 +114,7 @@ class BaseHTTPClient:
                 return response.text
             return response.content
         except json.JSONDecodeError as e:
-            logger.error("Failed to parse JSON response: %s\nResponse text: %s", e, response.text)
+            CustomLogger.error(f"Failed to parse JSON response: {e}\nResponse text: {response.text}")
             raise APIError("Failed to parse JSON response", response.status_code, response.text, str(response.url), response.request.method) from e
 
     def _log_request(self, method: str, url: str, params: Optional[Dict[str, Any]] = None, json_data: Optional[Any] = None, headers: Optional[Dict[str, str]] = None) -> None:
@@ -138,7 +129,7 @@ class BaseHTTPClient:
             log_data["headers"] = {k: v if k.lower() != "authorization" else "*****" for k, v in headers.items()}
         if json_data is not None:
             log_data["json"] = json_data
-        logger.debug("Outgoing request: %s", json.dumps(log_data, indent=2))
+        CustomLogger.debug(f"Outgoing request: {json.dumps(log_data, indent=2)}")
 
     def _log_response(self, response: httpx.Response, duration: float) -> None:
         log_data = {
@@ -154,7 +145,7 @@ class BaseHTTPClient:
             log_data["response_body"] = response_text[:max_length] + "... (truncated)"
         else:
             log_data["response_body"] = response_text
-        logger.debug("Incoming response: %s", json.dumps(log_data, indent=2))
+        CustomLogger.debug(f"Incoming response: {json.dumps(log_data, indent=2)}")
 
     def _make_request(self, method: str, path: str, params: Optional[Dict[str, Any]] = None, json_data: Optional[Any] = None, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, expect_json: bool = True, **kwargs) -> Union[Dict[str, Any], str, bytes, List[Any]]:
         url = path if path.startswith(("http://", "https://")) else f"{self.base_url}/{path.lstrip('/')}"
@@ -184,21 +175,21 @@ class BaseHTTPClient:
                 if attempt == self.max_retries or not isinstance(e, APIError):
                     raise
                 wait_time = float(e.retry_after) if isinstance(e, RateLimitError) and e.retry_after is not None else self._get_retry_delay(attempt)
-                logger.warning("Request failed (attempt %d/%d), retrying in %.1fs...", attempt + 1, self.max_retries, wait_time)
+                CustomLogger.warning(f"Request failed (attempt {attempt + 1}/{self.max_retries}), retrying in {wait_time:.1f}s...")
                 time.sleep(wait_time)
             except (httpx.TimeoutException, asyncio.TimeoutError):
                 last_exception = TimeoutError(f"Request timed out after {self.timeout} seconds", url=url, method=method)
                 if attempt == self.max_retries:
                     raise last_exception
                 wait_time = self._get_retry_delay(attempt)
-                logger.warning("Request timed out (attempt %d/%d), retrying in %.1fs...", attempt + 1, self.max_retries, wait_time)
+                CustomLogger.warning(f"Request timed out (attempt {attempt + 1}/{self.max_retries}), retrying in {wait_time:.1f}s...")
                 time.sleep(wait_time)
             except Exception as e:
                 last_exception = e if isinstance(e, HTTPError) else HTTPError(str(e), url=url, method=method)
                 if attempt == self.max_retries:
                     raise last_exception
                 wait_time = float(last_exception.retry_after) if isinstance(last_exception, RateLimitError) and last_exception.retry_after is not None else self._get_retry_delay(attempt)
-                logger.warning("Request failed (attempt %d/%d), retrying in %.1fs...", attempt + 1, self.max_retries, wait_time)
+                CustomLogger.warning(f"Request failed (attempt {attempt + 1}/{self.max_retries}), retrying in {wait_time:.1f}s...")
                 time.sleep(wait_time)
         raise last_exception or RuntimeError("Unexpected error in _make_request")
 
@@ -230,21 +221,21 @@ class BaseHTTPClient:
                 if attempt == self.max_retries or not isinstance(e, APIError):
                     raise
                 wait_time = float(e.retry_after) if isinstance(e, RateLimitError) and e.retry_after is not None else self._get_retry_delay(attempt)
-                logger.warning("Request failed (attempt %d/%d), retrying in %.1fs...", attempt + 1, self.max_retries, wait_time)
+                CustomLogger.warning(f"Request failed (attempt {attempt + 1}/{self.max_retries}), retrying in {wait_time:.1f}s...")
                 await asyncio.sleep(wait_time)
             except (httpx.TimeoutException, asyncio.TimeoutError):
                 last_exception = TimeoutError(f"Request timed out after {self.timeout} seconds", url=url, method=method)
                 if attempt == self.max_retries:
                     raise last_exception
                 wait_time = self._get_retry_delay(attempt)
-                logger.warning("Request timed out (attempt %d/%d), retrying in %.1fs...", attempt + 1, self.max_retries, wait_time)
+                CustomLogger.warning(f"Request timed out (attempt {attempt + 1}/{self.max_retries}), retrying in {wait_time:.1f}s...")
                 await asyncio.sleep(wait_time)
             except Exception as e:
                 last_exception = e if isinstance(e, HTTPError) else HTTPError(str(e), url=url, method=method)
                 if attempt == self.max_retries:
                     raise last_exception
                 wait_time = float(last_exception.retry_after) if isinstance(last_exception, RateLimitError) and last_exception.retry_after is not None else self._get_retry_delay(attempt)
-                logger.warning("Request failed (attempt %d/%d), retrying in %.1fs...", attempt + 1, self.max_retries, wait_time)
+                CustomLogger.warning(f"Request failed (attempt {attempt + 1}/{self.max_retries}), retrying in {wait_time:.1f}s...")
                 await asyncio.sleep(wait_time)
         raise last_exception or RuntimeError("Unexpected error in _make_async_request")
 

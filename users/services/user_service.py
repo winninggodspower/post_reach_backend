@@ -5,12 +5,15 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from utils.custom_logger import CustomLogger, log_exceptions
+
 
 User = get_user_model()
 
 
 class UserService:
     @staticmethod
+    @log_exceptions()
     def get_or_create_social_user(email, first_name="", last_name=""):
         email = User.objects.normalize_email(email)
         user, created = User.objects.get_or_create(
@@ -37,6 +40,7 @@ class UserService:
         try:
             validate_password(password)
         except DjangoValidationError as exc:
+            CustomLogger.exception("Password validation failed in register_with_password", extra={"email": email, "handle": handle})
             raise ValueError(exc.messages)
 
         try:
@@ -49,9 +53,11 @@ class UserService:
                     handle=handle,
                 )
         except IntegrityError:
+            CustomLogger.exception("User creation failed in register_with_password", extra={"email": email, "handle": handle})
             raise ValueError("A user with this email or handle already exists.")
 
     @staticmethod
+    @log_exceptions()
     def sign_in_with_password(*, username, password, request=None):
         username = username.strip()
         user = (
@@ -74,6 +80,7 @@ class UserService:
         return authenticated_user
 
     @staticmethod
+    @log_exceptions()
     def get_auth_tokens(user):
         refresh = RefreshToken.for_user(user)
         return {

@@ -2,6 +2,7 @@ from django.conf import settings
 
 from integrations.providers.base import SocialAccountService
 from utils.http import APIError
+from utils.custom_logger import CustomLogger
 
 
 class TiktokService(SocialAccountService):
@@ -22,6 +23,7 @@ class TiktokService(SocialAccountService):
                 },
             )
         except APIError as e:
+            CustomLogger.exception("TikTok token exchange failed", extra={"operation": "exchange_code_for_token"})
             raise ValueError(str(e)) from e
         if not response:
             raise ValueError("Error while fetching access token from TikTok")
@@ -40,6 +42,7 @@ class TiktokService(SocialAccountService):
                 },
             )
         except APIError as e:
+            CustomLogger.exception("TikTok access token refresh failed", extra={"operation": "refresh_access_token"})
             raise ValueError(str(e)) from e
         if not response:
             raise ValueError("Error while refreshing access token from TikTok")

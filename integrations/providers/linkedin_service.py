@@ -2,6 +2,7 @@ from django.conf import settings
 
 from integrations.providers.base import SocialAccountService
 from utils.http import APIError
+from utils.custom_logger import CustomLogger
 
 class LinkedinService(SocialAccountService):
     CLIENT_ID = settings.LINKEDIN_CLIENT_ID
@@ -23,6 +24,7 @@ class LinkedinService(SocialAccountService):
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
         except APIError as e:
+            CustomLogger.exception("LinkedIn token exchange failed", extra={"operation": "exchange_code_for_token", "redirect_uri": redirect_uri})
             raise ValueError(f"LinkedIn Auth Error: {e}") from e
         if "access_token" not in response_data:
             error_message = (

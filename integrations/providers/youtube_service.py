@@ -6,7 +6,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
 from integrations.providers.base import SocialAccountService
-
+from utils.custom_logger import CustomLogger
 
 
 class YoutubeService(SocialAccountService):
@@ -47,8 +47,10 @@ class YoutubeService(SocialAccountService):
 
             return credentials, missing_scopes
         except oauthlib.oauth2.rfc6749.errors.InvalidGrantError:
+            CustomLogger.exception("YouTube authorization code exchange failed due to invalid grant", extra={"operation": "exchange_code_for_token", "redirect_uri": google_auth_redirect_uri})
             raise ValueError("Authorization code has expired or is invalid")
         except Exception as e:
+            CustomLogger.exception("Unexpected YouTube token exchange failure", extra={"operation": "exchange_code_for_token", "redirect_uri": google_auth_redirect_uri})
             raise Exception(f"Error exchanging code for token: {str(e)}")
 
     @classmethod

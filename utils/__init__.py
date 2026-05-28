@@ -1,3 +1,3 @@
 from .http import APIError, BaseHTTPClient, HTTPError, RateLimitError, TimeoutError, ValidationError
-from .logger import get_logger
+from .custom_logger import get_logger
 from .responses import APIResponse, CustomErrorResponse, CustomSuccessResponse

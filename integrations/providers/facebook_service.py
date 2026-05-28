@@ -2,6 +2,7 @@ from django.conf import settings
 
 from integrations.providers.base import SocialAccountService
 from utils.http import APIError
+from utils.custom_logger import CustomLogger
 
 
 class FacebookService(SocialAccountService):
@@ -23,6 +24,7 @@ class FacebookService(SocialAccountService):
         try:
             is_valid, missing_permissions = cls.verify_granted_scope(short_lived_token)
         except APIError as e:
+            CustomLogger.exception("Facebook permission verification failed", extra={"operation": "verify_granted_scope"})
             raise ValueError(str(e)) from e
 
         if not is_valid:
@@ -41,6 +43,7 @@ class FacebookService(SocialAccountService):
                 },
             )
         except APIError as e:
+            CustomLogger.exception("Facebook token exchange failed", extra={"operation": "exchange_short_lived_token"})
             raise ValueError(str(e)) from e
 
         if "access_token" not in data:

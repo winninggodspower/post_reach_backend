@@ -2,6 +2,7 @@ from django.conf import settings
 
 from integrations.providers.base import SocialAccountService
 from utils.http import APIError
+from utils.custom_logger import CustomLogger
 
 class InstagramService(SocialAccountService):
     APP_ID = settings.INSTAGRAM_APP_ID
@@ -38,6 +39,7 @@ class InstagramService(SocialAccountService):
                 },
             )
         except APIError as e:
+            CustomLogger.exception("Instagram short-lived token exchange failed", extra={"operation": "_get_short_lived_token"})
             raise ValueError(str(e)) from e
 
         if "access_token" not in response_data:
@@ -59,6 +61,7 @@ class InstagramService(SocialAccountService):
                 },
             )
         except APIError as e:
+            CustomLogger.exception("Instagram long-lived token exchange failed", extra={"operation": "_get_long_lived_token"})
             raise ValueError(str(e)) from e
 
         if "access_token" not in response_data:
@@ -79,6 +82,7 @@ class InstagramService(SocialAccountService):
                 },
             )
         except APIError as e:
+            CustomLogger.exception("Instagram access token refresh failed", extra={"operation": "refresh_access_token"})
             raise ValueError(str(e)) from e
 
         if "access_token" not in response_data:

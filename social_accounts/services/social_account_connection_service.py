@@ -8,15 +8,19 @@ from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
+from utils.custom_logger import log_exceptions
 
 
 class SocialAccountConnectionService:
     @staticmethod
+    @log_exceptions()
     def _ensure_brand_owned_by_user(user, brand):
         if brand.user_id != user.id:
             raise PermissionError("You do not have permission to access this brand.")
 
     @classmethod
+    @classmethod
+    @log_exceptions()
     def _save_account(cls, *, brand, account_type, defaults):
         return SocialAccount.objects.update_or_create(
             brand=brand,
@@ -25,6 +29,8 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
+    @classmethod
+    @log_exceptions()
     def connect_youtube(cls, *, user, brand, auth_code, redirect_uri):
         cls._ensure_brand_owned_by_user(user, brand)
 
@@ -50,6 +56,8 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
+    @classmethod
+    @log_exceptions()
     def connect_facebook(cls, *, user, brand, short_lived_access_token):
         cls._ensure_brand_owned_by_user(user, brand)
 
@@ -67,6 +75,8 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
+    @classmethod
+    @log_exceptions()
     def connect_instagram(cls, *, user, brand, auth_code, redirect_uri):
         cls._ensure_brand_owned_by_user(user, brand)
 
@@ -90,6 +100,8 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
+    @classmethod
+    @log_exceptions()
     def connect_tiktok(cls, *, user, brand, code):
         cls._ensure_brand_owned_by_user(user, brand)
 
@@ -107,6 +119,8 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
+    @classmethod
+    @log_exceptions()
     def connect_linkedin(cls, *, user, brand, code, redirect_uri):
         cls._ensure_brand_owned_by_user(user, brand)
 

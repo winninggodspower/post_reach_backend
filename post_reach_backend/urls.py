@@ -6,9 +6,9 @@ from .swagger import schema_view
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    path('api-auth/', include('rest_framework.urls')),
-    path('auth/', include('users.urls')),
-    path('social_accounts/', include('social_accounts.urls')),
+    path('api/api-auth/', include('rest_framework.urls')),
+    path('api/auth/', include('users.urls')),
+    path('api/social_accounts/', include('social_accounts.urls')),
 
     # swagger urls
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
