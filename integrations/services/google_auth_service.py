@@ -1,8 +1,8 @@
 import google_auth_oauthlib
 from google.oauth2 import id_token
-import requests
+from google.auth.transport import requests
 from django.conf import settings
-from utils.custom_logger import log_exceptions
+from utils.custom_logger import CustomLogger, log_exceptions
 
 
 class GoogleAuthService:
@@ -33,18 +33,29 @@ class GoogleAuthService:
             }
         }
 
-        flow = google_auth_oauthlib.flow.Flow.from_client_config(
-            client_config,
-            scopes=self.scopes,
-            redirect_uri=self.redirect_uri,
-        )
+        try:
+            flow = google_auth_oauthlib.flow.Flow.from_client_config(
+                client_config,
+                scopes=self.scopes,
+                redirect_uri=self.redirect_uri,
+            )
 
-        flow.fetch_token(code=auth_code)
+            flow.fetch_token(code=auth_code)
 
-        id_info = flow.id_token
-        id_info = id_token.verify_oauth2_token(
-            id_info, requests.Request(), self.client_id
-        )
+            credentials = flow.credentials
+
+            id_info = id_token.verify_oauth2_token(
+                credentials.id_token,
+                requests.Request(),
+                self.client_id,
+            )
+        except Exception as exc:
+            CustomLogger.exception(
+                "integrations.services.google_auth_service",
+                "Google OAuth flow failed",
+                extra={"auth_code_prefix": auth_code[:10] + "..." if auth_code else None},
+            )
+            raise ValueError(f"Failed to verify Google auth code: {exc}") from exc
 
         email = id_info.get("email")
         first_name = id_info.get("given_name", "")

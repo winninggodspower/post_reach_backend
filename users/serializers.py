@@ -78,7 +78,7 @@ class AuthResponseSerializer(serializers.Serializer):
 
 class GoogleAuthSerializer(serializers.Serializer):
     auth_code = serializers.CharField(required=True)
-    redirect_uri = serializers.URLField(required=True)
+    redirect_uri = serializers.CharField(required=True)
 
 
 class OnboardingSerializer(serializers.Serializer):
