@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from users.enums import IndustryChoices, PlatformChoices, TeamSizeChoices
+
 from .models import User
 from social_accounts.models import Brand
 
@@ -80,11 +82,11 @@ class GoogleAuthSerializer(serializers.Serializer):
 
 
 class OnboardingSerializer(serializers.Serializer):
-    industry = serializers.ChoiceField(choices=Brand.IndustryChoices.choices)
+    industry = serializers.ChoiceField(choices=IndustryChoices.choices)
     posting_frequency = serializers.CharField(max_length=100)
-    primary_platform = serializers.ChoiceField(choices=Brand.PlatformChoices.choices)
+    primary_platform = serializers.ChoiceField(choices=PlatformChoices.choices)
     role = serializers.ChoiceField(choices=User.RoleChoices.choices)
-    team_size = serializers.ChoiceField(choices=Brand.TeamSizeChoices.choices)
+    team_size = serializers.ChoiceField(choices=TeamSizeChoices.choices)
 
 
 class BrandSerializer(serializers.ModelSerializer):

@@ -1,79 +1,15 @@
 from datetime import timedelta
 from django.db import models
-from django.conf import settings
 from django.db.models import UniqueConstraint
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
 
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.utils.encryption import decrypt_text, encrypt_text
 from post_reach_backend.models import UUIDTimestampedModel
+from users.models import Brand
 
 # Create your models here.
-class Brand(UUIDTimestampedModel):
-    class IndustryChoices(models.TextChoices):
-        TECHNOLOGY = "technology", "Technology"
-        MARKETING = "marketing", "Marketing"
-        ECOMMERCE = "ecommerce", "Ecommerce"
-        REAL_ESTATE = "real_estate", "Real Estate"
-        HEALTHCARE = "healthcare", "Healthcare"
-        EDUCATION = "education", "Education"
-        FINANCE = "finance", "Finance"
-        OTHER = "other", "Other"
-
-    class PlatformChoices(models.TextChoices):
-        INSTAGRAM = "instagram", "Instagram"
-        LINKEDIN = "linkedin", "LinkedIn"
-        TIKTOK = "tiktok", "TikTok"
-        FACEBOOK = "facebook", "Facebook"
-        X = "x", "X"
-        YOUTUBE = "youtube", "YouTube"
-
-    class TeamSizeChoices(models.TextChoices):
-        JUST_ME = "just_me", "Just Me"
-        SMALL_TEAM = "small_team", "Small Team"
-        MEDIUM_TEAM = "medium_team", "Medium Team"
-        LARGE_TEAM = "large_team", "Large Team"
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='brands'
-    )
-    name = models.CharField(max_length=100)
-    is_default = models.BooleanField(default=False)
-    industry = models.CharField(
-        max_length=100,
-        choices=IndustryChoices.choices,
-        blank=True,
-        null=True,
-    )
-    posting_frequency = models.CharField(max_length=100, blank=True, null=True)
-    primary_platform = models.CharField(
-        max_length=100,
-        choices=PlatformChoices.choices,
-        blank=True,
-        null=True,
-    )
-    team_size = models.CharField(
-        max_length=100,
-        choices=TeamSizeChoices.choices,
-        blank=True,
-        null=True,
-    )
-
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-                fields=["user", "name"],
-                name="unique_user_brand_name",
-            ),
-            UniqueConstraint(
-                fields=["user", "is_default"],
-                name="unique_user_default_brand",
-            )
-        ]
 
 class SocialAccount(UUIDTimestampedModel):
     PROVIDER_CHOICES = [
