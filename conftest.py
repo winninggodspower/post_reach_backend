@@ -28,4 +28,9 @@ def authenticated_client(api_client, user):
 
 @pytest.fixture
 def brand(user):
-    return Brand.objects.create(user=user, name="Main Brand", is_default=True)
+    brand, _ = Brand.objects.get_or_create(
+        user=user,
+        is_default=True,
+        defaults={"name": "Main Brand"},
+    )
+    return brand

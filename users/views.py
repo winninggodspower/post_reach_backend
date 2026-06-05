@@ -4,11 +4,14 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 from integrations.services.google_auth_service import GoogleAuthService
-from users.services import UserService
+from users.services import OnboardingService, UserService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 from .serializers import (
     AuthResponseSerializer,
+    BrandSerializer,
     GoogleAuthSerializer,
+    OnboardingResponseSerializer,
+    OnboardingSerializer,
     RegisterUserSerializer,
     SignInSerializer,
     UserResponseSerializer,
@@ -21,6 +24,13 @@ def get_auth_response_data(user):
     return {
         'user': UserSerializer(user).data,
         'tokens': UserService.get_auth_tokens(user),
+    }
+
+
+def get_onboarding_response_data(user, brand):
+    return {
+        "user": UserSerializer(user).data,
+        "brand": BrandSerializer(brand).data,
     }
 
 
@@ -158,6 +168,42 @@ class GoogleSignInView(APIView):
                 message='An unexpected error occurred during authentication.',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class OnboardingView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = OnboardingSerializer
+
+    @swagger_auto_schema(
+        operation_summary="Complete onboarding",
+        operation_description=(
+            "Save the user's role on the user record and the remaining onboarding "
+            "fields on the user's default brand."
+        ),
+        request_body=OnboardingSerializer,
+        responses={
+            200: OnboardingResponseSerializer,
+            400: "Validation error",
+            401: "Authentication credentials were not provided or are invalid.",
+        },
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user, brand = OnboardingService.complete_onboarding(
+            user=request.user,
+            role=serializer.validated_data["role"],
+            industry=serializer.validated_data["industry"],
+            posting_frequency=serializer.validated_data["posting_frequency"],
+            primary_platform=serializer.validated_data["primary_platform"],
+            team_size=serializer.validated_data["team_size"],
+        )
+
+        return CustomSuccessResponse(
+            data=get_onboarding_response_data(user, brand),
+            message="Onboarding completed successfully.",
+        )
 
 
 class CurrentUserView(APIView):

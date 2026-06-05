@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 import environ
 import os
@@ -37,8 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # Custom user app
-    'users',
-    'social_accounts',
+    'users.apps.UsersConfig',
+    'social_accounts.apps.SocialAccountsConfig',
     'integrations',
 
     # Third-party apps
@@ -78,6 +79,25 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
 }
+
+# SIMPLE_JWT = {
+#     # Refresh is rolled every time we issue a fresh access token
+#     # 'ROTATE_REFRESH_TOKENS': True,
+#     # An old refresh token is black-listed the moment it is replaced
+#     # 'BLACKLIST_AFTER_ROTATION': True,
+
+#     # Five minutes is short enough to limit damage, long enough for a SPA
+#     # 'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+#     # One day keeps the user logged in through normal work hours
+#     # 'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+
+#     'AUTH_COOKIE':    'access_token',
+#     'REFRESH_COOKIE': 'refresh_token',
+
+#     'AUTH_COOKIE_HTTP_ONLY': True,     # JavaScript cannot peek inside
+#     'AUTH_COOKIE_SECURE':    False,    # switch to True on production HTTPS
+#     'AUTH_COOKIE_SAMESITE': 'Strict'   # cookie travels only to our own origin
+# }
 
 
 ROOT_URLCONF = 'post_reach_backend.urls'

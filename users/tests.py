@@ -1,7 +1,9 @@
 import pytest
 from django.urls import reverse
 
+from social_accounts.models import Brand
 from users.models import User
+from users.services import OnboardingService
 from users.services import UserService
 
 
@@ -25,8 +27,29 @@ def test_register_returns_user_and_tokens(api_client):
     assert response.data["success"] is True
     assert response.data["data"]["user"]["email"] == "new@example.com"
     assert response.data["data"]["user"]["handle"] == "newuser"
+    assert response.data["data"]["user"]["has_completed_onboarding"] is False
     assert response.data["data"]["tokens"]["access"]
     assert response.data["data"]["tokens"]["refresh"]
+
+
+def test_register_creates_default_brand(api_client):
+    response = api_client.post(
+        reverse("register"),
+        {
+            "email": "brand-new@example.com",
+            "password": "StrongPass123!",
+            "first_name": "Brand",
+            "last_name": "New",
+            "handle": "brandnew",
+        },
+        format="json",
+    )
+
+    user = User.objects.get(email="brand-new@example.com")
+    default_brand = Brand.objects.get(user=user, is_default=True)
+
+    assert response.status_code == 201
+    assert default_brand.name == "brandnew"
 
 
 def test_sign_in_works_with_email(api_client, user):
@@ -102,6 +125,7 @@ def test_me_returns_current_user(authenticated_client, user):
     assert response.data["success"] is True
     assert response.data["data"]["email"] == user.email
     assert response.data["data"]["handle"] == user.handle
+    assert response.data["data"]["has_completed_onboarding"] is False
 
 
 def test_me_patch_updates_editable_user_fields(authenticated_client, user):
@@ -122,6 +146,51 @@ def test_me_patch_updates_editable_user_fields(authenticated_client, user):
     assert response.data["data"]["last_name"] == "Person"
     assert response.data["data"]["handle"] == "updateduser"
     assert user.email != "ignored@example.com"
+
+
+def test_onboarding_updates_user_and_default_brand(authenticated_client, user):
+    response = authenticated_client.post(
+        reverse("onboarding"),
+        {
+            "industry": "technology",
+            "posting_frequency": "weekly",
+            "primary_platform": "instagram",
+            "role": "creator",
+            "team_size": "just_me",
+        },
+        format="json",
+    )
+
+    user.refresh_from_db()
+    brand = Brand.objects.get(user=user, is_default=True)
+
+    assert response.status_code == 200
+    assert response.data["success"] is True
+    assert response.data["data"]["user"]["role"] == "creator"
+    assert response.data["data"]["user"]["has_completed_onboarding"] is True
+    assert response.data["data"]["brand"]["industry"] == "technology"
+    assert user.role == "creator"
+    assert brand.industry == "technology"
+    assert brand.posting_frequency == "weekly"
+    assert brand.primary_platform == "instagram"
+    assert brand.team_size == "just_me"
+
+
+def test_onboarding_rejects_unknown_choice(authenticated_client):
+    response = authenticated_client.post(
+        reverse("onboarding"),
+        {
+            "industry": "unknown",
+            "posting_frequency": "weekly",
+            "primary_platform": "instagram",
+            "role": "creator",
+            "team_size": "just_me",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "industry" in response.data
 
 
 def test_register_with_password_creates_user():
@@ -210,3 +279,23 @@ def test_get_auth_tokens_returns_refresh_and_access(user):
 
     assert tokens["refresh"]
     assert tokens["access"]
+
+
+def test_complete_onboarding_updates_records(user):
+    user, brand = OnboardingService.complete_onboarding(
+        user=user,
+        role="creator",
+        industry="technology",
+        posting_frequency="weekly",
+        primary_platform="instagram",
+        team_size="just_me",
+    )
+
+    user.refresh_from_db()
+    brand.refresh_from_db()
+
+    assert user.role == "creator"
+    assert brand.industry == "technology"
+    assert brand.posting_frequency == "weekly"
+    assert brand.primary_platform == "instagram"
+    assert brand.team_size == "just_me"

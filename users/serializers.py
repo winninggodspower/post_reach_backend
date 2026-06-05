@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import User
+from social_accounts.models import Brand
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
@@ -13,11 +14,26 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source='get_full_name', read_only=True)
+    has_completed_onboarding = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'handle']
+        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'handle', 'role', 'has_completed_onboarding']
         read_only_fields = fields
+
+    def get_has_completed_onboarding(self, user):
+        default_brand = user.brands.filter(is_default=True).first()
+        if not default_brand:
+            return False
+
+        required_values = [
+            user.role,
+            default_brand.industry,
+            default_brand.posting_frequency,
+            default_brand.primary_platform,
+            default_brand.team_size,
+        ]
+        return all(required_values)
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -61,3 +77,37 @@ class AuthResponseSerializer(serializers.Serializer):
 class GoogleAuthSerializer(serializers.Serializer):
     auth_code = serializers.CharField(required=True)
     redirect_uri = serializers.URLField(required=True)
+
+
+class OnboardingSerializer(serializers.Serializer):
+    industry = serializers.ChoiceField(choices=Brand.IndustryChoices.choices)
+    posting_frequency = serializers.CharField(max_length=100)
+    primary_platform = serializers.ChoiceField(choices=Brand.PlatformChoices.choices)
+    role = serializers.ChoiceField(choices=User.RoleChoices.choices)
+    team_size = serializers.ChoiceField(choices=Brand.TeamSizeChoices.choices)
+
+
+class BrandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Brand
+        fields = [
+            'id',
+            'name',
+            'is_default',
+            'industry',
+            'posting_frequency',
+            'primary_platform',
+            'team_size',
+        ]
+        read_only_fields = fields
+
+
+class OnboardingResponseDataSerializer(serializers.Serializer):
+    user = UserSerializer()
+    brand = BrandSerializer()
+
+
+class OnboardingResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    data = OnboardingResponseDataSerializer()
