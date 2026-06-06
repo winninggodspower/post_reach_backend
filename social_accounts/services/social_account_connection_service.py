@@ -21,10 +21,10 @@ class SocialAccountConnectionService:
     @classmethod
     @classmethod
     @log_exceptions()
-    def _save_account(cls, *, brand, account_type, defaults):
+    def _save_account(cls, *, brand, platform, defaults):
         return SocialAccount.objects.update_or_create(
             brand=brand,
-            account_type=account_type,
+            platform=platform,
             defaults=defaults,
         )
 
@@ -46,7 +46,7 @@ class SocialAccountConnectionService:
 
         return cls._save_account(
             brand=brand,
-            account_type="youtube",
+            platform="youtube",
             defaults={
                 "access_token": credentials.token,
                 "refresh_token": credentials.refresh_token,
@@ -67,7 +67,7 @@ class SocialAccountConnectionService:
 
         return cls._save_account(
             brand=brand,
-            account_type="facebook",
+            platform="facebook",
             defaults={
                 "access_token": long_lived_token,
                 "expires_at": timezone.now() + timedelta(seconds=expires_in),
@@ -92,7 +92,7 @@ class SocialAccountConnectionService:
 
         return cls._save_account(
             brand=brand,
-            account_type="instagram",
+            platform="instagram",
             defaults={
                 "access_token": credentials["access_token"],
                 "expires_at": timezone.now() + timedelta(seconds=credentials["expires_in"]),
@@ -109,7 +109,7 @@ class SocialAccountConnectionService:
 
         return cls._save_account(
             brand=brand,
-            account_type="tiktok",
+            platform="tiktok",
             defaults={
                 "access_token": token_data["access_token"],
                 "refresh_token": token_data.get("refresh_token"),
@@ -128,7 +128,7 @@ class SocialAccountConnectionService:
 
         return cls._save_account(
             brand=brand,
-            account_type="linkedin",
+            platform="linkedin",
             defaults={
                 "access_token": token_data["access_token"],
                 "expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),

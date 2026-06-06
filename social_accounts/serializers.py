@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from social_accounts.models import Brand, SocialAccount
+from social_accounts.models import SocialAccount
+from users.models import Brand
 
 
 class SocialAccountSerializer(serializers.ModelSerializer):
@@ -8,14 +9,14 @@ class SocialAccountSerializer(serializers.ModelSerializer):
         model = SocialAccount
         fields = [
             "user",
-            "account_type",
+            "platform",
             "expires_at",
             "token_type",
         ]
         # make all fields read only
         read_only_fields = [
             "user",
-            "account_type",
+            "platform",
             "expires_at",
             "token_type",
         ]

@@ -49,7 +49,7 @@ class YoutubeAuthConnectView(APIView):
         return CustomSuccessResponse(
             {
                 "message": "YouTube account successfully connected",
-                "account_type": "youtube",
+                "platform": "youtube",
                 "is_connected": True,
             },
             status=status.HTTP_200_OK,
@@ -93,7 +93,7 @@ class FacebookAuthConnectView(APIView):
         return CustomSuccessResponse(
             {
                 "message": "Facebook account successfully connected",
-                "account_type": "facebook",
+                "platform": "facebook",
                 "is_connected": True,
             }
         )
@@ -135,7 +135,7 @@ class InstagramAuthConnectView(APIView):
         return CustomSuccessResponse(
             {
                 "message": "Instagram account successfully connected",
-                "account_type": "instagram",
+                "platform": "instagram",
                 "is_connected": True,
             }
         )
@@ -162,7 +162,7 @@ class TiktokAuthConnectView(APIView):
 
         return CustomSuccessResponse({
             "message": "TikTok account successfully connected",
-            "account_type": "tiktok",
+            "platform": "tiktok",
             "is_connected": True,
         }, status=status.HTTP_200_OK)
 
@@ -199,7 +199,7 @@ class LinkedinAuthConnectView(APIView):
         return CustomSuccessResponse(
             {
                 "message": "LinkedIn account successfully connected",
-                "account_type": "linkedin",
+                "platform": "linkedin",
                 "is_connected": True,
             },
             status=status.HTTP_200_OK,
