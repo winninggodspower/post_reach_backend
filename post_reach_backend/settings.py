@@ -195,6 +195,21 @@ LINKEDIN_CLIENT_SECRET = env('LINKEDIN_CLIENT_SECRET')
 FERNET_SECRET_KEY = env('FERNET_SECRET_KEY').encode()
 
 
+# Cache Settings (using Redis)
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django.core.cache.backends.redis.RedisCache",
+#         "LOCATION": "redis://localhost:6379/1",
+#     }
+# }
+
+ACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": "c:/foo/bar",
+    }
+}
+
 # Celery Settings
 CELERY_BROKER_URL = "redis://localhost:6379"
 CELERY_RESULT_BACKEND = 'django-db'

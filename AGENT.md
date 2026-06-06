@@ -41,6 +41,9 @@ Pull request checklist for agents
 - Code: follow the service-first pattern. Keep views thin.
 - Tests: include unit tests (service) + at least one integration test (endpoint). Ensure tests run.
 - Docs: add or update `swagger_auto_schema` on the modified/new view methods.
+  - Every new endpoint MUST have a `swagger_auto_schema` annotation with `operation_summary`, `operation_description`, and appropriate `responses`.
+  - For GET endpoints with query parameters, use `manual_parameters` with `openapi.Parameter`.
+  - For POST endpoints with request bodies, reference the serializer class via `request_body`.
 - Mock external calls in tests; do not call real external services in CI.
 - Run `pytest -q` locally (or CI) and ensure no failures.
 

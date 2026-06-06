@@ -8,17 +8,28 @@ from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
+from users.models import Brand
 from utils.custom_logger import log_exceptions
 
 
 class SocialAccountConnectionService:
-    @staticmethod
-    @log_exceptions()
-    def _ensure_brand_owned_by_user(user, brand):
-        if brand.user_id != user.id:
-            raise PermissionError("You do not have permission to access this brand.")
-
     @classmethod
+    def _resolve_brand(cls, user, brand_from_request):
+        """
+        Resolve the brand to use for the connection.
+        If a brand is provided, verify ownership and return it.
+        If no brand is provided, return the user's default brand.
+        """
+        if brand_from_request is not None:
+            if brand_from_request.user != user:
+                raise PermissionError("You do not have permission to access this brand.")
+            return brand_from_request
+
+        default_brand = Brand.objects.filter(user=user, is_default=True).first()
+        if default_brand is None:
+            raise ValueError("No default brand found. Please create a brand or specify one.")
+        return default_brand
+
     @classmethod
     @log_exceptions()
     def _save_account(cls, *, brand, platform, defaults):
@@ -29,10 +40,9 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
-    @classmethod
     @log_exceptions()
     def connect_youtube(cls, *, user, brand, auth_code, redirect_uri):
-        cls._ensure_brand_owned_by_user(user, brand)
+        resolved_brand = cls._resolve_brand(user, brand)
 
         credentials, missing_scopes = YoutubeService.exchange_code_for_token(
             auth_code=auth_code,
@@ -45,40 +55,38 @@ class SocialAccountConnectionService:
             )
 
         return cls._save_account(
-            brand=brand,
+            brand=resolved_brand,
             platform="youtube",
             defaults={
                 "access_token": credentials.token,
                 "refresh_token": credentials.refresh_token,
-                "expires_at": credentials.expiry,
+                "token_expires_at": credentials.expiry,
                 "scope": " ".join(credentials.scopes),
             },
         )
 
     @classmethod
-    @classmethod
     @log_exceptions()
     def connect_facebook(cls, *, user, brand, short_lived_access_token):
-        cls._ensure_brand_owned_by_user(user, brand)
+        resolved_brand = cls._resolve_brand(user, brand)
 
         long_lived_token, expires_in = FacebookService.exchange_short_lived_token(
             short_lived_access_token
         )
 
         return cls._save_account(
-            brand=brand,
+            brand=resolved_brand,
             platform="facebook",
             defaults={
                 "access_token": long_lived_token,
-                "expires_at": timezone.now() + timedelta(seconds=expires_in),
+                "token_expires_at": timezone.now() + timedelta(seconds=expires_in),
             },
         )
 
     @classmethod
-    @classmethod
     @log_exceptions()
     def connect_instagram(cls, *, user, brand, auth_code, redirect_uri):
-        cls._ensure_brand_owned_by_user(user, brand)
+        resolved_brand = cls._resolve_brand(user, brand)
 
         credentials, missing_scopes = InstagramService.exchange_code_for_token(
             auth_code=auth_code,
@@ -91,47 +99,45 @@ class SocialAccountConnectionService:
             )
 
         return cls._save_account(
-            brand=brand,
+            brand=resolved_brand,
             platform="instagram",
             defaults={
                 "access_token": credentials["access_token"],
-                "expires_at": timezone.now() + timedelta(seconds=credentials["expires_in"]),
+                "token_expires_at": timezone.now() + timedelta(seconds=credentials["expires_in"]),
             },
         )
 
     @classmethod
-    @classmethod
     @log_exceptions()
     def connect_tiktok(cls, *, user, brand, code):
-        cls._ensure_brand_owned_by_user(user, brand)
+        resolved_brand = cls._resolve_brand(user, brand)
 
         token_data = TiktokService.exchange_code_for_token(code)
 
         return cls._save_account(
-            brand=brand,
+            brand=resolved_brand,
             platform="tiktok",
             defaults={
                 "access_token": token_data["access_token"],
                 "refresh_token": token_data.get("refresh_token"),
-                "expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),
+                "token_expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),
                 "scope": token_data.get("scope", ""),
             },
         )
 
     @classmethod
-    @classmethod
     @log_exceptions()
     def connect_linkedin(cls, *, user, brand, code, redirect_uri):
-        cls._ensure_brand_owned_by_user(user, brand)
+        resolved_brand = cls._resolve_brand(user, brand)
 
         token_data = LinkedinService.exchange_code_for_token(code, redirect_uri)
 
         return cls._save_account(
-            brand=brand,
+            brand=resolved_brand,
             platform="linkedin",
             defaults={
                 "access_token": token_data["access_token"],
-                "expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),
+                "token_expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),
                 "scope": token_data.get("scope", ""),
             },
         )

@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    YoutubeAuthConnectView,
+    YoutubeAuthViewSet,
     FacebookAuthConnectView,
     InstagramAuthConnectView,
     TiktokAuthConnectView,
@@ -8,7 +8,10 @@ from .views import (
 )
 
 urlpatterns = [
-    path('google/connect/', YoutubeAuthConnectView.as_view(), name='google-auth-connect'),
+    # YouTube uses a ViewSet with auth-url and connect actions
+    path('youtube/auth-url/', YoutubeAuthViewSet.as_view({'get': 'auth_url'}), name='youtube-auth-url'),
+    path('youtube/connect/', YoutubeAuthViewSet.as_view({'post': 'connect'}), name='youtube-auth-connect'),
+    # Other platforms use simple APIViews
     path('facebook/connect/', FacebookAuthConnectView.as_view(), name='facebook-auth-connect'),
     path('instagram/connect/', InstagramAuthConnectView.as_view(), name='instagram-auth-connect'),
     path('tiktok/connect/', TiktokAuthConnectView.as_view(), name='tiktok-auth-connect'),
