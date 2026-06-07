@@ -3,12 +3,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework import status
 
+from django.db.models import Prefetch
+
 from integrations.services.google_auth_service import GoogleAuthService
 from users.services import OnboardingService, UserService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 from .serializers import (
     AuthResponseSerializer,
-    BrandSerializer,
     GoogleAuthSerializer,
     OnboardingResponseSerializer,
     OnboardingSerializer,
@@ -19,18 +20,27 @@ from .serializers import (
     UserUpdateSerializer,
 )
 
+from users.models import Brand, User
+
 # Create your views here.
+def _prefetch_user_for_serialization(user):
+    """Prefetch brands and their social_accounts to avoid N+1 queries."""
+    return User.objects.prefetch_related(
+        Prefetch('brands', queryset=Brand.objects.prefetch_related('social_accounts'))
+    ).get(pk=user.pk)
+
+
 def get_auth_response_data(user):
     return {
-        'user': UserSerializer(user).data,
+        'user': UserSerializer(_prefetch_user_for_serialization(user)).data,
         'tokens': UserService.get_auth_tokens(user),
     }
 
 
 def get_onboarding_response_data(user, brand):
+    # UserSerializer now includes `brand` nested inside, so we only need the user.
     return {
-        "user": UserSerializer(user).data,
-        "brand": BrandSerializer(brand).data,
+        "user": UserSerializer(_prefetch_user_for_serialization(user)).data,
     }
 
 
@@ -218,8 +228,9 @@ class CurrentUserView(APIView):
         },
     )
     def get(self, request):
+        user = _prefetch_user_for_serialization(request.user)
         return CustomSuccessResponse(
-            data=UserSerializer(request.user).data,
+            data=UserSerializer(user).data,
             message="User data retrieved successfully.",
         )
 
@@ -244,7 +255,8 @@ class CurrentUserView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
+        user = _prefetch_user_for_serialization(request.user)
         return CustomSuccessResponse(
-            data=UserSerializer(request.user).data,
+            data=UserSerializer(user).data,
             message="User data updated successfully.",
         )

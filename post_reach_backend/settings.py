@@ -194,15 +194,15 @@ LINKEDIN_CLIENT_SECRET = env('LINKEDIN_CLIENT_SECRET')
 # OAuth Redirect URI configuration
 # Dev base uses the frontend dev server; prod base is read from environment
 _REDIRECT_BASE_DEV = "http://localhost:3000"
-_REDIRECT_BASE_PROD = env('REDIRECT_BASE_URL', default='https://app.postreach.com')
+_REDIRECT_BASE_PROD = env('REDIRECT_BASE_URL', default='https://postreach.app')
 _REDIRECT_BASE = _REDIRECT_BASE_DEV if DEBUG else _REDIRECT_BASE_PROD
 
 REDIRECT_URI = {
-    "youtube":   f"{_REDIRECT_BASE}/social/auth/youtube/callback",
-    "instagram": f"{_REDIRECT_BASE}/social/auth/instagram/callback",
-    "tiktok":    f"{_REDIRECT_BASE}/social/auth/tiktok/callback",
-    "facebook":  f"{_REDIRECT_BASE}/social/auth/facebook/callback",
-    "linkedin":  f"{_REDIRECT_BASE}/social/auth/linkedin/callback",
+    "youtube":   f"{_REDIRECT_BASE}/social/oauth/youtube/callback",
+    "instagram": f"{_REDIRECT_BASE}/social/oauth/instagram/callback",
+    "tiktok":    f"{_REDIRECT_BASE}/social/oauth/tiktok/callback",
+    "facebook":  f"{_REDIRECT_BASE}/social/oauth/facebook/callback",
+    "linkedin":  f"{_REDIRECT_BASE}/social/oauth/linkedin/callback",
 }
 
 # Ensure the Fernet key is 32 bytes long

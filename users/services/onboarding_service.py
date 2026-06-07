@@ -28,6 +28,9 @@ class OnboardingService:
                 },
             )
 
+            # Prefetch social_accounts so BrandSerializer can efficiently
+            brand = Brand.objects.prefetch_related("social_accounts").get(pk=brand.pk)
+
             brand.industry = industry
             brand.posting_frequency = posting_frequency
             brand.primary_platform = primary_platform

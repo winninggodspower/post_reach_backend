@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from social_accounts.enums import PlatformChoices as SocialPlatformChoices
 from users.enums import IndustryChoices, PlatformChoices, TeamSizeChoices
 
 from .models import User
@@ -15,16 +16,16 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    full_name = serializers.CharField(source='get_full_name', read_only=True)
     has_completed_onboarding = serializers.SerializerMethodField()
+    brand = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'handle', 'role', 'has_completed_onboarding']
+        fields = ['id', 'email', 'first_name', 'last_name', 'handle', 'role', 'has_completed_onboarding', 'brand']
         read_only_fields = fields
 
     def get_has_completed_onboarding(self, user):
-        default_brand = user.brands.filter(is_default=True).first()
+        default_brand = self._get_default_brand(user)
         if not default_brand:
             return False
 
@@ -36,6 +37,19 @@ class UserSerializer(serializers.ModelSerializer):
             default_brand.team_size,
         ]
         return all(required_values)
+
+    def _get_default_brand(self, user):
+        """Return the user's default brand, preferring prefetched data."""
+        if hasattr(user, '_prefetched_objects_cache') and 'brands' in user._prefetched_objects_cache:
+            brands = user._prefetched_objects_cache['brands']
+            return next((b for b in brands if b.is_default), None)
+        return user.brands.filter(is_default=True).first()
+
+    def get_brand(self, user):
+        default_brand = self._get_default_brand(user)
+        if default_brand is None:
+            return None
+        return BrandSerializer(default_brand).data
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -90,23 +104,57 @@ class OnboardingSerializer(serializers.Serializer):
 
 
 class BrandSerializer(serializers.ModelSerializer):
+    is_youtube_connected = serializers.SerializerMethodField()
+    is_instagram_connected = serializers.SerializerMethodField()
+    is_tiktok_connected = serializers.SerializerMethodField()
+    is_facebook_connected = serializers.SerializerMethodField()
+    is_linkedin_connected = serializers.SerializerMethodField()
+    is_x_connected = serializers.SerializerMethodField()
+
     class Meta:
         model = Brand
         fields = [
             'id',
             'name',
-            'is_default',
             'industry',
             'posting_frequency',
             'primary_platform',
             'team_size',
+            'is_youtube_connected',
+            'is_instagram_connected',
+            'is_tiktok_connected',
+            'is_facebook_connected',
+            'is_linkedin_connected',
+            'is_x_connected',
         ]
         read_only_fields = fields
 
+    def _platform_connected(self, brand, platform):
+        return any(
+            sa.platform == platform
+            for sa in brand.social_accounts.all()
+        )
+
+    def get_is_youtube_connected(self, brand):
+        return self._platform_connected(brand, SocialPlatformChoices.YOUTUBE)
+
+    def get_is_instagram_connected(self, brand):
+        return self._platform_connected(brand, SocialPlatformChoices.INSTAGRAM)
+
+    def get_is_tiktok_connected(self, brand):
+        return self._platform_connected(brand, SocialPlatformChoices.TIKTOK)
+
+    def get_is_facebook_connected(self, brand):
+        return self._platform_connected(brand, SocialPlatformChoices.FACEBOOK)
+
+    def get_is_linkedin_connected(self, brand):
+        return self._platform_connected(brand, SocialPlatformChoices.LINKEDIN)
+
+    def get_is_x_connected(self, brand):
+        return self._platform_connected(brand, SocialPlatformChoices.TWITTER)
 
 class OnboardingResponseDataSerializer(serializers.Serializer):
     user = UserSerializer()
-    brand = BrandSerializer()
 
 
 class OnboardingResponseSerializer(serializers.Serializer):

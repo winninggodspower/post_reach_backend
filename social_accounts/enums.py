@@ -7,3 +7,4 @@ class PlatformChoices(models.TextChoices):
     TIKTOK = "tiktok", "TikTok"
     FACEBOOK = "facebook", "Facebook"
     LINKEDIN = "linkedin", "LinkedIn"
+    TWITTER = "twitter", "Twitter"

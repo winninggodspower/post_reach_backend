@@ -168,7 +168,7 @@ def test_onboarding_updates_user_and_default_brand(authenticated_client, user):
     assert response.data["success"] is True
     assert response.data["data"]["user"]["role"] == "creator"
     assert response.data["data"]["user"]["has_completed_onboarding"] is True
-    assert response.data["data"]["brand"]["industry"] == "technology"
+    assert response.data["data"]["user"]["brand"]["industry"] == "technology"
     assert user.role == "creator"
     assert brand.industry == "technology"
     assert brand.posting_frequency == "weekly"
