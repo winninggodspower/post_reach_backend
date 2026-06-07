@@ -54,10 +54,15 @@ class SocialAccountConnectionService:
                 f"Missing required permissions: {', '.join(sorted(missing_scopes))}"
             )
 
+        # Fetch channel info (account name and external ID)
+        channel_info = YoutubeService._fetch_channel_info(credentials)
+
         return cls._save_account(
             brand=resolved_brand,
             platform="youtube",
             defaults={
+                "account_name": channel_info["account_name"],
+                "external_id": channel_info["external_id"],
                 "access_token": credentials.token,
                 "refresh_token": credentials.refresh_token,
                 "token_expires_at": credentials.expiry,

@@ -80,13 +80,53 @@ class YoutubeService(SocialAccountService):
         return default_brand
 
     @classmethod
+    def _fetch_channel_info(cls, credentials):
+        """
+        Fetch the YouTube channel name and external ID using the YouTube Data API v3.
+
+        Returns a dict with 'account_name' and 'external_id'.
+        Raises ValueError if the channel info cannot be retrieved.
+        """
+        try:
+            youtube = googleapiclient.discovery.build(
+                "youtube", "v3", credentials=credentials
+            )
+            channels_response = youtube.channels().list(
+                part="snippet",
+                mine=True,
+            ).execute()
+
+            items = channels_response.get("items", [])
+            if not items:
+                raise ValueError(
+                    "No YouTube channel found for this account. "
+                    "Please ensure you have a YouTube channel associated with your Google account."
+                )
+
+            channel = items[0]
+            snippet = channel.get("snippet", {})
+            return {
+                "account_name": snippet.get("title", ""),
+                "external_id": channel.get("id", ""),
+            }
+        except ValueError:
+            raise
+        except Exception as e:
+            CustomLogger.exception(
+                "Failed to fetch YouTube channel info",
+                extra={"operation": "_fetch_channel_info"},
+            )
+            raise ValueError(f"Failed to fetch YouTube channel information: {str(e)}")
+
+    @classmethod
     def connect_account(cls, *, user, auth_code, redirect_uri, state=None, brand=None):
         """
         Complete the YouTube OAuth connection flow:
         1. Verify the OAuth state (CSRF protection)
         2. Resolve the brand
         3. Exchange the auth code for tokens
-        4. Save the social account
+        4. Fetch channel info (account name and external ID)
+        5. Save the social account
 
         Returns the created/updated SocialAccount instance.
         Raises ValueError or PermissionError on failure.
@@ -114,11 +154,16 @@ class YoutubeService(SocialAccountService):
                 f"Missing required permissions: {', '.join(sorted(missing_scopes))}"
             )
 
-        # 4. Save account
+        # 4. Fetch channel info (account name and external ID)
+        channel_info = cls._fetch_channel_info(credentials)
+
+        # 5. Save account
         account, _ = SocialAccount.objects.update_or_create(
             brand=resolved_brand,
             platform="youtube",
             defaults={
+                "account_name": channel_info["account_name"],
+                "external_id": channel_info["external_id"],
                 "access_token": credentials.token,
                 "refresh_token": credentials.refresh_token,
                 "token_expires_at": credentials.expiry,

@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from integrations.providers.youtube_service import YoutubeService
-from social_accounts.manual_parameters import redirect_uri_param
+from social_accounts.utils.manual_parameters import redirect_uri_param
 from social_accounts.services.social_account_connection_service import SocialAccountConnectionService
 from social_accounts.serializers import (
     ConnectAccountResponseSerializer,
