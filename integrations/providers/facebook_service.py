@@ -12,20 +12,16 @@ OAUTH_STATE_TTL = 600  # 10 minutes
 
 
 class FacebookService(SocialAccountService):
-    CLIENT_ID = settings.FACEBOOK_CLIENT_ID
-    CLIENT_SECRET = settings.FACEBOOK_CLIENT_SECRET
+    CLIENT_ID = settings.FACEBOOK_APP_ID
+    CLIENT_SECRET = settings.FACEBOOK_APP_SECRET
     BASE_URL = "https://graph.facebook.com/v18.0"
     redirect_uri = settings.REDIRECT_URI["facebook"]
 
-    REQUIRED_PERMISSIONS = {
-        "public_profile",
-        "publish_video",
+    REQUIRED_SCOPES = {
+        "pages_show_list",
+        "pages_read_engagement",
+        "pages_manage_posts"
     }
-
-    SCOPES = [
-        "public_profile",
-        "publish_video",
-    ]
 
     @classmethod
     def generate_auth_url(cls, user_id):
@@ -42,7 +38,7 @@ class FacebookService(SocialAccountService):
             "client_id": cls.CLIENT_ID,
             "redirect_uri": redirect_uri,
             "state": state,
-            "scope": ",".join(cls.SCOPES),
+            "scope": ",".join(cls.REQUIRED_SCOPES),
             "response_type": "code",
         }
 
@@ -104,7 +100,7 @@ class FacebookService(SocialAccountService):
             perm["permission"] for perm in data["data"] if perm["status"] == "granted"
         }
 
-        missing_permissions = cls.REQUIRED_PERMISSIONS - granted_permissions
+        missing_permissions = cls.REQUIRED_SCOPES - granted_permissions
 
         return (not bool(missing_permissions), missing_permissions)
 
