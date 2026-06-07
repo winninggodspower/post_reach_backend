@@ -4,11 +4,13 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
+from integrations.providers.facebook_service import FacebookService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.services.social_account_connection_service import SocialAccountConnectionService
 from social_accounts.serializers import (
     ConnectAccountResponseSerializer,
     FacebookAuthCodeSerializer,
+    FacebookAuthUrlResponseSerializer,
     GoogleAuthCodeSerializer,
     InstagramAuthCodeSerializer,
     LinkedinAuthCodeSerializer,
@@ -35,7 +37,7 @@ class YoutubeAuthViewSet(viewsets.ViewSet):
     )
     def auth_url(self, request):
         """
-        GET /social/youtube/auth-url/
+        GET /social-accounts/youtube/auth-url/
         Returns the Google OAuth URL for the user to authorize the app.
         The redirect URI is resolved from backend settings automatically.
         """
@@ -61,9 +63,8 @@ class YoutubeAuthViewSet(viewsets.ViewSet):
     )
     def connect(self, request):
         """
-        POST /social/youtube/connect/
+        POST /social-accounts/youtube/connect/
         Exchanges the authorization code for tokens and saves the social account.
-        The redirect URI is resolved from backend settings automatically.
         """
         serializer = GoogleAuthCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -92,18 +93,50 @@ class YoutubeAuthViewSet(viewsets.ViewSet):
         )
 
 
-# --- Facebook Auth View ---
-class FacebookAuthConnectView(APIView):
+# --- Facebook Auth ViewSet ---
+class FacebookAuthViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    serializer_class = FacebookAuthCodeSerializer
 
+    @action(detail=False, methods=["get"], url_path="auth-url")
     @swagger_auto_schema(
-        request_body=serializer_class,
-        responses={200: ConnectAccountResponseSerializer},
-
+        operation_summary="Get Facebook OAuth URL",
+        operation_description="Generates a Facebook OAuth authorization URL for connecting a Facebook account.",
+        responses={
+            200: FacebookAuthUrlResponseSerializer,
+        },
     )
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+    def auth_url(self, request):
+        """
+        GET /social-accounts/facebook/auth-url/
+        Returns the Facebook OAuth URL for the user to authorize the app.
+        The redirect URI is resolved from backend settings automatically.
+        """
+        try:
+            auth_url = FacebookService.generate_auth_url(
+                user_id=request.user.id,
+            )
+        except Exception as e:
+            return CustomErrorResponse(
+                {"message": f"Failed to generate auth URL: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return CustomSuccessResponse(
+            {"auth_url": auth_url},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"], url_path="connect")
+    @swagger_auto_schema(
+        request_body=FacebookAuthCodeSerializer,
+        responses={200: ConnectAccountResponseSerializer},
+    )
+    def connect(self, request):
+        """
+        POST /social-accounts/facebook/connect/
+        Exchanges the short-lived access token for a long-lived token and saves the social account.
+        """
+        serializer = FacebookAuthCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         try:
@@ -114,10 +147,8 @@ class FacebookAuthConnectView(APIView):
             )
         except ValueError as e:
             return CustomErrorResponse(
-                {
-                    "message": str(e),
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         return CustomSuccessResponse(
@@ -125,7 +156,8 @@ class FacebookAuthConnectView(APIView):
                 "message": "Facebook account successfully connected",
                 "platform": "facebook",
                 "is_connected": True,
-            }
+            },
+            status=status.HTTP_200_OK,
         )
 
 
@@ -196,6 +228,7 @@ class TiktokAuthConnectView(APIView):
             "platform": "tiktok",
             "is_connected": True,
         }, status=status.HTTP_200_OK)
+
 
 class LinkedinAuthConnectView(APIView):
     permission_classes = [IsAuthenticated]

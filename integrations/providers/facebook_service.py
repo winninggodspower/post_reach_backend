@@ -1,19 +1,53 @@
+import uuid
+
 from django.conf import settings
+from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
+from social_accounts.utils.cache_keys import facebook_oauth_state
 from utils.http import APIError
 from utils.custom_logger import CustomLogger
+
+OAUTH_STATE_TTL = 600  # 10 minutes
 
 
 class FacebookService(SocialAccountService):
     CLIENT_ID = settings.FACEBOOK_CLIENT_ID
     CLIENT_SECRET = settings.FACEBOOK_CLIENT_SECRET
     BASE_URL = "https://graph.facebook.com/v18.0"
+    redirect_uri = settings.REDIRECT_URI["facebook"]
 
     REQUIRED_PERMISSIONS = {
         "public_profile",
         "publish_video",
     }
+
+    SCOPES = [
+        "public_profile",
+        "publish_video",
+    ]
+
+    @classmethod
+    def generate_auth_url(cls, user_id):
+        """
+        Generates a Facebook OAuth authorization URL with CSRF state protection.
+        Stores the state in cache for later verification.
+        The redirect URI is resolved from settings.REDIRECT_URI["facebook"].
+        """
+        redirect_uri = cls.redirect_uri
+        state = str(uuid.uuid4())
+        cache.set(facebook_oauth_state(user_id), state, OAUTH_STATE_TTL)
+
+        params = {
+            "client_id": cls.CLIENT_ID,
+            "redirect_uri": redirect_uri,
+            "state": state,
+            "scope": ",".join(cls.SCOPES),
+            "response_type": "code",
+        }
+
+        query_string = "&".join(f"{k}={v}" for k, v in params.items())
+        return f"https://www.facebook.com/v18.0/dialog/oauth?{query_string}"
 
     @classmethod
     def refresh_access_token(self, refresh_token):
@@ -59,9 +93,12 @@ class FacebookService(SocialAccountService):
         )
 
         if "data" not in data:
-            raise ValueError(
-                data.get("error", {}).get("message", "Failed to verify permissions")
-            )
+            error_msg = data.get("error", {})
+            if isinstance(error_msg, dict):
+                error_msg = error_msg.get("message", "Failed to verify permissions")
+            else:
+                error_msg = str(error_msg)
+            raise ValueError(error_msg)
 
         granted_permissions = {
             perm["permission"] for perm in data["data"] if perm["status"] == "granted"

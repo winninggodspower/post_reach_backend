@@ -4,11 +4,16 @@ from rest_framework import serializers
 __all__ = [
     "ConnectAccountResponseSerializer",
     "YoutubeAuthUrlResponseSerializer",
+    "FacebookAuthUrlResponseSerializer",
 ]
 
 
 class YoutubeAuthUrlResponseSerializer(serializers.Serializer):
     auth_url = serializers.URLField(help_text="The Google OAuth authorization URL")
+
+
+class FacebookAuthUrlResponseSerializer(serializers.Serializer):
+    auth_url = serializers.URLField(help_text="The Facebook OAuth authorization URL")
 
 
 class ConnectAccountResponseSerializer(serializers.Serializer):
