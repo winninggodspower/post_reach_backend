@@ -14,7 +14,7 @@ __all__ = [
 class GoogleAuthCodeSerializer(serializers.Serializer):
 
     code = serializers.CharField(required=True)
-    redirect_uri = serializers.URLField(required=True)
+    redirect_uri = serializers.URLField(required=False)
     state = serializers.CharField(required=False, allow_blank=True)
     brand = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.all(),

@@ -41,12 +41,11 @@ class SocialAccountConnectionService:
 
     @classmethod
     @log_exceptions()
-    def connect_youtube(cls, *, user, brand, auth_code, redirect_uri):
+    def connect_youtube(cls, *, user, brand, auth_code):
         resolved_brand = cls._resolve_brand(user, brand)
 
         credentials, missing_scopes = YoutubeService.exchange_code_for_token(
             auth_code=auth_code,
-            google_auth_redirect_uri=redirect_uri,
         )
 
         if missing_scopes:

@@ -5,7 +5,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from integrations.providers.youtube_service import YoutubeService
-from social_accounts.utils.manual_parameters import redirect_uri_param
 from social_accounts.services.social_account_connection_service import SocialAccountConnectionService
 from social_accounts.serializers import (
     ConnectAccountResponseSerializer,
@@ -29,29 +28,20 @@ class YoutubeAuthViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="auth-url")
     @swagger_auto_schema(
         operation_summary="Get YouTube OAuth URL",
-        operation_description="Generates a Google OAuth authorization URL for connecting a YouTube account.",
-        manual_parameters=[redirect_uri_param],
+        operation_description="Generates a Google OAuth authorization URL for connecting a YouTube account. The redirect URI is automatically resolved from the backend settings.",
         responses={
             200: YoutubeAuthUrlResponseSerializer,
-            400: "Missing redirect_uri parameter",
         },
     )
     def auth_url(self, request):
         """
-        GET /social/youtube/auth-url/?redirect_uri=...
+        GET /social/youtube/auth-url/
         Returns the Google OAuth URL for the user to authorize the app.
+        The redirect URI is resolved from backend settings automatically.
         """
-        redirect_uri = request.query_params.get("redirect_uri")
-        if not redirect_uri:
-            return CustomErrorResponse(
-                {"message": "redirect_uri query parameter is required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         try:
             auth_url = YoutubeService.generate_auth_url(
                 user_id=request.user.id,
-                redirect_uri=redirect_uri,
             )
         except Exception as e:
             return CustomErrorResponse(
@@ -73,6 +63,7 @@ class YoutubeAuthViewSet(viewsets.ViewSet):
         """
         POST /social/youtube/connect/
         Exchanges the authorization code for tokens and saves the social account.
+        The redirect URI is resolved from backend settings automatically.
         """
         serializer = GoogleAuthCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -81,7 +72,6 @@ class YoutubeAuthViewSet(viewsets.ViewSet):
             YoutubeService.connect_account(
                 user=request.user,
                 auth_code=serializer.validated_data["code"],
-                redirect_uri=serializer.validated_data["redirect_uri"],
                 state=serializer.validated_data.get("state"),
                 brand=serializer.validated_data.get("brand"),
             )

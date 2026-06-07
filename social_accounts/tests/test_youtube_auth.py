@@ -12,35 +12,25 @@ class TestYoutubeAuthUrlEndpoint:
     """Tests for GET /api/social_accounts/youtube/auth-url/"""
 
     def test_auth_url_success(self, authenticated_client, mocker):
-        """Should return an auth_url when redirect_uri is provided."""
+        """Should return an auth_url using the redirect URI from backend settings."""
         mock_auth_url = "https://accounts.google.com/o/oauth2/auth?state=abc123&..."
         mocker.patch(
             "integrations.providers.youtube_service.YoutubeService.generate_auth_url",
             return_value=mock_auth_url,
         )
 
-        response = authenticated_client.get(
-            YOUTUBE_AUTH_URL_PATH,
-            {"redirect_uri": "https://example.com/callback"},
-        )
+        response = authenticated_client.get(YOUTUBE_AUTH_URL_PATH)
 
         assert response.status_code == 200
         assert response.data["success"] is True
         assert response.data["data"]["auth_url"] == mock_auth_url
-
-    def test_auth_url_missing_redirect_uri(self, authenticated_client):
-        """Should return 400 when redirect_uri is missing."""
-        response = authenticated_client.get(YOUTUBE_AUTH_URL_PATH)
-
-        assert response.status_code == 400
-        assert response.data["success"] is False
 
 
 class TestYoutubeConnectEndpoint:
     """Tests for POST /api/social_accounts/youtube/connect/"""
 
     def test_connect_success(self, authenticated_client, mocker):
-        """Should connect the account successfully with valid data."""
+        """Should connect the account successfully with valid data (redirect_uri optional)."""
         mocker.patch(
             "integrations.providers.youtube_service.YoutubeService.connect_account",
             return_value=None,
@@ -48,7 +38,6 @@ class TestYoutubeConnectEndpoint:
 
         payload = {
             "code": "valid_auth_code_123",
-            "redirect_uri": "https://example.com/callback",
             "state": str(uuid.uuid4()),
         }
 
@@ -66,9 +55,7 @@ class TestYoutubeConnectEndpoint:
 
     def test_connect_missing_code(self, authenticated_client):
         """Should return 400 when code is missing."""
-        payload = {
-            "redirect_uri": "https://example.com/callback",
-        }
+        payload = {}
 
         response = authenticated_client.post(
             YOUTUBE_CONNECT_PATH,
@@ -87,7 +74,6 @@ class TestYoutubeConnectEndpoint:
 
         payload = {
             "code": "valid_code",
-            "redirect_uri": "https://example.com/callback",
         }
 
         response = authenticated_client.post(
@@ -108,7 +94,6 @@ class TestYoutubeConnectEndpoint:
 
         payload = {
             "code": "valid_code",
-            "redirect_uri": "https://example.com/callback",
         }
 
         response = authenticated_client.post(

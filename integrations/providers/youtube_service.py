@@ -25,13 +25,16 @@ class YoutubeService(SocialAccountService):
         "https://www.googleapis.com/auth/youtube.upload",
         "https://www.googleapis.com/auth/userinfo.profile",
     ]
+    redirect_uri = settings.REDIRECT_URI["youtube"]
 
     @classmethod
-    def generate_auth_url(cls, user_id, redirect_uri):
+    def generate_auth_url(cls, user_id):
         """
         Generates a YouTube OAuth authorization URL with CSRF state protection.
         Stores the state in cache for later verification.
+        The redirect URI is resolved from settings.REDIRECT_URI["youtube"].
         """
+        redirect_uri = cls.redirect_uri
         state = str(uuid.uuid4())
         cache.set(youtube_oauth_state(user_id), state, OAUTH_STATE_TTL)
 
@@ -119,7 +122,7 @@ class YoutubeService(SocialAccountService):
             raise ValueError(f"Failed to fetch YouTube channel information: {str(e)}")
 
     @classmethod
-    def connect_account(cls, *, user, auth_code, redirect_uri, state=None, brand=None):
+    def connect_account(cls, *, user, auth_code, state=None, brand=None):
         """
         Complete the YouTube OAuth connection flow:
         1. Verify the OAuth state (CSRF protection)
@@ -127,6 +130,8 @@ class YoutubeService(SocialAccountService):
         3. Exchange the auth code for tokens
         4. Fetch channel info (account name and external ID)
         5. Save the social account
+
+        The redirect URI is resolved from settings.REDIRECT_URI["youtube"].
 
         Returns the created/updated SocialAccount instance.
         Raises ValueError or PermissionError on failure.
@@ -146,7 +151,6 @@ class YoutubeService(SocialAccountService):
         # 3. Exchange code for token
         credentials, missing_scopes = cls.exchange_code_for_token(
             auth_code=auth_code,
-            google_auth_redirect_uri=redirect_uri,
         )
 
         if missing_scopes:
@@ -174,13 +178,14 @@ class YoutubeService(SocialAccountService):
         return account
 
     @classmethod
-    def exchange_code_for_token(cls, auth_code, google_auth_redirect_uri):
+    def exchange_code_for_token(cls, auth_code):
+        redirect_uri = cls.redirect_uri
         try:
             client_config = {
                 "web": {
                     "client_id": cls.CLIENT_ID,
                     "client_secret": cls.CLIENT_SECRET,
-                    "redirect_uris": [google_auth_redirect_uri],
+                    "redirect_uris": [redirect_uri],
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
                 }
@@ -189,7 +194,7 @@ class YoutubeService(SocialAccountService):
             flow = google_auth_oauthlib.flow.Flow.from_client_config(
                 client_config,
                 scopes=cls.REQUIRED_SCOPES,
-                redirect_uri=google_auth_redirect_uri,
+                redirect_uri=redirect_uri,
             )
 
             flow.fetch_token(code=auth_code)
@@ -200,10 +205,10 @@ class YoutubeService(SocialAccountService):
 
             return credentials, missing_scopes
         except oauthlib.oauth2.rfc6749.errors.InvalidGrantError:
-            CustomLogger.exception("YouTube authorization code exchange failed due to invalid grant", extra={"operation": "exchange_code_for_token", "redirect_uri": google_auth_redirect_uri})
+            CustomLogger.exception("YouTube authorization code exchange failed due to invalid grant", extra={"operation": "exchange_code_for_token", "redirect_uri": redirect_uri})
             raise ValueError("Authorization code has expired or is invalid")
         except Exception as e:
-            CustomLogger.exception("Unexpected YouTube token exchange failure", extra={"operation": "exchange_code_for_token", "redirect_uri": google_auth_redirect_uri})
+            CustomLogger.exception("Unexpected YouTube token exchange failure", extra={"operation": "exchange_code_for_token", "redirect_uri": redirect_uri})
             raise Exception(f"Error exchanging code for token: {str(e)}")
 
     @classmethod
