@@ -27,3 +27,8 @@ def tiktok_oauth_state(user_id):
 def tiktok_code_verifier(user_id):
     """Cache key for storing TikTok PKCE code verifier for a user."""
     return f"tiktok_code_verifier:{user_id}"
+
+
+def linkedin_oauth_state(user_id):
+    """Cache key for storing LinkedIn OAuth state for a user."""
+    return f"linkedin_oauth_state:{user_id}"

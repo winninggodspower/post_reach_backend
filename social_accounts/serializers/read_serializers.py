@@ -7,7 +7,9 @@ __all__ = [
     "FacebookAuthUrlResponseSerializer",
     "InstagramAuthUrlResponseSerializer",
     "TiktokAuthUrlResponseSerializer",
+    "LinkedinAuthUrlResponseSerializer",
 ]
+
 
 
 class YoutubeAuthUrlResponseSerializer(serializers.Serializer):
@@ -24,6 +26,10 @@ class InstagramAuthUrlResponseSerializer(serializers.Serializer):
 
 class TiktokAuthUrlResponseSerializer(serializers.Serializer):
     auth_url = serializers.URLField(help_text="The TikTok OAuth authorization URL")
+
+
+class LinkedinAuthUrlResponseSerializer(serializers.Serializer):
+    auth_url = serializers.URLField(help_text="The LinkedIn OAuth authorization URL")
 
 
 class ConnectAccountResponseSerializer(serializers.Serializer):

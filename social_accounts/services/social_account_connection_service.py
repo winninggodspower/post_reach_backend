@@ -132,11 +132,18 @@ class SocialAccountConnectionService:
 
         token_data = LinkedinService.exchange_code_for_token(code, redirect_uri)
 
+        access_token = token_data["access_token"]
+
+        # Fetch LinkedIn user info (account name and external ID)
+        user_info = LinkedinService.fetch_user_info(access_token)
+
         return cls._save_account(
             brand=resolved_brand,
             platform="linkedin",
             defaults={
-                "access_token": token_data["access_token"],
+                "account_name": user_info["account_name"],
+                "external_id": user_info["external_id"],
+                "access_token": access_token,
                 "token_expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),
                 "scope": token_data.get("scope", ""),
             },
