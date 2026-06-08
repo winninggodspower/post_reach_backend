@@ -107,7 +107,6 @@ class TestConnectAccount:
         account = YoutubeService.connect_account(
             user=user,
             auth_code="test_auth_code",
-            redirect_uri="https://example.com/callback",
             brand=brand,
         )
 
@@ -127,7 +126,6 @@ class TestConnectAccount:
             YoutubeService.connect_account(
                 user=user,
                 auth_code="code",
-                redirect_uri="https://example.com/callback",
                 state="wrong_state",
                 brand=brand,
             )
@@ -145,6 +143,5 @@ class TestConnectAccount:
             YoutubeService.connect_account(
                 user=user,
                 auth_code="code",
-                redirect_uri="https://example.com/callback",
                 brand=brand,
             )

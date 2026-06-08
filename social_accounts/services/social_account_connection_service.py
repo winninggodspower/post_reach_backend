@@ -54,17 +54,23 @@ class SocialAccountConnectionService:
 
     @classmethod
     @log_exceptions()
-    def connect_facebook(cls, *, user, brand, short_lived_access_token):
+    def connect_facebook(cls, *, user, brand, code, redirect_uri):
         resolved_brand = SocialAccountService._resolve_brand(user, brand)
 
-        long_lived_token, expires_in = FacebookService.exchange_short_lived_token(
-            short_lived_access_token
+        long_lived_token, expires_in = FacebookService.exchange_code_for_token(
+            code, redirect_uri
         )
+
+        # Fetch the first Facebook page to get account name and external ID
+        pages = FacebookService.get_facebook_pages(long_lived_token)
+        page = pages[0]  # Use the first page
 
         return cls._save_account(
             brand=resolved_brand,
             platform="facebook",
             defaults={
+                "account_name": page["name"],
+                "external_id": page["id"],
                 "access_token": long_lived_token,
                 "token_expires_at": timezone.now() + timedelta(seconds=expires_in),
             },

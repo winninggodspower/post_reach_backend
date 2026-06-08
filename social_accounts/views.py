@@ -134,7 +134,7 @@ class FacebookAuthViewSet(viewsets.ViewSet):
     def connect(self, request):
         """
         POST /social-accounts/facebook/connect/
-        Exchanges the short-lived access token for a long-lived token and saves the social account.
+        Exchanges the authorization code for a long-lived token and saves the social account.
         """
         serializer = FacebookAuthCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -143,7 +143,8 @@ class FacebookAuthViewSet(viewsets.ViewSet):
             SocialAccountConnectionService.connect_facebook(
                 user=request.user,
                 brand=serializer.validated_data.get("brand"),
-                short_lived_access_token=serializer.validated_data["short_lived_access_token"],
+                code=serializer.validated_data["code"],
+                redirect_uri=serializer.validated_data["redirect_uri"],
             )
         except ValueError as e:
             return CustomErrorResponse(

@@ -50,6 +50,38 @@ class FacebookService(SocialAccountService):
         return None
 
     @classmethod
+    def exchange_code_for_token(cls, code, redirect_uri):
+        """
+        Exchanges an authorization code for a long-lived access token.
+        Step 1: Exchange the code for a short-lived token (via Facebook's /oauth/access_token endpoint).
+        Step 2: Exchange the short-lived token for a long-lived token.
+        """
+        try:
+            # Step 1: code → short-lived token
+            short_lived_data = cls().get(
+                "/oauth/access_token",
+                params={
+                    "client_id": cls.CLIENT_ID,
+                    "redirect_uri": redirect_uri,
+                    "client_secret": cls.CLIENT_SECRET,
+                    "code": code,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception("Facebook code exchange failed", extra={"operation": "exchange_code_for_token"})
+            raise ValueError(str(e)) from e
+
+        if "access_token" not in short_lived_data:
+            raise ValueError(
+                short_lived_data.get("error", {}).get("message", "Failed to exchange code for short-lived token")
+            )
+
+        short_lived_token = short_lived_data["access_token"]
+
+        # Step 2: short-lived → long-lived
+        return cls.exchange_short_lived_token(short_lived_token)
+
+    @classmethod
     def exchange_short_lived_token(cls, short_lived_token):
         try:
             is_valid, missing_permissions = cls.verify_granted_scope(short_lived_token)
@@ -106,4 +138,24 @@ class FacebookService(SocialAccountService):
 
     @classmethod
     def get_facebook_pages(cls, access_token):
-        pass
+        """
+        Fetches the Facebook Pages managed by this access token.
+        Returns a list of dicts with 'id' and 'name' for each page.
+        """
+        try:
+            data = cls().get(
+                "/me/accounts",
+                params={"access_token": access_token},
+            )
+        except APIError as e:
+            CustomLogger.exception("Failed to fetch Facebook pages", extra={"operation": "get_facebook_pages"})
+            raise ValueError(f"Failed to fetch Facebook pages: {str(e)}") from e
+
+        pages = data.get("data", [])
+        if not pages:
+            raise ValueError("No Facebook pages found for this account")
+
+        return [
+            {"id": page["id"], "name": page["name"]}
+            for page in pages
+        ]

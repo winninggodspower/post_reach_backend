@@ -7,4 +7,4 @@ class SocialAccountAdmin(admin.ModelAdmin):
     search_fields = ("brand__name", "platform", "account_name", "external_id")
     list_filter = ("platform",)
 
-admin.site.register(SocialAccount ,SocialAccountAdmin)
+admin.site.register(SocialAccount, SocialAccountAdmin)

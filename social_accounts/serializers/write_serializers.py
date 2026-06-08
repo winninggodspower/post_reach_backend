@@ -24,7 +24,8 @@ class GoogleAuthCodeSerializer(serializers.Serializer):
 
 
 class FacebookAuthCodeSerializer(serializers.Serializer):
-    short_lived_access_token = serializers.CharField(required=True)
+    code = serializers.CharField(required=True)
+    redirect_uri = serializers.URLField(required=True)
     brand = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.all(),
         required=False,
