@@ -5,6 +5,7 @@ __all__ = [
     "ConnectAccountResponseSerializer",
     "YoutubeAuthUrlResponseSerializer",
     "FacebookAuthUrlResponseSerializer",
+    "InstagramAuthUrlResponseSerializer",
 ]
 
 
@@ -14,6 +15,10 @@ class YoutubeAuthUrlResponseSerializer(serializers.Serializer):
 
 class FacebookAuthUrlResponseSerializer(serializers.Serializer):
     auth_url = serializers.URLField(help_text="The Facebook OAuth authorization URL")
+
+
+class InstagramAuthUrlResponseSerializer(serializers.Serializer):
+    auth_url = serializers.URLField(help_text="The Instagram OAuth authorization URL")
 
 
 class ConnectAccountResponseSerializer(serializers.Serializer):

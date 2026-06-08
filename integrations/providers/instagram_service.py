@@ -1,18 +1,48 @@
+import uuid
+
 from django.conf import settings
+from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
+from social_accounts.utils.cache_keys import instagram_oauth_state
 from utils.http import APIError
 from utils.custom_logger import CustomLogger
+
+OAUTH_STATE_TTL = 600  # 10 minutes
+
 
 class InstagramService(SocialAccountService):
     APP_ID = settings.INSTAGRAM_APP_ID
     APP_SECRET = settings.INSTAGRAM_APP_SECRET
     BASE_URL = "https://graph.instagram.com"
+    redirect_uri = settings.REDIRECT_URI["instagram"]
 
     REQUIRED_PERMISSIONS = {
-        "public_profile",
+        "instagram_business_basic",
         "instagram_business_content_publish",
     }
+
+    @classmethod
+    def generate_auth_url(cls, user_id):
+        """
+        Generates an Instagram OAuth authorization URL with CSRF state protection.
+        Stores the state in cache for later verification.
+        The redirect URI is resolved from settings.REDIRECT_URI["instagram"].
+        """
+        redirect_uri = cls.redirect_uri
+        state = str(uuid.uuid4())
+        cache.set(instagram_oauth_state(user_id), state, OAUTH_STATE_TTL)
+
+        params = {
+            "client_id": cls.APP_ID,
+            "redirect_uri": redirect_uri,
+            "state": state,
+            "scope": ",".join(cls.REQUIRED_PERMISSIONS),
+            "response_type": "code",
+        }
+
+        query_string = "&".join(f"{k}={v}" for k, v in params.items())
+        return f"https://api.instagram.com/oauth/authorize?{query_string}"
 
     @classmethod
     def exchange_code_for_token(cls, auth_code, redirect_uri):

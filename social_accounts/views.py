@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from integrations.providers.facebook_service import FacebookService
+from integrations.providers.instagram_service import InstagramService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.services.social_account_connection_service import SocialAccountConnectionService
 from social_accounts.serializers import (
@@ -13,6 +14,7 @@ from social_accounts.serializers import (
     FacebookAuthUrlResponseSerializer,
     GoogleAuthCodeSerializer,
     InstagramAuthCodeSerializer,
+    InstagramAuthUrlResponseSerializer,
     LinkedinAuthCodeSerializer,
     YoutubeAuthUrlResponseSerializer,
 )
@@ -162,17 +164,50 @@ class FacebookAuthViewSet(viewsets.ViewSet):
         )
 
 
-class InstagramAuthConnectView(APIView):
+# --- Instagram Auth ViewSet ---
+class InstagramAuthViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    serializer_class = InstagramAuthCodeSerializer
 
+    @action(detail=False, methods=["get"], url_path="auth-url")
     @swagger_auto_schema(
-        request_body=serializer_class,
-        responses={200: ConnectAccountResponseSerializer},
-
+        operation_summary="Get Instagram OAuth URL",
+        operation_description="Generates an Instagram OAuth authorization URL for connecting an Instagram account. The redirect URI is automatically resolved from the backend settings.",
+        responses={
+            200: InstagramAuthUrlResponseSerializer,
+        },
     )
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+    def auth_url(self, request):
+        """
+        GET /social-accounts/instagram/auth-url/
+        Returns the Instagram OAuth URL for the user to authorize the app.
+        The redirect URI is resolved from backend settings automatically.
+        """
+        try:
+            auth_url = InstagramService.generate_auth_url(
+                user_id=request.user.id,
+            )
+        except Exception as e:
+            return CustomErrorResponse(
+                {"message": f"Failed to generate auth URL: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return CustomSuccessResponse(
+            {"auth_url": auth_url},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"], url_path="connect")
+    @swagger_auto_schema(
+        request_body=InstagramAuthCodeSerializer,
+        responses={200: ConnectAccountResponseSerializer},
+    )
+    def connect(self, request):
+        """
+        POST /social-accounts/instagram/connect/
+        Exchanges the authorization code for tokens and saves the social account.
+        """
+        serializer = InstagramAuthCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         try:
@@ -184,9 +219,7 @@ class InstagramAuthConnectView(APIView):
             )
         except ValueError as e:
             return CustomErrorResponse(
-                {
-                    "message": str(e),
-                },
+                {"message": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -195,7 +228,8 @@ class InstagramAuthConnectView(APIView):
                 "message": "Instagram account successfully connected",
                 "platform": "instagram",
                 "is_connected": True,
-            }
+            },
+            status=status.HTTP_200_OK,
         )
 
 

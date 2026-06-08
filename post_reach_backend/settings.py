@@ -68,6 +68,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:8080",
     "http://localhost:3000",
+    "https://localhost:3000",
 ]
 
 # User settings
@@ -193,13 +194,13 @@ LINKEDIN_CLIENT_SECRET = env('LINKEDIN_CLIENT_SECRET')
 
 # OAuth Redirect URI configuration
 # Dev base uses the frontend dev server; prod base is read from environment
-_REDIRECT_BASE_DEV = "http://localhost:3000"
+_REDIRECT_BASE_DEV = "https://localhost:3000"
 _REDIRECT_BASE_PROD = env('REDIRECT_BASE_URL', default='https://postreach.app')
 _REDIRECT_BASE = _REDIRECT_BASE_DEV if DEBUG else _REDIRECT_BASE_PROD
 
 REDIRECT_URI = {
     "youtube":   f"{_REDIRECT_BASE}/social/oauth/youtube/callback",
-    "instagram": f"{_REDIRECT_BASE}/social/oauth/instagram/callback",
+    "instagram": f"https://f8ab-2a09-bac1-27c0-1b08-00-21a-6a.ngrok-free.app/social/oauth/instagram/callback",
     "tiktok":    f"{_REDIRECT_BASE}/social/oauth/tiktok/callback",
     "facebook":  f"{_REDIRECT_BASE}/social/oauth/facebook/callback",
     "linkedin":  f"{_REDIRECT_BASE}/social/oauth/linkedin/callback",
