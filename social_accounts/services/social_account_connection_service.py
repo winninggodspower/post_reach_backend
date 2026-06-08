@@ -102,16 +102,23 @@ class SocialAccountConnectionService:
 
     @classmethod
     @log_exceptions()
-    def connect_tiktok(cls, *, user, brand, code):
+    def connect_tiktok(cls, *, user, brand, code, redirect_uri):
         resolved_brand = SocialAccountService._resolve_brand(user, brand)
 
-        token_data = TiktokService.exchange_code_for_token(code)
+        token_data = TiktokService.exchange_code_for_token(code, user.id)
+
+        access_token = token_data["access_token"]
+
+        # Fetch TikTok user info (account name and external ID)
+        user_info = TiktokService.fetch_user_info(access_token)
 
         return cls._save_account(
             brand=resolved_brand,
             platform="tiktok",
             defaults={
-                "access_token": token_data["access_token"],
+                "account_name": user_info["account_name"],
+                "external_id": user_info["external_id"],
+                "access_token": access_token,
                 "refresh_token": token_data.get("refresh_token"),
                 "token_expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),
                 "scope": token_data.get("scope", ""),

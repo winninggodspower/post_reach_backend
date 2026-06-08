@@ -16,6 +16,8 @@ from social_accounts.serializers import (
     InstagramAuthCodeSerializer,
     InstagramAuthUrlResponseSerializer,
     LinkedinAuthCodeSerializer,
+    TiktokAuthCodeSerializer,
+    TiktokAuthUrlResponseSerializer,
     YoutubeAuthUrlResponseSerializer,
 )
 
@@ -233,36 +235,75 @@ class InstagramAuthViewSet(viewsets.ViewSet):
         )
 
 
-class TiktokAuthConnectView(APIView):
+# --- TikTok Auth ViewSet ---
+class TiktokAuthViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    serializer_class = InstagramAuthCodeSerializer
 
+    @action(detail=False, methods=["get"], url_path="auth-url")
     @swagger_auto_schema(
-        request_body=serializer_class,
-        responses={200: ConnectAccountResponseSerializer},
-
+        operation_summary="Get TikTok OAuth URL",
+        operation_description="Generates a TikTok OAuth authorization URL for connecting a TikTok account. The redirect URI is automatically resolved from the backend settings.",
+        responses={
+            200: TiktokAuthUrlResponseSerializer,
+        },
     )
-    def post(self, request):
+    def auth_url(self, request):
+        """
+        GET /social-accounts/tiktok/auth-url/
+        Returns the TikTok OAuth URL for the user to authorize the app.
+        The redirect URI is resolved from backend settings automatically.
+        """
+        from integrations.providers.tiktok_service import TiktokService
 
-        # Deserialize the incoming data
-        serializer = self.serializer_class(data=request.data)
+        try:
+            auth_url = TiktokService.generate_auth_url(
+                user_id=request.user.id,
+            )
+        except Exception as e:
+            return CustomErrorResponse(
+                {"message": f"Failed to generate auth URL: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return CustomSuccessResponse(
+            {"auth_url": auth_url},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"], url_path="connect")
+    @swagger_auto_schema(
+        request_body=TiktokAuthCodeSerializer,
+        responses={200: ConnectAccountResponseSerializer},
+    )
+    def connect(self, request):
+        """
+        POST /social-accounts/tiktok/connect/
+        Exchanges the authorization code for tokens and saves the social account.
+        """
+        serializer = TiktokAuthCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        code = serializer.validated_data["code"]
         try:
             SocialAccountConnectionService.connect_tiktok(
                 user=request.user,
                 brand=serializer.validated_data.get("brand"),
-                code=code,
+                code=serializer.validated_data["code"],
+                redirect_uri=serializer.validated_data["redirect_uri"],
             )
         except ValueError as e:
-            return CustomSuccessResponse({"message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return CustomErrorResponse(
+                {"message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        return CustomSuccessResponse({
-            "message": "TikTok account successfully connected",
-            "platform": "tiktok",
-            "is_connected": True,
-        }, status=status.HTTP_200_OK)
+        return CustomSuccessResponse(
+            {
+                "message": "TikTok account successfully connected",
+                "platform": "tiktok",
+                "is_connected": True,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class LinkedinAuthConnectView(APIView):

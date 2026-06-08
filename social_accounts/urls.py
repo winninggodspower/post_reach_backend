@@ -3,7 +3,7 @@ from .views import (
     YoutubeAuthViewSet,
     FacebookAuthViewSet,
     InstagramAuthViewSet,
-    TiktokAuthConnectView,
+    TiktokAuthViewSet,
     LinkedinAuthConnectView,
 )
 
@@ -17,7 +17,9 @@ urlpatterns = [
     # Instagram uses a ViewSet with auth-url and connect actions (same pattern as Facebook/YouTube)
     path('instagram/auth-url/', InstagramAuthViewSet.as_view({'get': 'auth_url'}), name='instagram-auth-url'),
     path('instagram/connect/', InstagramAuthViewSet.as_view({'post': 'connect'}), name='instagram-auth-connect'),
+    # TikTok uses a ViewSet with auth-url and connect actions (same pattern as Facebook/YouTube/Instagram)
+    path('tiktok/auth-url/', TiktokAuthViewSet.as_view({'get': 'auth_url'}), name='tiktok-auth-url'),
+    path('tiktok/connect/', TiktokAuthViewSet.as_view({'post': 'connect'}), name='tiktok-auth-connect'),
     # Other platforms use simple APIViews
-    path('tiktok/connect/', TiktokAuthConnectView.as_view(), name='tiktok-auth-connect'),
     path('linkedin/connect/', LinkedinAuthConnectView.as_view(), name='linkedin-auth-connect'),
 ]

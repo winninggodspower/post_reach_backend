@@ -17,3 +17,13 @@ def facebook_oauth_state(user_id):
 def instagram_oauth_state(user_id):
     """Cache key for storing Instagram OAuth state for a user."""
     return f"instagram_oauth_state:{user_id}"
+
+
+def tiktok_oauth_state(user_id):
+    """Cache key for storing TikTok OAuth state for a user."""
+    return f"tiktok_oauth_state:{user_id}"
+
+
+def tiktok_code_verifier(user_id):
+    """Cache key for storing TikTok PKCE code verifier for a user."""
+    return f"tiktok_code_verifier:{user_id}"
