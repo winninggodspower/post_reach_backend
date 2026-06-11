@@ -110,8 +110,8 @@ class FacebookService(SocialAccountService):
 
         if "access_token" not in data:
             raise ValueError(data.get("error", {}).get("message", "Unknown error"))
-
-        return data["access_token"], int(data["expires_in"])
+        
+        return data["access_token"], int(data.get("expires_in", 5184000)) # default expires_in to 60days
 
     @classmethod
     def verify_granted_scope(cls, access_token):
