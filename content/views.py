@@ -1,8 +1,8 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, viewsets
-from rest_framework.decorators import action, parser_classes
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
 from content.serializers import (
@@ -16,6 +16,7 @@ from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 class ContentPostViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     # ── Video ──────────────────────────────────────────────
 
@@ -35,7 +36,6 @@ class ContentPostViewSet(viewsets.ViewSet):
         consumes=["multipart/form-data"],
     )
     @action(detail=False, methods=["post"], url_path="video")
-    @parser_classes([MultiPartParser, FormParser])
     def create_video(self, request):
         """
         POST /api/content/posts/video/
@@ -74,7 +74,6 @@ class ContentPostViewSet(viewsets.ViewSet):
         consumes=["multipart/form-data"],
     )
     @action(detail=False, methods=["post"], url_path="photo")
-    @parser_classes([MultiPartParser, FormParser])
     def create_photo(self, request):
         """
         POST /api/content/posts/photo/
@@ -90,6 +89,42 @@ class ContentPostViewSet(viewsets.ViewSet):
             platforms=validated["platforms"],
             content_type="photo",
         )
+
+    # ── Retrieve status ────────────────────────────────────
+
+    @swagger_auto_schema(
+        operation_summary="Get the status of a content post",
+        operation_description=(
+            "Returns a ContentPost by ID with per-platform status details "
+            "(pending, uploading, posted, or failed) including platform_post_id "
+            "and error_message for each platform."
+        ),
+        responses={
+            200: ContentPostResponseSerializer,
+            404: openapi.Response("Not Found"),
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="")
+    def retrieve(self, request, pk=None):
+        """
+        GET /api/content/posts/{id}/
+        """
+        from content.models import ContentPost
+
+        try:
+            content_post = (
+                ContentPost.objects.select_related("brand")
+                .prefetch_related("platform_entries")
+                .get(id=pk, user=request.user)
+            )
+        except ContentPost.DoesNotExist:
+            return CustomErrorResponse(
+                "Content post not found.",
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        response_data = ContentPostResponseSerializer(content_post).data
+        return CustomSuccessResponse(response_data)
 
     # ── shared helper ──────────────────────────────────────
 

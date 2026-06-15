@@ -9,9 +9,79 @@ import io
 import pytest
 from django.urls import reverse
 
+from content.enums import PostStatus
+from content.models import ContentPost, ContentPostPlatform
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
 from django.utils import timezone
+
+
+class TestRetrieveEndpoint:
+    """Tests for GET /api/content/posts/{id}/"""
+
+    def test_retrieve_own_post(self, db, authenticated_client, user, brand, mocker):
+        content_post = ContentPost.objects.create(
+            user=user, brand=brand, title="Status Check", video_r2_key="v/k.mp4"
+        )
+        ContentPostPlatform.objects.create(
+            content_post=content_post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED, platform_post_id="yt_001"
+        )
+        ContentPostPlatform.objects.create(
+            content_post=content_post, platform=PlatformChoices.FACEBOOK, status=PostStatus.PENDING
+        )
+
+        from django.urls import reverse
+        url = reverse("content-post-detail", kwargs={"pk": content_post.id})
+        response = authenticated_client.get(url)
+
+        assert response.status_code == 200
+        data = response.data
+        assert data["success"] is True
+        assert data["data"]["title"] == "Status Check"
+        assert len(data["data"]["platforms"]) == 2
+        statuses = {(p["platform"], p["status"]) for p in data["data"]["platforms"]}
+        assert ("youtube", "posted") in statuses
+        assert ("facebook", "pending") in statuses
+
+    def test_retrieve_other_users_post_returns_404(self, db, api_client, mocker):
+        from users.models import User
+        owner = User.objects.create_user(
+            email="owner@example.com", password="Pass1234!",
+            first_name="O", last_name="W", handle="owner",
+        )
+        from users.models import Brand as BrandModel
+        brand = BrandModel.objects.filter(user=owner, is_default=True).first()
+        if not brand:
+            brand = BrandModel.objects.create(user=owner, name="OwnerBrand", is_default=True)
+
+        content_post = ContentPost.objects.create(
+            user=owner, brand=brand, title="Other's Post", video_r2_key="v/o.mp4"
+        )
+        ContentPostPlatform.objects.create(
+            content_post=content_post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
+        )
+
+        # Authenticate as a different user
+        other = User.objects.create_user(
+            email="other@example.com", password="Pass1234!",
+            first_name="O", last_name="T", handle="otheruser",
+        )
+        from users.models import Brand as OtherBrand
+        OtherBrand.objects.filter(user=other).delete()  # clean up auto-created brand
+        api_client.force_authenticate(user=other)
+
+        from django.urls import reverse
+        url = reverse("content-post-detail", kwargs={"pk": content_post.id})
+        response = api_client.get(url)
+
+        assert response.status_code == 404
+
+    def test_retrieve_not_found(self, db, authenticated_client, user, brand):
+        import uuid
+        from django.urls import reverse
+        url = reverse("content-post-detail", kwargs={"pk": uuid.uuid4()})
+        response = authenticated_client.get(url)
+        assert response.status_code == 404
 
 
 class TestVideoEndpoint:
