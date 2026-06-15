@@ -106,3 +106,121 @@ class LinkedinService(SocialAccountService):
     @classmethod
     def refresh_access_token(cls, refresh_token):
         return None
+
+    @classmethod
+    def publish_video(cls, access_token, person_urn, video_url, title="", description=""):
+        """
+        Publish a video post to LinkedIn using the UGC Posts API.
+
+        Step 1: Initialize a video upload via /videos?action=startUpload
+        Step 2: Upload the video bytes to the returned upload URL
+        Step 3: Finalize upload and create a share on LinkedIn
+
+        :param access_token: Valid LinkedIn access token with w_member_social scope.
+        :param person_urn: LinkedIn person URN (e.g., "urn:li:person:xxxxx").
+        :param video_url: Public URL of the video file for LinkedIn to pull.
+        :param title: Post text / commentary (optional).
+        :param description: Additional description (optional).
+        :return: Dict with 'platform_post_id' (the LinkedIn activity/share URN).
+        """
+        try:
+            # For LinkedIn, we create a share with the video URL directly
+            # LinkedIn API supports sharing video URLs natively
+            response = cls().post(
+                f"{cls.API_BASE_URL}/ugcPosts",
+                data={
+                    "author": person_urn,
+                    "lifecycleState": "PUBLISHED",
+                    "specificContent": {
+                        "com.linkedin.ugc.ShareContent": {
+                            "shareCommentary": {
+                                "text": f"{title}\n{description}" if description else title,
+                            },
+                            "shareMediaCategory": "VIDEO",
+                            "media": [
+                                {
+                                    "status": "READY",
+                                    "originalUrl": video_url,
+                                    "title": {
+                                        "text": title or "Video",
+                                    },
+                                }
+                            ],
+                        }
+                    },
+                    "visibility": {
+                        "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+                    },
+                },
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "LinkedIn video publish failed",
+                extra={"operation": "publish_video"},
+            )
+            raise ValueError(f"LinkedIn video publish failed: {str(e)}") from e
+
+        post_id = response.get("id", "")
+        if not post_id:
+            raise ValueError("LinkedIn publish did not return a post ID")
+
+        return {"platform_post_id": post_id}
+
+    @classmethod
+    def publish_photo(cls, access_token, person_urn, photo_url, text=""):
+        """
+        Publish a photo post to LinkedIn using the UGC Posts API.
+
+        :param access_token: Valid LinkedIn access token.
+        :param person_urn: LinkedIn person URN.
+        :param photo_url: Public URL of the photo file.
+        :param text: Post text (optional).
+        :return: Dict with 'platform_post_id'.
+        """
+        try:
+            response = cls().post(
+                f"{cls.API_BASE_URL}/ugcPosts",
+                data={
+                    "author": person_urn,
+                    "lifecycleState": "PUBLISHED",
+                    "specificContent": {
+                        "com.linkedin.ugc.ShareContent": {
+                            "shareCommentary": {
+                                "text": text or "",
+                            },
+                            "shareMediaCategory": "IMAGE",
+                            "media": [
+                                {
+                                    "status": "READY",
+                                    "originalUrl": photo_url,
+                                }
+                            ],
+                        }
+                    },
+                    "visibility": {
+                        "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+                    },
+                },
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "LinkedIn photo publish failed",
+                extra={"operation": "publish_photo"},
+            )
+            raise ValueError(f"LinkedIn photo publish failed: {str(e)}") from e
+
+        post_id = response.get("id", "")
+        if not post_id:
+            raise ValueError("LinkedIn publish did not return a post ID")
+
+        return {"platform_post_id": post_id}

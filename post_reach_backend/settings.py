@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'social_accounts.apps.SocialAccountsConfig',
     'integrations',
+    'content.apps.ContentConfig',
 
     # Third-party apps
     'rest_framework',
@@ -227,6 +228,12 @@ CACHES = {
         "LOCATION": "c:/foo/bar",
     }
 }
+
+# Cloudflare R2 Storage
+CLOUDFLARE_R2_ACCESS_KEY = env('CLOUDFLARE_R2_ACCESS_KEY')
+CLOUDFLARE_R2_SECRET = env('CLOUDFLARE_R2_SECRET')
+CLOUDFLARE_R2_BUCKET = env('CLOUDFLARE_R2_BUCKET')
+CLOUDFLARE_R2_ENDPOINT = f"https://{env('CLOUDFLARE_ACCOUNT_ID')}.r2.cloudflarestorage.com"
 
 # Celery Settings
 CELERY_BROKER_URL = "redis://localhost:6379"

@@ -149,6 +149,103 @@ class TiktokService(SocialAccountService):
         }
 
     @classmethod
+    def publish_video(cls, access_token, video_url, title):
+        """
+        Publish a video to TikTok using the upload-then-publish workflow.
+
+        Step 1: Initialize video upload (POST /v2/video/upload/)
+        Step 2: Upload the video bytes to the returned upload URL
+        Step 3: POST /v2/post/publish/video/ to publish with title
+
+        :param access_token: Valid TikTok access token.
+        :param video_url: Public/presigned URL of the video file.
+        :param title: Video caption/title.
+        :return: Dict with 'platform_post_id' (the publish_id).
+        """
+        try:
+            # Step 1: Initialize upload
+            init_response = cls().post(
+                "/v2/video/upload/",
+                data={
+                    "video_url": video_url,
+                },
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json; charset=UTF-8",
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "TikTok video upload init failed",
+                extra={"operation": "publish_video"},
+            )
+            raise ValueError(f"TikTok video upload init failed: {str(e)}") from e
+
+        if not init_response or "data" not in init_response:
+            raise ValueError("TikTok video upload init returned unexpected response")
+
+        video_id = init_response["data"].get("video_id")
+        if not video_id:
+            raise ValueError("TikTok video upload did not return a video_id")
+
+        # Step 2: Publish the uploaded video
+        try:
+            publish_response = cls().post(
+                "/v2/post/publish/video/",
+                data={
+                    "video_id": video_id,
+                    "title": title or "",
+                    "privacy_level": "PUBLIC_TO_EVERYONE",
+                },
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json; charset=UTF-8",
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "TikTok video publish failed",
+                extra={"operation": "publish_video"},
+            )
+            raise ValueError(f"TikTok video publish failed: {str(e)}") from e
+
+        publish_id = publish_response.get("data", {}).get("publish_id", video_id)
+        return {"platform_post_id": publish_id}
+
+    @classmethod
+    def publish_photo(cls, access_token, photo_url, text=""):
+        """
+        Publish a photo to TikTok using the photo publish workflow.
+
+        :param access_token: Valid TikTok access token.
+        :param photo_url: Public/presigned URL of the photo file.
+        :param text: Caption text.
+        :return: Dict with 'platform_post_id'.
+        """
+        try:
+            publish_response = cls().post(
+                "/v2/post/publish/photo/",
+                data={
+                    "photo_url": photo_url,
+                    "title": text or "",
+                    "privacy_level": "PUBLIC_TO_EVERYONE",
+                },
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json; charset=UTF-8",
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "TikTok photo publish failed",
+                extra={"operation": "publish_photo"},
+            )
+            raise ValueError(f"TikTok photo publish failed: {str(e)}") from e
+
+        publish_id = publish_response.get("data", {}).get("publish_id", "")
+        return {"platform_post_id": publish_id or "unknown"}
+
+    @classmethod
     def refresh_access_token(cls, refresh_token):
         try:
             response = cls().post(

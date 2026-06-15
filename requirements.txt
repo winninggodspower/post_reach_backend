@@ -70,3 +70,4 @@ vine==5.1.0
 virtualenv==20.30.0
 wcwidth==0.2.13
 httpx==0.28.1
+boto3==1.37.32

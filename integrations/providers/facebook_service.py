@@ -159,3 +159,71 @@ class FacebookService(SocialAccountService):
             {"id": page["id"], "name": page["name"]}
             for page in pages
         ]
+
+    @classmethod
+    def publish_video(cls, page_access_token, page_id, video_url, title="", description=""):
+        """
+        Publish a video to a Facebook Page.
+
+        :param page_access_token: Access token for the Facebook Page.
+        :param page_id: Facebook Page ID.
+        :param video_url: Public/presigned URL of the video file.
+        :param title: Video title (optional).
+        :param description: Video description (optional).
+        :return: Dict with 'platform_post_id' (the Facebook post/video ID).
+        """
+        try:
+            data = cls().post(
+                f"/{page_id}/videos",
+                data={
+                    "file_url": video_url,
+                    "title": title or "",
+                    "description": description or "",
+                    "access_token": page_access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Facebook video publish failed",
+                extra={"operation": "publish_video"},
+            )
+            raise ValueError(f"Facebook video publish failed: {str(e)}") from e
+
+        post_id = data.get("id", "")
+        if not post_id:
+            raise ValueError("Facebook video publish did not return a post ID")
+
+        return {"platform_post_id": post_id}
+
+    @classmethod
+    def publish_photo(cls, page_access_token, page_id, photo_url, text=""):
+        """
+        Publish a photo to a Facebook Page.
+
+        :param page_access_token: Access token for the Facebook Page.
+        :param page_id: Facebook Page ID.
+        :param photo_url: Public/presigned URL of the photo file.
+        :param text: Caption text (optional).
+        :return: Dict with 'platform_post_id' (the Facebook post/photo ID).
+        """
+        try:
+            data = cls().post(
+                f"/{page_id}/photos",
+                data={
+                    "url": photo_url,
+                    "message": text or "",
+                    "access_token": page_access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Facebook photo publish failed",
+                extra={"operation": "publish_photo"},
+            )
+            raise ValueError(f"Facebook photo publish failed: {str(e)}") from e
+
+        post_id = data.get("id", "") or data.get("post_id", "")
+        if not post_id:
+            raise ValueError("Facebook photo publish did not return a post ID")
+
+        return {"platform_post_id": post_id}

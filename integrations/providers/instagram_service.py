@@ -125,3 +125,107 @@ class InstagramService(SocialAccountService):
             "refresh_token": None,
             "expires_in": response_data["expires_in"],
         }
+
+    @classmethod
+    def publish_video(cls, access_token, instagram_account_id, video_url, caption=""):
+        """
+        Publish a video to Instagram using the Content Publishing API.
+
+        Step 1: POST /{ig_user_id}/media to create a media container.
+        Step 2: POST /{ig_user_id}/media_publish to publish the container.
+
+        :param access_token: Valid Instagram Graph API access token.
+        :param instagram_account_id: Instagram Business/Creator account ID.
+        :param video_url: Public URL of the video file.
+        :param caption: Video caption (optional).
+        :return: Dict with 'platform_post_id' (Instagram media ID).
+        """
+        # Step 1: Create media container
+        try:
+            container_response = cls().post(
+                f"/{instagram_account_id}/media",
+                data={
+                    "media_type": "VIDEO",
+                    "video_url": video_url,
+                    "caption": caption or "",
+                    "access_token": access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Instagram media container creation failed",
+                extra={"operation": "publish_video"},
+            )
+            raise ValueError(f"Instagram media container creation failed: {str(e)}") from e
+
+        container_id = container_response.get("id")
+        if not container_id:
+            raise ValueError("Instagram did not return a media container ID")
+
+        # Step 2: Publish the container
+        try:
+            publish_response = cls().post(
+                f"/{instagram_account_id}/media_publish",
+                data={
+                    "creation_id": container_id,
+                    "access_token": access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Instagram media publish failed",
+                extra={"operation": "publish_video"},
+            )
+            raise ValueError(f"Instagram media publish failed: {str(e)}") from e
+
+        media_id = publish_response.get("id", container_id)
+        return {"platform_post_id": media_id}
+
+    @classmethod
+    def publish_photo(cls, access_token, instagram_account_id, photo_url, caption=""):
+        """
+        Publish a photo to Instagram using the Content Publishing API.
+
+        :param access_token: Valid Instagram Graph API access token.
+        :param instagram_account_id: Instagram Business/Creator account ID.
+        :param photo_url: Public URL of the photo file.
+        :param caption: Photo caption (optional).
+        :return: Dict with 'platform_post_id' (Instagram media ID).
+        """
+        try:
+            container_response = cls().post(
+                f"/{instagram_account_id}/media",
+                data={
+                    "media_type": "IMAGE",
+                    "image_url": photo_url,
+                    "caption": caption or "",
+                    "access_token": access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Instagram photo container creation failed",
+                extra={"operation": "publish_photo"},
+            )
+            raise ValueError(f"Instagram photo container creation failed: {str(e)}") from e
+
+        container_id = container_response.get("id")
+        if not container_id:
+            raise ValueError("Instagram did not return a media container ID")
+
+        try:
+            publish_response = cls().post(
+                f"/{instagram_account_id}/media_publish",
+                data={
+                    "creation_id": container_id,
+                    "access_token": access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Instagram photo publish failed",
+                extra={"operation": "publish_photo"},
+            )
+            raise ValueError(f"Instagram photo publish failed: {str(e)}") from e
+
+        return {"platform_post_id": publish_response.get("id", container_id)}

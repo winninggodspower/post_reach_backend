@@ -221,3 +221,51 @@ class YoutubeService(SocialAccountService):
             scopes=cls.REQUIRED_SCOPES,
         )
         return googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
+
+    @classmethod
+    def publish_video(cls, access_token, video_bytes, title, description=""):
+        """
+        Upload a video to YouTube.
+
+        :param access_token: Valid YouTube access token.
+        :param video_bytes: Raw video file bytes.
+        :param title: Video title (required by YouTube).
+        :param description: Video description (optional).
+        :return: Dict with 'platform_post_id' (the YouTube video ID).
+        """
+        import io
+
+        from googleapiclient.http import MediaIoBaseUpload
+
+        youtube = cls.get_youtube_client(access_token)
+
+        body = {
+            "snippet": {
+                "title": title[:100],  # YouTube title limit
+                "description": description or "",
+            },
+            "status": {
+                "privacyStatus": "public",
+            },
+        }
+
+        media = MediaIoBaseUpload(
+            io.BytesIO(video_bytes),
+            mimetype="video/*",
+            resumable=True,
+        )
+
+        try:
+            request = youtube.videos().insert(
+                part="snippet,status",
+                body=body,
+                media_body=media,
+            )
+            response = request.execute()
+            return {"platform_post_id": response["id"]}
+        except Exception as e:
+            CustomLogger.exception(
+                "YouTube video upload failed",
+                extra={"operation": "publish_video"},
+            )
+            raise ValueError(f"YouTube video upload failed: {str(e)}") from e
