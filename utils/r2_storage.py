@@ -6,7 +6,7 @@ video storage during the content posting pipeline.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import boto3
@@ -48,7 +48,7 @@ class R2StorageService:
 
         Format: {prefix}/{date}/{uuid}.{extension}
         """
-        date_str = datetime.now(datetime.timezone.utc)().strftime("%Y-%m-%d")
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         unique_id = uuid.uuid4().hex
         return f"{prefix}/{date_str}/{unique_id}.{extension}"
 

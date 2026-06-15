@@ -7,9 +7,13 @@ Delegates cross-domain queries to BrandService and SocialAccountValidationServic
 
 from typing import List
 
+from django.db import transaction
+
 from content.models import ContentPost, ContentPostPlatform
+from content.tasks import publish_platform_entry
 from users.services.brand_service import BrandService
 from social_accounts.services.social_account_validation_service import SocialAccountValidationService
+from utils.custom_logger import CustomLogger, log_exceptions
 from utils.r2_storage import R2StorageService
 
 
@@ -21,6 +25,7 @@ class ContentCreationService:
     """
 
     @classmethod
+    @log_exceptions()
     def create_content_post(
         cls,
         *,
@@ -54,30 +59,45 @@ class ContentCreationService:
         except Exception as e:
             raise ValueError(f"Failed to upload media: {str(e)}") from e
 
-        # 4. Create ContentPost + per-platform entries
-        content_post = ContentPost.objects.create(
-            user=user,
-            brand=brand,
-            title=text or "",
-            description="",
-            video_r2_key=r2_key,
-        )
+        # 4. Create ContentPost + per-platform entries + dispatch Celery tasks
+        # All inside an atomic transaction so if Celery dispatch fails,
+        # the DB records are rolled back and we clean up the R2 file.
+        try:
+            with transaction.atomic():
+                content_post = ContentPost.objects.create(
+                    user=user,
+                    brand=brand,
+                    title=text or "",
+                    description="",
+                    video_r2_key=r2_key,
+                )
 
-        ContentPostPlatform.objects.bulk_create([
-            ContentPostPlatform(
-                content_post=content_post,
-                platform=platform,
+                ContentPostPlatform.objects.bulk_create([
+                    ContentPostPlatform(
+                        content_post=content_post,
+                        platform=platform,
+                    )
+                    for platform in platforms
+                ])
+
+                content_post.refresh_from_db()
+
+                for entry in content_post.platform_entries.all():
+                    publish_platform_entry.delay(str(entry.id), content_type=content_type)
+        except Exception:
+            CustomLogger.exception(
+                "content.services.content_creation_service",
+                "Failed to dispatch Celery tasks — Redis may be unavailable",
+                extra={
+                    "r2_key": r2_key,
+                    "platforms": platforms,
+                },
             )
-            for platform in platforms
-        ])
-
-        content_post.refresh_from_db()
-
-        # 5. Dispatch Celery tasks for each platform
-        # Import here to avoid circular import at module level
-        from content.tasks import publish_platform_entry
-
-        for entry in content_post.platform_entries.all():
-            publish_platform_entry.delay(str(entry.id), content_type=content_type)
+            # Clean up the R2 file since the DB transaction was rolled back
+            R2StorageService.delete_file(r2_key)
+            raise ValueError(
+                "Failed to queue publishing tasks. The media service is temporarily "
+                "unavailable. Please try again later."
+            )
 
         return content_post

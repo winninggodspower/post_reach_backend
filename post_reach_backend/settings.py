@@ -84,24 +84,24 @@ REST_FRAMEWORK = {
     )
 }
 
-# SIMPLE_JWT = {
-#     # Refresh is rolled every time we issue a fresh access token
-#     # 'ROTATE_REFRESH_TOKENS': True,
-#     # An old refresh token is black-listed the moment it is replaced
-#     # 'BLACKLIST_AFTER_ROTATION': True,
+SIMPLE_JWT = {
+    # Refresh is rolled every time we issue a fresh access token
+    # 'ROTATE_REFRESH_TOKENS': True,
+    # An old refresh token is black-listed the moment it is replaced
+    # 'BLACKLIST_AFTER_ROTATION': True,
 
-#     # Five minutes is short enough to limit damage, long enough for a SPA
-#     # 'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-#     # One day keeps the user logged in through normal work hours
-#     # 'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    # 25 minutes is short enough to limit damage, long enough for a SPA
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=25),
+    # Three days keeps the user logged in through normal work hours
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=3),
 
-#     'AUTH_COOKIE':    'access_token',
-#     'REFRESH_COOKIE': 'refresh_token',
+    # 'AUTH_COOKIE':    'access_token',
+    # 'REFRESH_COOKIE': 'refresh_token',
 
-#     'AUTH_COOKIE_HTTP_ONLY': True,     # JavaScript cannot peek inside
-#     'AUTH_COOKIE_SECURE':    False,    # switch to True on production HTTPS
-#     'AUTH_COOKIE_SAMESITE': 'Strict'   # cookie travels only to our own origin
-# }
+    # 'AUTH_COOKIE_HTTP_ONLY': True,     # JavaScript cannot peek inside
+    # 'AUTH_COOKIE_SECURE':    False,    # switch to True on production HTTPS
+    # 'AUTH_COOKIE_SAMESITE': 'Strict'   # cookie travels only to our own origin
+}
 
 
 ROOT_URLCONF = 'post_reach_backend.urls'
@@ -236,7 +236,7 @@ CLOUDFLARE_R2_BUCKET = env('CLOUDFLARE_R2_BUCKET')
 CLOUDFLARE_R2_ENDPOINT = f"https://{env('CLOUDFLARE_ACCOUNT_ID')}.r2.cloudflarestorage.com"
 
 # Celery Settings
-CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379')
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_RESULT_EXTENDED = True
 

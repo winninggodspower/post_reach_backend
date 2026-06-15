@@ -11,6 +11,7 @@ from content.serializers import (
     PhotoPostCreateSerializer,
 )
 from content.services.content_creation_service import ContentCreationService
+from utils.custom_logger import CustomLogger
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 
@@ -142,13 +143,23 @@ class ContentPostViewSet(viewsets.ViewSet):
                 content_type=content_type,
             )
         except ValueError as e:
+            CustomLogger.exception(
+                "content.views",
+                f"Validation error in _create_and_dispatch",
+                extra={"error": str(e)},
+            )
             return CustomErrorResponse(
                 str(e),
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except Exception as e:
+            CustomLogger.exception(
+                "content.views",
+                "Unexpected error in _create_and_dispatch",
+                extra={"error": str(e)},
+            )
             return CustomErrorResponse(
-                f"Failed to create post: {str(e)}",
+                "An unexpected error occurred. Please try again later.",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
