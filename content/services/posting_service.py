@@ -11,7 +11,9 @@ from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.enums import PlatformChoices
-from social_accounts.models import SocialAccount
+from social_accounts.services.social_account_validation_service import (
+    SocialAccountValidationService,
+)
 from utils.custom_logger import CustomLogger
 from utils.r2_storage import R2StorageService
 
@@ -55,7 +57,7 @@ class PostingService:
         content_post = entry.content_post
 
         try:
-            social_account = cls._resolve_social_account(
+            social_account = SocialAccountValidationService.get_account(
                 brand=content_post.brand,
                 platform=entry.platform,
             )
@@ -70,7 +72,7 @@ class PostingService:
             entry.save(update_fields=["status", "updated_at"])
 
             presigned_url = None
-            video_bytes = None
+            media_bytes = None
 
             # Photo platforms need a URL; video platforms vary
             needs_url = (
@@ -84,13 +86,13 @@ class PostingService:
 
             if needs_url:
                 presigned_url = R2StorageService.generate_presigned_url(
-                    content_post.video_r2_key, expiration=7200
+                    content_post.media_r2_key, expiration=7200
                 )
                 if not presigned_url:
                     raise ValueError("Failed to generate presigned URL")
 
             if needs_bytes:
-                video_bytes = cls._download_video_from_r2(content_post.video_r2_key)
+                media_bytes = R2StorageService.download_file(content_post.media_r2_key)
 
             if content_type == "photo":
                 result = cls._dispatch_photo(
@@ -105,7 +107,7 @@ class PostingService:
                     platform=entry.platform,
                     access_token=access_token,
                     social_account=social_account,
-                    video_bytes=video_bytes,
+                    media_bytes=media_bytes,
                     video_url=presigned_url or "",
                     title=content_post.title,
                     description=content_post.description,
@@ -131,46 +133,23 @@ class PostingService:
         return entry
 
     @classmethod
-    def cleanup_r2_video(cls, content_post) -> None:
+    def cleanup_r2_media(cls, content_post) -> None:
         pending = content_post.platform_entries.filter(
             status__in=[PostStatus.PENDING, PostStatus.UPLOADING]
         ).exists()
         if not pending:
-            R2StorageService.delete_file(content_post.video_r2_key)
+            R2StorageService.delete_file(content_post.media_r2_key)
 
     # ── private helpers ────────────────────────────────────
 
     @classmethod
-    def _resolve_social_account(cls, brand, platform: str) -> SocialAccount:
-        try:
-            return SocialAccount.objects.get(brand=brand, platform=platform)
-        except SocialAccount.DoesNotExist:
-            raise ValueError(
-                f"No connected {platform} account found for brand '{brand.name}'."
-            )
-
-    @classmethod
-    def _download_video_from_r2(cls, key: str) -> bytes:
-        client = R2StorageService._get_client()
-        from django.conf import settings
-
-        try:
-            response = client.get_object(
-                Bucket=settings.CLOUDFLARE_R2_BUCKET,
-                Key=key,
-            )
-            return response["Body"].read()
-        except Exception as e:
-            raise ValueError(f"Failed to download video from R2: {str(e)}") from e
-
-    @classmethod
     def _dispatch_video(
-        cls, platform, access_token, social_account, video_bytes, video_url, title, description
+        cls, platform, access_token, social_account, media_bytes, video_url, title, description
     ) -> dict:
         if platform == PlatformChoices.YOUTUBE:
             return YoutubeService.publish_video(
                 access_token=access_token,
-                video_bytes=video_bytes,
+                video_bytes=media_bytes,
                 title=title,
                 description=description,
             )

@@ -9,8 +9,9 @@ from users.models import Brand
 
 class ContentPost(UUIDTimestampedModel):
     """
-    Represents a single video upload that can be posted to one or more platforms.
-    Platform-specific status is tracked via ContentPostPlatform entries.
+    Represents a single media upload (video or photo) that can be posted
+    to one or more platforms. Platform-specific status is tracked via
+    ContentPostPlatform entries.
     """
 
     user = models.ForeignKey(
@@ -27,8 +28,15 @@ class ContentPost(UUIDTimestampedModel):
     title = models.CharField(max_length=255, blank=True, default="")
     description = models.TextField(blank=True, default="")
 
-    # R2 object key for the uploaded video (shared across all platforms)
-    video_r2_key = models.CharField(max_length=512)
+    # R2 object key for the uploaded media (shared across all platforms)
+    media_r2_key = models.CharField(max_length=512)
+
+    # Distinguishes whether this post is a video or photo
+    content_type = models.CharField(
+        max_length=10,
+        choices=[("video", "Video"), ("photo", "Photo")],
+        default="video",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -67,7 +75,7 @@ class ContentPostPlatform(UUIDTimestampedModel):
     )
     platform_post_id = models.CharField(
         max_length=255, blank=True, default="",
-        help_text="The post/video ID returned by the platform API.",
+        help_text="The post/media ID returned by the platform API.",
     )
     error_message = models.TextField(
         blank=True, default="",

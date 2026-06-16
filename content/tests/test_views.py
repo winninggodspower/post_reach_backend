@@ -21,7 +21,7 @@ class TestRetrieveEndpoint:
 
     def test_retrieve_own_post(self, db, authenticated_client, user, brand, mocker):
         content_post = ContentPost.objects.create(
-            user=user, brand=brand, title="Status Check", video_r2_key="v/k.mp4"
+            user=user, brand=brand, title="Status Check", media_r2_key="videos/k.mp4"
         )
         ContentPostPlatform.objects.create(
             content_post=content_post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED, platform_post_id="yt_001"
@@ -55,7 +55,7 @@ class TestRetrieveEndpoint:
             brand = BrandModel.objects.create(user=owner, name="OwnerBrand", is_default=True)
 
         content_post = ContentPost.objects.create(
-            user=owner, brand=brand, title="Other's Post", video_r2_key="v/o.mp4"
+            user=owner, brand=brand, title="Other's Post", media_r2_key="videos/o.mp4"
         )
         ContentPostPlatform.objects.create(
             content_post=content_post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
@@ -95,7 +95,7 @@ class TestVideoEndpoint:
         )
         mocker.patch(
             "content.services.content_creation_service.R2StorageService.generate_key",
-            return_value="content/abc.mp4",
+            return_value="videos/2026-06-15/abc.mp4",
         )
         mock_delay = mocker.patch(
             "content.tasks.publish_platform_entry.delay",
@@ -129,7 +129,7 @@ class TestVideoEndpoint:
         mocker.patch("content.services.content_creation_service.R2StorageService.upload_file")
         mocker.patch(
             "content.services.content_creation_service.R2StorageService.generate_key",
-            return_value="content/m.mp4",
+            return_value="videos/2026-06-15/m.mp4",
         )
         mock_delay = mocker.patch(
             "content.tasks.publish_platform_entry.delay",
@@ -194,7 +194,7 @@ class TestPhotoEndpoint:
         )
         mocker.patch(
             "content.services.content_creation_service.R2StorageService.generate_key",
-            return_value="content/p.jpg",
+            return_value="photos/2026-06-15/p.jpg",
         )
         mock_delay = mocker.patch(
             "content.tasks.publish_platform_entry.delay",

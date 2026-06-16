@@ -103,7 +103,7 @@ class TestContentCreationService:
         )
         mocker.patch(
             "content.services.content_creation_service.R2StorageService.generate_key",
-            return_value="content/2026-01-01/abc.mp4",
+            return_value="videos/2026-01-01/abc.mp4",
         )
         mock_delay = mocker.patch(
             "content.tasks.publish_platform_entry.delay",
@@ -130,7 +130,7 @@ class TestContentCreationService:
         )
         mocker.patch(
             "content.services.content_creation_service.R2StorageService.generate_key",
-            return_value="content/abc.mp4",
+            return_value="videos/2026-01-01/abc.mp4",
         )
         mock_delay = mocker.patch(
             "content.tasks.publish_platform_entry.delay",
@@ -187,7 +187,7 @@ class TestPostingService:
             token_expires_at=expires,
         )
         content_post = ContentPost.objects.create(
-            user=user, brand=brand, title="Test", video_r2_key="videos/k.mp4"
+            user=user, brand=brand, title="Test", media_r2_key="videos/k.mp4"
         )
         entry = ContentPostPlatform.objects.create(
             content_post=content_post, platform=platform
@@ -204,7 +204,7 @@ class TestPostingService:
             return_value="https://r2/v.mp4",
         )
         mocker.patch(
-            "content.services.posting_service.PostingService._download_video_from_r2",
+            "content.services.posting_service.R2StorageService.download_file",
             return_value=b"vid",
         )
         entry = self._setup(user, brand, PlatformChoices.YOUTUBE)
@@ -239,7 +239,7 @@ class TestPostingService:
             return_value="https://r2/v.mp4",
         )
         mocker.patch(
-            "content.services.posting_service.PostingService._download_video_from_r2",
+            "content.services.posting_service.R2StorageService.download_file",
             return_value=b"vid",
         )
         entry = self._setup(user, brand, PlatformChoices.YOUTUBE)
@@ -254,7 +254,7 @@ class TestPostingService:
             return_value=True,
         )
         cp = ContentPost.objects.create(
-            user=user, brand=brand, title="C", video_r2_key="v/k.mp4"
+            user=user, brand=brand, title="C", media_r2_key="videos/k.mp4"
         )
         ContentPostPlatform.objects.create(
             content_post=cp, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
@@ -262,7 +262,7 @@ class TestPostingService:
         ContentPostPlatform.objects.create(
             content_post=cp, platform=PlatformChoices.FACEBOOK, status=PostStatus.FAILED
         )
-        PostingService.cleanup_r2_video(cp)
+        PostingService.cleanup_r2_media(cp)
         mock_delete.assert_called_once()
 
     def test_cleanup_skips_when_pending(self, db, user, brand, mocker):
@@ -270,7 +270,7 @@ class TestPostingService:
             "content.services.posting_service.R2StorageService.delete_file",
         )
         cp = ContentPost.objects.create(
-            user=user, brand=brand, title="P", video_r2_key="v/k.mp4"
+            user=user, brand=brand, title="P", media_r2_key="videos/k.mp4"
         )
         ContentPostPlatform.objects.create(
             content_post=cp, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
@@ -278,5 +278,5 @@ class TestPostingService:
         ContentPostPlatform.objects.create(
             content_post=cp, platform=PlatformChoices.FACEBOOK, status=PostStatus.PENDING
         )
-        PostingService.cleanup_r2_video(cp)
+        PostingService.cleanup_r2_media(cp)
         mock_delete.assert_not_called()

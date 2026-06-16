@@ -47,6 +47,7 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "description",
+            "content_type",
             "platforms",
             "created_at",
             "updated_at",

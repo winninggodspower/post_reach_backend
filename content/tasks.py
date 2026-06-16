@@ -11,7 +11,7 @@ def publish_platform_entry(platform_entry_id, content_type="video"):
     Celery task that publishes a single ContentPostPlatform entry.
 
     After publishing, checks if all entries for the parent ContentPost
-    are done and cleans up the R2 video if so.
+    are done and cleans up the R2 media if so.
     """
     try:
         entry = ContentPostPlatform.objects.select_related(
@@ -26,7 +26,7 @@ def publish_platform_entry(platform_entry_id, content_type="video"):
 
     result_entry = PostingService.publish_platform_entry(entry, content_type=content_type)
 
-    PostingService.cleanup_r2_video(result_entry.content_post)
+    PostingService.cleanup_r2_media(result_entry.content_post)
 
     return {
         "status": result_entry.status,

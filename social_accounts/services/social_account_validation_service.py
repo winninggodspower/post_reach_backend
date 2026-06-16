@@ -28,3 +28,17 @@ class SocialAccountValidationService:
                 f"No connected account(s) found for: {joined}. "
                 "Please connect your account(s) first."
             )
+
+    @staticmethod
+    def get_account(brand: Brand, platform: str) -> SocialAccount:
+        """
+        Retrieve the SocialAccount for a given brand and platform.
+
+        Raises ValueError if no account is connected for that platform.
+        """
+        try:
+            return SocialAccount.objects.get(brand=brand, platform=platform)
+        except SocialAccount.DoesNotExist:
+            raise ValueError(
+                f"No connected {platform} account found for brand '{brand.name}'."
+            )

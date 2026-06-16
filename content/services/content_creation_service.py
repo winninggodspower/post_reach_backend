@@ -39,9 +39,11 @@ class ContentCreationService:
         Full creation + dispatch pipeline:
         1. Resolve the user's default brand (via BrandService)
         2. Validate every requested platform has a connected SocialAccount
-        3. Upload the media to R2
+        3. Upload the media to R2 (videos go to videos/ folder, photos to photos/)
         4. Create ContentPost + ContentPostPlatform entries
         5. Dispatch a Celery task for each platform entry
+
+        :param content_type: "video" or "photo" — determines R2 folder and MIME type.
 
         Raises ValueError with a user-facing message on failure.
         """
@@ -51,11 +53,11 @@ class ContentCreationService:
         # 2. Validate platform connections via domain service
         SocialAccountValidationService.ensure_platforms_connected(brand, platforms)
 
-        # 3. Upload to R2
+        # 3. Upload to R2 with correct folder prefix and MIME type
         try:
             file_bytes = media_file.read()
-            r2_key = R2StorageService.generate_key(prefix="content")
-            R2StorageService.upload_file(file_bytes, r2_key)
+            r2_key = R2StorageService.generate_key(content_type=content_type)
+            R2StorageService.upload_file(file_bytes, r2_key, content_type=content_type)
         except Exception as e:
             raise ValueError(f"Failed to upload media: {str(e)}") from e
 
@@ -69,7 +71,8 @@ class ContentCreationService:
                     brand=brand,
                     title=text or "",
                     description="",
-                    video_r2_key=r2_key,
+                    media_r2_key=r2_key,
+                    content_type=content_type,
                 )
 
                 ContentPostPlatform.objects.bulk_create([
@@ -96,8 +99,7 @@ class ContentCreationService:
             # Clean up the R2 file since the DB transaction was rolled back
             R2StorageService.delete_file(r2_key)
             raise ValueError(
-                "Failed to queue publishing tasks. The media service is temporarily "
-                "unavailable. Please try again later."
+                "Failed to publish content, queue unavailable at the moment. Please try again later."
             )
 
         return content_post
