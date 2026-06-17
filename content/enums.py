@@ -6,3 +6,9 @@ class PostStatus(models.TextChoices):
     UPLOADING = "uploading", "Uploading to Platform"
     POSTED = "posted", "Posted Successfully"
     FAILED = "failed", "Posting Failed"
+
+
+class FileTypeChoice(models.TextChoices):
+    IMAGE = "image", "Image"
+    VIDEO = "video", "Video"
+

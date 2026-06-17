@@ -42,8 +42,6 @@ class TestRetrieveEndpoint:
         assert data["success"] is True
         assert data["data"]["title"] == "Status Check"
         assert len(data["data"]["platforms"]) == 2
-        assert len(data["data"]["media_items"]) == 1
-        assert data["data"]["media_items"][0]["file_type"] == "video"
         statuses = {(p["platform"], p["status"]) for p in data["data"]["platforms"]}
         assert ("youtube", "posted") in statuses
         assert ("facebook", "pending") in statuses
@@ -236,7 +234,7 @@ class TestPhotoEndpoint:
         # Verify a ContentMedia record was created
         post = ContentPost.objects.get(id=data["data"]["id"])
         assert post.media_items.count() == 1
-        assert post.media_items.first().file_type == "photo"
+        assert post.media_items.first().file_type == "image"
         mock_upload.assert_called_once()
         mock_delay.assert_called_once()
 

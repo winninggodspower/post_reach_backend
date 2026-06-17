@@ -1,3 +1,4 @@
+import json
 import uuid
 
 from django.conf import settings
@@ -14,7 +15,7 @@ OAUTH_STATE_TTL = 600  # 10 minutes
 class FacebookService(SocialAccountService):
     CLIENT_ID = settings.FACEBOOK_APP_ID
     CLIENT_SECRET = settings.FACEBOOK_APP_SECRET
-    BASE_URL = "https://graph.facebook.com/v18.0"
+    BASE_URL = "https://graph.facebook.com/v25.0"
     redirect_uri = settings.REDIRECT_URI["facebook"]
 
     REQUIRED_SCOPES = {
@@ -272,9 +273,7 @@ class FacebookService(SocialAccountService):
                 f"/{page_id}/feed",
                 data={
                     "message": text or "",
-                    "attached_media": ",".join(
-                        f'{{"media_fbid":"{fbid}"}}' for fbid in media_fbids
-                    ),
+                    "attached_media": json.dumps([{"media_fbid": fbid} for fbid in media_fbids]),
                     "access_token": page_access_token,
                 },
             )

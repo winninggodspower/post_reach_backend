@@ -1,7 +1,39 @@
+from drf_yasg import openapi
 from rest_framework import serializers
 
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from social_accounts.enums import PlatformChoices
+
+
+# Used by the swagger_auto_schema in views.py for the platforms enum dropdown
+PLATFORM_ENUMS = [choice[0] for choice in PlatformChoices.choices]
+
+# Swagger manual parameters for the photo post endpoint
+photo_post_parameters = [
+    openapi.Parameter(
+        "photos",
+        openapi.IN_FORM,
+        type=openapi.TYPE_ARRAY,
+        items=openapi.Items(type=openapi.TYPE_FILE),
+        required=True,
+        description="One or more photo files to upload.",
+    ),
+    openapi.Parameter(
+        "text",
+        openapi.IN_FORM,
+        type=openapi.TYPE_STRING,
+        required=False,
+        description="Caption text for the photo post.",
+    ),
+    openapi.Parameter(
+        "platforms",
+        openapi.IN_FORM,
+        type=openapi.TYPE_ARRAY,
+        items=openapi.Items(type=openapi.TYPE_STRING, enum=PLATFORM_ENUMS),
+        required=True,
+        description="Target platforms to publish to.",
+    ),
+]
 
 
 class ContentPostCreateSerializer(serializers.Serializer):
@@ -56,7 +88,6 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
     platforms = ContentPostPlatformSerializer(
         source="platform_entries", many=True, read_only=True
     )
-    media_items = ContentMediaSerializer(many=True, read_only=True)
 
     class Meta:
         model = ContentPost
@@ -65,7 +96,6 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "content_type",
-            "media_items",
             "platforms",
             "created_at",
             "updated_at",

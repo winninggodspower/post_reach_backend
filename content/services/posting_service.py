@@ -3,7 +3,7 @@ Orchestrates publishing a ContentPostPlatform entry to its target platform.
 Supports both video and photo content types.
 """
 
-from content.enums import PostStatus
+from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentPostPlatform
 from content.services.content_post_service import ContentPostService
 from integrations.providers.facebook_service import FacebookService
@@ -87,18 +87,32 @@ class PostingService:
 
             if content_type == "photo":
                 # Generate a presigned URL for each image
-                image_items = ContentPostService.get_media_items(content_post, file_type="image")
+                image_items = ContentPostService.get_media_items(content_post, file_type=FileTypeChoice.IMAGE)
                 presigned_urls = [
                     R2StorageService.generate_presigned_url(item.r2_key, expiration=7200)
                     for item in image_items
                 ]
                 if not presigned_urls or any(url is None for url in presigned_urls):
+                    CustomLogger.error(
+                        "content.services.posting_service",
+                        "Failed to generate presigned URLs for photos",
+                        extra={
+                            "content_post_id": str(content_post.id),
+                        },
+                    )
                     raise ValueError("Failed to generate presigned URLs for photos")
             elif needs_url:
                 # Single video → single presigned URL
-                video_items = ContentPostService.get_media_items(content_post, file_type="video")
+                video_items = ContentPostService.get_media_items(content_post, file_type=FileTypeChoice.VIDEO)
                 video_item = video_items.first()
                 if not video_item:
+                    CustomLogger.error(
+                        "content.services.posting_service",
+                        "No video media found for this post",
+                        extra={
+                            "content_post_id": str(content_post.id),
+                        },
+                    )
                     raise ValueError("No video media found for this post")
                 presigned_url = R2StorageService.generate_presigned_url(
                     video_item.r2_key, expiration=7200
@@ -107,7 +121,7 @@ class PostingService:
                     raise ValueError("Failed to generate presigned URL")
 
             if needs_bytes:
-                video_items = ContentPostService.get_media_items(content_post, file_type="video")
+                video_items = ContentPostService.get_media_items(content_post, file_type=FileTypeChoice.VIDEO)
                 video_item = video_items.first()
                 if not video_item:
                     raise ValueError("No video media found for this post")

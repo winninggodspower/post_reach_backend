@@ -5,12 +5,13 @@ from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
+from content.models import ContentPost
 from content.serializers import (
     ContentPostCreateSerializer,
     ContentPostResponseSerializer,
     PhotoPostCreateSerializer,
+    photo_post_parameters,
 )
-from content.models import ContentPost
 from content.services.content_creation_service import ContentCreationService
 from content.services.content_post_service import ContentPostService
 from utils.custom_logger import CustomLogger
@@ -69,7 +70,7 @@ class ContentPostViewSet(viewsets.ViewSet):
             "tasks to publish the photos to each selected platform. Each platform must "
             "already be connected to the user's active brand."
         ),
-        request_body=PhotoPostCreateSerializer,
+        manual_parameters=photo_post_parameters,
         responses={
             201: ContentPostResponseSerializer,
             400: openapi.Response("Bad Request"),

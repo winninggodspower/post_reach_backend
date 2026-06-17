@@ -8,6 +8,7 @@ from uuid import UUID
 
 from django.db.models import Prefetch
 
+from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from users.models import User
 
@@ -43,7 +44,7 @@ class ContentPostService:
         )
 
     @classmethod
-    def get_media_items(cls, content_post: ContentPost, file_type: str = "image"):
+    def get_media_items(cls, content_post: ContentPost, file_type: str = FileTypeChoice.IMAGE):
         """
         Get media items for a post filtered by file_type, ordered by position.
         """
@@ -54,7 +55,6 @@ class ContentPostService:
         """
         Check if any platform entry for this post is still pending or uploading.
         """
-        from content.enums import PostStatus
 
         return content_post.platform_entries.filter(
             status__in=[PostStatus.PENDING, PostStatus.UPLOADING]

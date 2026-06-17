@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import models
 
-from content.enums import PostStatus
+from content.enums import FileTypeChoice, PostStatus
 from post_reach_backend.models import UUIDTimestampedModel
 from social_accounts.enums import PlatformChoices
 from users.models import Brand
@@ -56,18 +56,13 @@ class ContentMedia(UUIDTimestampedModel):
     A video post will have exactly one video.
     """
 
-    FILE_TYPE_CHOICES = [
-        ("image", "Image"),
-        ("video", "Video"),
-    ]
-
     content_post = models.ForeignKey(
         ContentPost,
         on_delete=models.CASCADE,
         related_name="media_items",
     )
     r2_key = models.CharField(max_length=512)
-    file_type = models.CharField(max_length=10, choices=FILE_TYPE_CHOICES)
+    file_type = models.CharField(max_length=10, choices=FileTypeChoice.choices)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:

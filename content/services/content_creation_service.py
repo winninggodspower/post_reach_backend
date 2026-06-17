@@ -9,6 +9,7 @@ from typing import List
 
 from django.db import transaction
 
+from content.enums import FileTypeChoice
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from content.tasks import publish_platform_entry
 from users.services.brand_service import BrandService
@@ -83,7 +84,7 @@ class ContentCreationService:
                     ContentMedia(
                         content_post=content_post,
                         r2_key=r2_key,
-                        file_type=content_type,
+                        file_type=FileTypeChoice.IMAGE if content_type == "photo" else FileTypeChoice.VIDEO,
                         order=idx,
                     )
                     for idx, r2_key in enumerate(uploaded_keys)
