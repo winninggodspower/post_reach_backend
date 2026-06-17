@@ -148,7 +148,7 @@ class FacebookService(SocialAccountService):
                 "/me/accounts",
                 params={
                     "access_token": access_token,
-                    "fields": "id,name,picture",
+                    "fields": "id,name,picture,access_token",
                 },
             )
         except APIError as e:

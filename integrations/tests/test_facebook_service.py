@@ -220,14 +220,23 @@ class TestGetFacebookPages:
     """Tests for FacebookService.get_facebook_pages()"""
 
     def test_get_facebook_pages_success(self, mocker):
-        """Should return a list of pages with id and name."""
+        """Should return a list of pages with id, name, access_token, and picture_url."""
         mocker.patch.object(
             FacebookService,
             "get",
             return_value={
                 "data": [
-                    {"id": "123", "name": "My Page", "access_token": "page_token_1"},
-                    {"id": "456", "name": "Second Page", "access_token": "page_token_2"},
+                    {
+                        "id": "123",
+                        "name": "My Page",
+                        "access_token": "page_token_1",
+                        "picture": {"data": {"url": "https://example.com/pic1.jpg"}},
+                    },
+                    {
+                        "id": "456",
+                        "name": "Second Page",
+                        "access_token": "page_token_2",
+                    },
                 ]
             },
         )
@@ -235,8 +244,34 @@ class TestGetFacebookPages:
         pages = FacebookService.get_facebook_pages("valid_token")
 
         assert len(pages) == 2
-        assert pages[0] == {"id": "123", "name": "My Page"}
-        assert pages[1] == {"id": "456", "name": "Second Page"}
+        assert pages[0] == {
+            "id": "123",
+            "name": "My Page",
+            "access_token": "page_token_1",
+            "picture_url": "https://example.com/pic1.jpg",
+        }
+        assert pages[1] == {
+            "id": "456",
+            "name": "Second Page",
+            "access_token": "page_token_2",
+            "picture_url": None,
+        }
+
+    def test_get_facebook_pages_success_requests_fields(self, mocker):
+        """Should request id, name, picture, and access_token fields from Facebook API."""
+        mock_get = mocker.patch.object(
+            FacebookService,
+            "get",
+            return_value={"data": [{"id": "123", "name": "Page", "access_token": "tok"}]},
+        )
+
+        FacebookService.get_facebook_pages("valid_token")
+
+        _call = mock_get.call_args
+        assert _call == mocker.call(
+            "/me/accounts",
+            params={"access_token": "valid_token", "fields": "id,name,picture,access_token"},
+        )
 
     def test_get_facebook_pages_no_pages(self, mocker):
         """Should raise ValueError when no pages are found."""
