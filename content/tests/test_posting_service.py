@@ -9,7 +9,7 @@ import pytest
 from django.utils import timezone
 
 from content.enums import PostStatus
-from content.models import ContentPost, ContentPostPlatform
+from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from content.serializers import (
     ContentPostCreateSerializer,
     PhotoPostCreateSerializer,
@@ -56,25 +56,34 @@ class TestPhotoPostCreateSerializer:
 
     def test_valid(self):
         data = {
-            "photo": MagicMock(),
+            "photos": [MagicMock()],
             "text": "A beautiful photo",
             "platforms": [PlatformChoices.INSTAGRAM],
         }
         serializer = PhotoPostCreateSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
 
+    def test_valid_multiple_photos(self):
+        data = {
+            "photos": [MagicMock(), MagicMock()],
+            "text": "Multi photo post",
+            "platforms": [PlatformChoices.FACEBOOK],
+        }
+        serializer = PhotoPostCreateSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
+
     def test_text_optional(self):
         data = {
-            "photo": MagicMock(),
+            "photos": [MagicMock()],
             "platforms": [PlatformChoices.FACEBOOK],
         }
         serializer = PhotoPostCreateSerializer(data=data)
         assert serializer.is_valid()
         assert serializer.validated_data.get("text") == ""
 
-    def test_missing_photo(self):
+    def test_missing_photos(self):
         data = {
-            "text": "Missing photo",
+            "text": "Missing photos",
             "platforms": [PlatformChoices.INSTAGRAM],
         }
         serializer = PhotoPostCreateSerializer(data=data)
@@ -97,6 +106,12 @@ class TestContentCreationService:
                 token_expires_at=expires,
             )
 
+    def _mock_file(self, name="v.mp4", content=b"fake-media"):
+        mock_file = MagicMock()
+        mock_file.read.return_value = content
+        mock_file.name = name
+        return mock_file
+
     def test_create_with_single_platform(self, db, user, brand, mocker):
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
@@ -108,21 +123,61 @@ class TestContentCreationService:
         mock_delay = mocker.patch(
             "content.tasks.publish_platform_entry.delay",
         )
-        mock_file = MagicMock()
-        mock_file.read.return_value = b"fake-media"
         self._setup_accounts(brand, [PlatformChoices.YOUTUBE])
 
         content_post = ContentCreationService.create_content_post(
             user=user,
-            media_file=mock_file,
+            media_files=[self._mock_file()],
             text="Hello world",
             platforms=[PlatformChoices.YOUTUBE],
         )
 
         assert content_post.title == "Hello world"
+        # Should have 1 ContentMedia record for the video
+        assert content_post.media_items.count() == 1
+        assert content_post.media_items.first().file_type == "video"
         assert content_post.platform_entries.count() == 1
         assert content_post.platform_entries.first().platform == PlatformChoices.YOUTUBE
         mock_delay.assert_called_once()
+
+    def test_create_with_multiple_photos(self, db, user, brand, mocker):
+        mock_upload = mocker.patch(
+            "content.services.content_creation_service.R2StorageService.upload_file",
+        )
+        mocker.patch(
+            "content.services.content_creation_service.R2StorageService.generate_key",
+            side_effect=[
+                "photos/2026-01-01/a.jpg",
+                "photos/2026-01-01/b.jpg",
+                "photos/2026-01-01/c.jpg",
+            ],
+        )
+        mock_delay = mocker.patch(
+            "content.tasks.publish_platform_entry.delay",
+        )
+        self._setup_accounts(brand, [PlatformChoices.FACEBOOK, PlatformChoices.INSTAGRAM])
+
+        content_post = ContentCreationService.create_content_post(
+            user=user,
+            media_files=[
+                self._mock_file(name="a.jpg", content=b"photo-a"),
+                self._mock_file(name="b.jpg", content=b"photo-b"),
+                self._mock_file(name="c.jpg", content=b"photo-c"),
+            ],
+            text="Multi photo",
+            platforms=[PlatformChoices.FACEBOOK, PlatformChoices.INSTAGRAM],
+            content_type="photo",
+        )
+
+        assert content_post.media_items.count() == 3
+        # Check ordering
+        items = list(content_post.media_items.order_by("order"))
+        assert items[0].order == 0
+        assert items[1].order == 1
+        assert items[2].order == 2
+        assert content_post.platform_entries.count() == 2
+        assert mock_delay.call_count == 2
+        assert mock_upload.call_count == 3
 
     def test_create_multiple_dispatches_one_task_per_platform(self, db, user, brand, mocker):
         mock_upload = mocker.patch(
@@ -135,13 +190,11 @@ class TestContentCreationService:
         mock_delay = mocker.patch(
             "content.tasks.publish_platform_entry.delay",
         )
-        mock_file = MagicMock()
-        mock_file.read.return_value = b"fake"
         self._setup_accounts(brand, [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK])
 
         content_post = ContentCreationService.create_content_post(
             user=user,
-            media_file=mock_file,
+            media_files=[self._mock_file()],
             text="Multi",
             platforms=[PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
         )
@@ -152,21 +205,19 @@ class TestContentCreationService:
     def test_raises_when_no_brand(self, db, user, mocker):
         from users.models import Brand
         Brand.objects.filter(user=user).delete()
-        mock_file = MagicMock()
         with pytest.raises(ValueError, match="No default brand"):
             ContentCreationService.create_content_post(
                 user=user,
-                media_file=mock_file,
+                media_files=[self._mock_file()],
                 text="Test",
                 platforms=[PlatformChoices.YOUTUBE],
             )
 
     def test_raises_when_platform_not_connected(self, db, user, brand, mocker):
-        mock_file = MagicMock()
         with pytest.raises(ValueError, match="No connected account"):
             ContentCreationService.create_content_post(
                 user=user,
-                media_file=mock_file,
+                media_files=[self._mock_file()],
                 text="Test",
                 platforms=[PlatformChoices.YOUTUBE],
             )
@@ -175,7 +226,7 @@ class TestContentCreationService:
 class TestPostingService:
     """Tests for PostingService.publish_platform_entry() (video + photo)."""
 
-    def _setup(self, user, brand, platform):
+    def _setup(self, user, brand, platform, file_type="video"):
         expires = timezone.now() + timezone.timedelta(days=30)
         SocialAccount.objects.create(
             brand=brand,
@@ -187,7 +238,13 @@ class TestPostingService:
             token_expires_at=expires,
         )
         content_post = ContentPost.objects.create(
-            user=user, brand=brand, title="Test", media_r2_key="videos/k.mp4"
+            user=user, brand=brand, title="Test", content_type=file_type
+        )
+        ContentMedia.objects.create(
+            content_post=content_post,
+            r2_key=f"{file_type}s/k.{'mp4' if file_type == 'video' else 'jpg'}",
+            file_type=file_type,
+            order=0,
         )
         entry = ContentPostPlatform.objects.create(
             content_post=content_post, platform=platform
@@ -213,7 +270,7 @@ class TestPostingService:
         assert result.status == PostStatus.POSTED
         assert result.platform_post_id == "yt_123"
 
-    def test_publish_photo_success(self, db, user, brand, mocker):
+    def test_publish_photo_success_single(self, db, user, brand, mocker):
         mock_pub = mocker.patch(
             "content.services.posting_service.FacebookService.publish_photo",
             return_value={"platform_post_id": "fb_456"},
@@ -222,12 +279,46 @@ class TestPostingService:
             "content.services.posting_service.R2StorageService.generate_presigned_url",
             return_value="https://r2/photo.jpg",
         )
-        entry = self._setup(user, brand, PlatformChoices.FACEBOOK)
+        entry = self._setup(user, brand, PlatformChoices.FACEBOOK, file_type="image")
 
         result = PostingService.publish_platform_entry(entry, content_type="photo")
         assert result.status == PostStatus.POSTED
         assert result.platform_post_id == "fb_456"
         mock_pub.assert_called_once()
+
+    def test_publish_photo_success_multiple(self, db, user, brand, mocker):
+        """Test multiple images are passed as a list to the provider."""
+        mock_pub = mocker.patch(
+            "content.services.posting_service.FacebookService.publish_photo",
+            return_value={"platform_post_id": "fb_multi"},
+        )
+        mocker.patch(
+            "content.services.posting_service.R2StorageService.generate_presigned_url",
+            return_value="https://r2/photo.jpg",
+        )
+
+        expires = timezone.now() + timezone.timedelta(days=30)
+        SocialAccount.objects.create(
+            brand=brand, platform=PlatformChoices.FACEBOOK,
+            account_name="acct_fb", external_id="ext_fb",
+            access_token="token", token_type="Bearer", token_expires_at=expires,
+        )
+        content_post = ContentPost.objects.create(
+            user=user, brand=brand, title="Multi Photo", content_type="photo"
+        )
+        ContentMedia.objects.create(content_post=content_post, r2_key="photos/a.jpg", file_type="image", order=0)
+        ContentMedia.objects.create(content_post=content_post, r2_key="photos/b.jpg", file_type="image", order=1)
+        ContentMedia.objects.create(content_post=content_post, r2_key="photos/c.jpg", file_type="image", order=2)
+        entry = ContentPostPlatform.objects.create(
+            content_post=content_post, platform=PlatformChoices.FACEBOOK
+        )
+
+        result = PostingService.publish_platform_entry(entry, content_type="photo")
+        assert result.status == PostStatus.POSTED
+        # Verify 3 URLs were generated and passed
+        assert mock_pub.call_count == 1
+        call_args = mock_pub.call_args
+        assert len(call_args.kwargs["photo_urls"]) == 3
 
     def test_publish_failure(self, db, user, brand, mocker):
         mocker.patch(
@@ -254,8 +345,10 @@ class TestPostingService:
             return_value=True,
         )
         cp = ContentPost.objects.create(
-            user=user, brand=brand, title="C", media_r2_key="videos/k.mp4"
+            user=user, brand=brand, title="C", content_type="video"
         )
+        ContentMedia.objects.create(content_post=cp, r2_key="videos/k.mp4", file_type="video", order=0)
+        ContentMedia.objects.create(content_post=cp, r2_key="videos/thumb.jpg", file_type="image", order=1)
         ContentPostPlatform.objects.create(
             content_post=cp, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
         )
@@ -263,15 +356,17 @@ class TestPostingService:
             content_post=cp, platform=PlatformChoices.FACEBOOK, status=PostStatus.FAILED
         )
         PostingService.cleanup_r2_media(cp)
-        mock_delete.assert_called_once()
+        # Should delete both media items
+        assert mock_delete.call_count == 2
 
     def test_cleanup_skips_when_pending(self, db, user, brand, mocker):
         mock_delete = mocker.patch(
             "content.services.posting_service.R2StorageService.delete_file",
         )
         cp = ContentPost.objects.create(
-            user=user, brand=brand, title="P", media_r2_key="videos/k.mp4"
+            user=user, brand=brand, title="P", content_type="video"
         )
+        ContentMedia.objects.create(content_post=cp, r2_key="videos/k.mp4", file_type="video", order=0)
         ContentPostPlatform.objects.create(
             content_post=cp, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
         )

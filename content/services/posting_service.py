@@ -5,6 +5,7 @@ Supports both video and photo content types.
 
 from content.enums import PostStatus
 from content.models import ContentPostPlatform
+from content.services.content_post_service import ContentPostService
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
@@ -74,7 +75,7 @@ class PostingService:
             presigned_url = None
             media_bytes = None
 
-            # Photo platforms need a URL; video platforms vary
+            # Photo platforms need URLs for each image; video platforms vary
             needs_url = (
                 content_type == "photo"
                 or entry.platform in URL_PLATFORMS
@@ -84,22 +85,40 @@ class PostingService:
                 and entry.platform in BYTES_PLATFORMS
             )
 
-            if needs_url:
+            if content_type == "photo":
+                # Generate a presigned URL for each image
+                image_items = ContentPostService.get_media_items(content_post, file_type="image")
+                presigned_urls = [
+                    R2StorageService.generate_presigned_url(item.r2_key, expiration=7200)
+                    for item in image_items
+                ]
+                if not presigned_urls or any(url is None for url in presigned_urls):
+                    raise ValueError("Failed to generate presigned URLs for photos")
+            elif needs_url:
+                # Single video → single presigned URL
+                video_items = ContentPostService.get_media_items(content_post, file_type="video")
+                video_item = video_items.first()
+                if not video_item:
+                    raise ValueError("No video media found for this post")
                 presigned_url = R2StorageService.generate_presigned_url(
-                    content_post.media_r2_key, expiration=7200
+                    video_item.r2_key, expiration=7200
                 )
                 if not presigned_url:
                     raise ValueError("Failed to generate presigned URL")
 
             if needs_bytes:
-                media_bytes = R2StorageService.download_file(content_post.media_r2_key)
+                video_items = ContentPostService.get_media_items(content_post, file_type="video")
+                video_item = video_items.first()
+                if not video_item:
+                    raise ValueError("No video media found for this post")
+                media_bytes = R2StorageService.download_file(video_item.r2_key)
 
             if content_type == "photo":
                 result = cls._dispatch_photo(
                     platform=entry.platform,
                     access_token=access_token,
                     social_account=social_account,
-                    photo_url=presigned_url,
+                    photo_urls=presigned_urls,
                     text=content_post.title,
                 )
             else:
@@ -134,11 +153,11 @@ class PostingService:
 
     @classmethod
     def cleanup_r2_media(cls, content_post) -> None:
-        pending = content_post.platform_entries.filter(
-            status__in=[PostStatus.PENDING, PostStatus.UPLOADING]
-        ).exists()
-        if not pending:
-            R2StorageService.delete_file(content_post.media_r2_key)
+        if ContentPostService.has_pending_entries(content_post):
+            return
+
+        for media_item in content_post.media_items.all():
+            R2StorageService.delete_file(media_item.r2_key)
 
     # ── private helpers ────────────────────────────────────
 
@@ -186,33 +205,33 @@ class PostingService:
 
     @classmethod
     def _dispatch_photo(
-        cls, platform, access_token, social_account, photo_url, text
+        cls, platform, access_token, social_account, photo_urls, text
     ) -> dict:
         if platform == PlatformChoices.FACEBOOK:
             return FacebookService.publish_photo(
                 page_access_token=access_token,
                 page_id=social_account.external_id,
-                photo_url=photo_url,
+                photo_urls=photo_urls,
                 text=text,
             )
         if platform == PlatformChoices.INSTAGRAM:
             return InstagramService.publish_photo(
                 access_token=access_token,
                 instagram_account_id=social_account.external_id,
-                photo_url=photo_url,
+                photo_urls=photo_urls,
                 caption=text,
             )
         if platform == PlatformChoices.TIKTOK:
             return TiktokService.publish_photo(
                 access_token=access_token,
-                photo_url=photo_url,
+                photo_urls=photo_urls,
                 text=text,
             )
         if platform == PlatformChoices.LINKEDIN:
             return LinkedinService.publish_photo(
                 access_token=access_token,
                 person_urn=f"urn:li:person:{social_account.external_id}",
-                photo_url=photo_url,
+                photo_urls=photo_urls,
                 text=text,
             )
         raise ValueError(f"Photo publishing not supported for: {platform}")

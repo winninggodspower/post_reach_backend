@@ -10,7 +10,7 @@ import pytest
 from django.urls import reverse
 
 from content.enums import PostStatus
-from content.models import ContentPost, ContentPostPlatform
+from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
 from django.utils import timezone
@@ -21,7 +21,10 @@ class TestRetrieveEndpoint:
 
     def test_retrieve_own_post(self, db, authenticated_client, user, brand, mocker):
         content_post = ContentPost.objects.create(
-            user=user, brand=brand, title="Status Check", media_r2_key="videos/k.mp4"
+            user=user, brand=brand, title="Status Check", content_type="video"
+        )
+        ContentMedia.objects.create(
+            content_post=content_post, r2_key="videos/k.mp4", file_type="video", order=0
         )
         ContentPostPlatform.objects.create(
             content_post=content_post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED, platform_post_id="yt_001"
@@ -39,6 +42,8 @@ class TestRetrieveEndpoint:
         assert data["success"] is True
         assert data["data"]["title"] == "Status Check"
         assert len(data["data"]["platforms"]) == 2
+        assert len(data["data"]["media_items"]) == 1
+        assert data["data"]["media_items"][0]["file_type"] == "video"
         statuses = {(p["platform"], p["status"]) for p in data["data"]["platforms"]}
         assert ("youtube", "posted") in statuses
         assert ("facebook", "pending") in statuses
@@ -55,7 +60,10 @@ class TestRetrieveEndpoint:
             brand = BrandModel.objects.create(user=owner, name="OwnerBrand", is_default=True)
 
         content_post = ContentPost.objects.create(
-            user=owner, brand=brand, title="Other's Post", media_r2_key="videos/o.mp4"
+            user=owner, brand=brand, title="Other's Post", content_type="video"
+        )
+        ContentMedia.objects.create(
+            content_post=content_post, r2_key="videos/o.mp4", file_type="video", order=0
         )
         ContentPostPlatform.objects.create(
             content_post=content_post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
@@ -122,6 +130,10 @@ class TestVideoEndpoint:
         assert data["success"] is True
         assert len(data["data"]["platforms"]) == 1
         assert data["data"]["platforms"][0]["platform"] == PlatformChoices.YOUTUBE
+        # Verify a ContentMedia record was created
+        post = ContentPost.objects.get(id=data["data"]["id"])
+        assert post.media_items.count() == 1
+        assert post.media_items.first().file_type == "video"
         mock_upload.assert_called_once()
         mock_delay.assert_called_once()
 
@@ -188,7 +200,7 @@ class TestPhotoEndpoint:
 
     URL = "content-post-photo"
 
-    def test_success(self, db, authenticated_client, user, brand, mocker):
+    def test_success_single_photo(self, db, authenticated_client, user, brand, mocker):
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
         )
@@ -212,7 +224,7 @@ class TestPhotoEndpoint:
 
         response = authenticated_client.post(
             reverse(self.URL),
-            {"photo": photo, "text": "Nice shot", "platforms": [PlatformChoices.INSTAGRAM]},
+            {"photos": [photo], "text": "Nice shot", "platforms": [PlatformChoices.INSTAGRAM]},
             format="multipart",
         )
 
@@ -221,7 +233,56 @@ class TestPhotoEndpoint:
         assert data["success"] is True
         assert len(data["data"]["platforms"]) == 1
         assert data["data"]["platforms"][0]["platform"] == PlatformChoices.INSTAGRAM
+        # Verify a ContentMedia record was created
+        post = ContentPost.objects.get(id=data["data"]["id"])
+        assert post.media_items.count() == 1
+        assert post.media_items.first().file_type == "photo"
         mock_upload.assert_called_once()
+        mock_delay.assert_called_once()
+
+    def test_success_multiple_photos(self, db, authenticated_client, user, brand, mocker):
+        mock_upload = mocker.patch(
+            "content.services.content_creation_service.R2StorageService.upload_file",
+        )
+        mocker.patch(
+            "content.services.content_creation_service.R2StorageService.generate_key",
+            side_effect=[
+                "photos/2026-06-15/a.jpg",
+                "photos/2026-06-15/b.jpg",
+            ],
+        )
+        mock_delay = mocker.patch(
+            "content.tasks.publish_platform_entry.delay",
+        )
+
+        expires = timezone.now() + timezone.timedelta(days=30)
+        SocialAccount.objects.create(
+            brand=brand, platform=PlatformChoices.FACEBOOK,
+            account_name="fb", external_id="ext_fb",
+            access_token="token", token_type="Bearer", token_expires_at=expires,
+        )
+
+        photo1 = io.BytesIO(b"fake-photo-1")
+        photo1.name = "a.jpg"
+        photo2 = io.BytesIO(b"fake-photo-2")
+        photo2.name = "b.jpg"
+
+        response = authenticated_client.post(
+            reverse(self.URL),
+            {"photos": [photo1, photo2], "text": "Multi photo", "platforms": [PlatformChoices.FACEBOOK]},
+            format="multipart",
+        )
+
+        assert response.status_code == 201
+        data = response.data
+        assert data["success"] is True
+        # Verify 2 ContentMedia records were created
+        post = ContentPost.objects.get(id=data["data"]["id"])
+        assert post.media_items.count() == 2
+        items = list(post.media_items.order_by("order"))
+        assert items[0].order == 0
+        assert items[1].order == 1
+        assert mock_upload.call_count == 2
         mock_delay.assert_called_once()
 
     def test_no_connected_account(self, db, authenticated_client, user, brand, mocker):
@@ -230,7 +291,7 @@ class TestPhotoEndpoint:
 
         response = authenticated_client.post(
             reverse(self.URL),
-            {"photo": photo, "text": "Test", "platforms": [PlatformChoices.INSTAGRAM]},
+            {"photos": [photo], "text": "Test", "platforms": [PlatformChoices.INSTAGRAM]},
             format="multipart",
         )
         assert response.status_code == 400

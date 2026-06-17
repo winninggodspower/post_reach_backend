@@ -292,34 +292,33 @@ class LinkedinService(SocialAccountService):
         return {"platform_post_id": post_id}
 
     @classmethod
-    def publish_photo(cls, access_token, person_urn, photo_url, text=""):
+    def publish_photo(cls, access_token, person_urn, photo_urls, text=""):
         """
-        Publish a photo post to LinkedIn using the UGC Posts API.
+        Publish a photo (or multiple photos) to LinkedIn using the UGC Posts API.
 
         LinkedIn requires a multi-step process for image sharing:
-        1. Register the image upload via /assets?action=registerUpload
-        2. Download the image from the source URL
-        3. Upload the image binary to LinkedIn's upload URL
-        4. Create the share with the media asset URN
+        1. Register each image upload via /assets?action=registerUpload
+        2. Download each image from its source URL
+        3. Upload each image binary to LinkedIn's upload URL
+        4. Create the share with all media asset URNs
 
         :param access_token: Valid LinkedIn access token with w_member_social scope.
         :param person_urn: LinkedIn person URN (e.g., "urn:li:person:xxxxx").
-        :param photo_url: Public URL of the photo file to download and upload.
+        :param photo_urls: List of public/presigned URLs of the photo files.
         :param text: Post text (optional).
         :return: Dict with 'platform_post_id'.
         """
-        # Step 1: Register the image upload with LinkedIn
-        upload_url, asset_urn = cls._register_media_upload(
-            access_token, person_urn, "urn:li:digitalmediaRecipe:feedshare-image"
-        )
+        # Step 1-3: Register, download, and upload each image
+        asset_urns = []
+        for photo_url in photo_urls:
+            upload_url, asset_urn = cls._register_media_upload(
+                access_token, person_urn, "urn:li:digitalmediaRecipe:feedshare-image"
+            )
+            image_binary = cls._download_media_binary(photo_url)
+            cls._upload_media_to_linkedin(upload_url, image_binary)
+            asset_urns.append(asset_urn)
 
-        # Step 2: Download the image binary from the source URL
-        image_binary = cls._download_media_binary(photo_url)
-
-        # Step 3: Upload the image binary to LinkedIn
-        cls._upload_media_to_linkedin(upload_url, image_binary)
-
-        # Step 4: Create the share post with the media asset URN
+        # Step 4: Create the share post with all media asset URNs
         try:
             response = cls().post(
                 f"{cls.API_BASE_URL}/ugcPosts",
@@ -333,10 +332,8 @@ class LinkedinService(SocialAccountService):
                             },
                             "shareMediaCategory": "IMAGE",
                             "media": [
-                                {
-                                    "status": "READY",
-                                    "media": asset_urn,
-                                }
+                                {"status": "READY", "media": asset_urn}
+                                for asset_urn in asset_urns
                             ],
                         }
                     },

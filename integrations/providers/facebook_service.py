@@ -205,34 +205,87 @@ class FacebookService(SocialAccountService):
         return {"platform_post_id": post_id}
 
     @classmethod
-    def publish_photo(cls, page_access_token, page_id, photo_url, text=""):
+    def publish_photo(cls, page_access_token, page_id, photo_urls, text=""):
         """
-        Publish a photo to a Facebook Page.
+        Publish a photo (or multiple photos) to a Facebook Page.
+
+        For a single photo, posts directly to /{page_id}/photos.
+        For multiple photos, creates individual photo objects with published=false
+        and then posts them together in a feed post with attached_media.
 
         :param page_access_token: Access token for the Facebook Page.
         :param page_id: Facebook Page ID.
-        :param photo_url: Public/presigned URL of the photo file.
+        :param photo_urls: List of public/presigned URLs of the photo files.
         :param text: Caption text (optional).
-        :return: Dict with 'platform_post_id' (the Facebook post/photo ID).
+        :return: Dict with 'platform_post_id' (the Facebook post ID).
         """
+        if len(photo_urls) == 1:
+            # Single photo: use the simple /photos endpoint
+            try:
+                data = cls().post(
+                    f"/{page_id}/photos",
+                    data={
+                        "url": photo_urls[0],
+                        "message": text or "",
+                        "access_token": page_access_token,
+                    },
+                )
+            except APIError as e:
+                CustomLogger.exception(
+                    "Facebook photo publish failed",
+                    extra={"operation": "publish_photo"},
+                )
+                raise ValueError(f"Facebook photo publish failed: {str(e)}") from e
+
+            post_id = data.get("id", "") or data.get("post_id", "")
+            if not post_id:
+                raise ValueError("Facebook photo publish did not return a post ID")
+            return {"platform_post_id": post_id}
+
+        # Multiple photos: create each photo as unpublished, then post a feed
+        media_fbids = []
+        for url in photo_urls:
+            try:
+                photo_data = cls().post(
+                    f"/{page_id}/photos",
+                    data={
+                        "url": url,
+                        "published": "false",
+                        "access_token": page_access_token,
+                    },
+                )
+            except APIError as e:
+                CustomLogger.exception(
+                    "Facebook multi-photo item creation failed",
+                    extra={"operation": "publish_photo", "url": url},
+                )
+                raise ValueError(f"Facebook photo creation failed: {str(e)}") from e
+
+            fbid = photo_data.get("id")
+            if not fbid:
+                raise ValueError(f"Facebook did not return an ID for photo: {url}")
+            media_fbids.append(fbid)
+
+        # Post the feed with attached media
         try:
-            data = cls().post(
-                f"/{page_id}/photos",
+            feed_data = cls().post(
+                f"/{page_id}/feed",
                 data={
-                    "url": photo_url,
                     "message": text or "",
+                    "attached_media": ",".join(
+                        f'{{"media_fbid":"{fbid}"}}' for fbid in media_fbids
+                    ),
                     "access_token": page_access_token,
                 },
             )
         except APIError as e:
             CustomLogger.exception(
-                "Facebook photo publish failed",
+                "Facebook multi-photo feed publish failed",
                 extra={"operation": "publish_photo"},
             )
-            raise ValueError(f"Facebook photo publish failed: {str(e)}") from e
+            raise ValueError(f"Facebook multi-photo feed publish failed: {str(e)}") from e
 
-        post_id = data.get("id", "") or data.get("post_id", "")
+        post_id = feed_data.get("id", "")
         if not post_id:
-            raise ValueError("Facebook photo publish did not return a post ID")
-
+            raise ValueError("Facebook multi-photo publish did not return a post ID")
         return {"platform_post_id": post_id}

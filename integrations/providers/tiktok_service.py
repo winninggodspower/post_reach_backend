@@ -15,6 +15,7 @@ from utils.custom_logger import CustomLogger
 # Use a generous TTL to avoid the code_verifier expiring before the callback completes.
 OAUTH_STATE_TTL = 600  # 10 minutes in seconds
 
+
 def _generate_code_verifier(length=128):
     """
     Generate a high-entropy cryptographic random string using unreserved characters
@@ -213,12 +214,14 @@ class TiktokService(SocialAccountService):
         return {"platform_post_id": publish_id}
 
     @classmethod
-    def publish_photo(cls, access_token, photo_url, text=""):
+    def publish_photo(cls, access_token, photo_urls, text=""):
         """
-        Publish a photo to TikTok using the photo publish workflow.
+        Publish a photo (or multiple photos) to TikTok using the photo publish workflow.
+
+        TikTok's photo endpoint accepts a `photo_images` array of image URLs.
 
         :param access_token: Valid TikTok access token.
-        :param photo_url: Public/presigned URL of the photo file.
+        :param photo_urls: List of public/presigned URLs of the photo files.
         :param text: Caption text.
         :return: Dict with 'platform_post_id'.
         """
@@ -226,7 +229,7 @@ class TiktokService(SocialAccountService):
             publish_response = cls().post(
                 "/v2/post/publish/photo/",
                 data={
-                    "photo_url": photo_url,
+                    "photo_images": photo_urls,
                     "title": text or "",
                     "privacy_level": "PUBLIC_TO_EVERYONE",
                 },

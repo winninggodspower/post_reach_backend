@@ -10,7 +10,9 @@ from content.serializers import (
     ContentPostResponseSerializer,
     PhotoPostCreateSerializer,
 )
+from content.models import ContentPost
 from content.services.content_creation_service import ContentCreationService
+from content.services.content_post_service import ContentPostService
 from utils.custom_logger import CustomLogger
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
@@ -51,7 +53,7 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         return self._create_and_dispatch(
             request=request,
-            media_file=validated["video"],
+            media_files=[validated["video"]],
             text=text,
             platforms=validated["platforms"],
             content_type="video",
@@ -62,10 +64,10 @@ class ContentPostViewSet(viewsets.ViewSet):
     @swagger_auto_schema(
         operation_summary="Create and publish a photo post to multiple platforms",
         operation_description=(
-            "Uploads a photo file, stores it temporarily in R2, creates a ContentPost "
-            "with per-platform sub-entries, and dispatches async Celery tasks to publish "
-            "the photo to each selected platform. Each platform must already be connected "
-            "to the user's active brand."
+            "Uploads one or more photo files, stores them temporarily in R2, creates "
+            "a ContentPost with per-platform sub-entries, and dispatches async Celery "
+            "tasks to publish the photos to each selected platform. Each platform must "
+            "already be connected to the user's active brand."
         ),
         request_body=PhotoPostCreateSerializer,
         responses={
@@ -85,7 +87,7 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         return self._create_and_dispatch(
             request=request,
-            media_file=validated["photo"],
+            media_files=validated["photos"],
             text=validated.get("text", ""),
             platforms=validated["platforms"],
             content_type="photo",
@@ -110,13 +112,9 @@ class ContentPostViewSet(viewsets.ViewSet):
         """
         GET /api/content/posts/{id}/
         """
-        from content.models import ContentPost
-
         try:
-            content_post = (
-                ContentPost.objects.select_related("brand")
-                .prefetch_related("platform_entries")
-                .get(id=pk, user=request.user)
+            content_post = ContentPostService.get_content_post(
+                post_id=pk, user=request.user
             )
         except ContentPost.DoesNotExist:
             return CustomErrorResponse(
@@ -129,7 +127,7 @@ class ContentPostViewSet(viewsets.ViewSet):
 
     # ── shared helper ──────────────────────────────────────
 
-    def _create_and_dispatch(self, *, request, media_file, text, platforms, content_type):
+    def _create_and_dispatch(self, *, request, media_files, text, platforms, content_type):
         """
         Shared pipeline: call the service (which handles R2 + DB + Celery),
         return the serialized response.
@@ -137,7 +135,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         try:
             content_post = ContentCreationService.create_content_post(
                 user=request.user,
-                media_file=media_file,
+                media_files=media_files,
                 text=text,
                 platforms=platforms,
                 content_type=content_type,

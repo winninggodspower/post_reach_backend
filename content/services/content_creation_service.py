@@ -9,7 +9,7 @@ from typing import List
 
 from django.db import transaction
 
-from content.models import ContentPost, ContentPostPlatform
+from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from content.tasks import publish_platform_entry
 from users.services.brand_service import BrandService
 from social_accounts.services.social_account_validation_service import SocialAccountValidationService
@@ -30,7 +30,7 @@ class ContentCreationService:
         cls,
         *,
         user,
-        media_file,
+        media_files: list,
         text: str,
         platforms: List[str],
         content_type: str = "video",
@@ -39,13 +39,13 @@ class ContentCreationService:
         Full creation + dispatch pipeline:
         1. Resolve the user's default brand (via BrandService)
         2. Validate every requested platform has a connected SocialAccount
-        3. Upload the media to R2 (videos go to videos/ folder, photos to photos/)
-        4. Create ContentPost + ContentPostPlatform entries
+        3. Upload each media file to R2 (videos go to videos/ folder, photos to photos/)
+        4. Create ContentPost + ContentMedia + ContentPostPlatform entries
         5. Dispatch a Celery task for each platform entry
 
-        :param content_type: "video" or "photo" — determines R2 folder and MIME type.
-
-        Raises ValueError with a user-facing message on failure.
+        :param media_files: List of Django UploadedFile objects.
+        :param content_type: "video" or "photo".
+        :raises ValueError: On any failure (user-facing message).
         """
         # 1. Resolve brand via domain service
         brand = BrandService.get_default_brand(user)
@@ -53,17 +53,21 @@ class ContentCreationService:
         # 2. Validate platform connections via domain service
         SocialAccountValidationService.ensure_platforms_connected(brand, platforms)
 
-        # 3. Upload to R2 with correct folder prefix and MIME type
+        # 3. Upload each file to R2
+        uploaded_keys = []
         try:
-            file_bytes = media_file.read()
-            r2_key = R2StorageService.generate_key(content_type=content_type)
-            R2StorageService.upload_file(file_bytes, r2_key, content_type=content_type)
+            for idx, media_file in enumerate(media_files):
+                file_bytes = media_file.read()
+                r2_key = R2StorageService.generate_key(content_type=content_type)
+                R2StorageService.upload_file(file_bytes, r2_key, content_type=content_type)
+                uploaded_keys.append(r2_key)
         except Exception as e:
+            # Clean up any keys that were already uploaded
+            for key in uploaded_keys:
+                R2StorageService.delete_file(key)
             raise ValueError(f"Failed to upload media: {str(e)}") from e
 
-        # 4. Create ContentPost + per-platform entries + dispatch Celery tasks
-        # All inside an atomic transaction so if Celery dispatch fails,
-        # the DB records are rolled back and we clean up the R2 file.
+        # 4. Create ContentPost + ContentMedia + per-platform entries + dispatch Celery tasks
         try:
             with transaction.atomic():
                 content_post = ContentPost.objects.create(
@@ -71,9 +75,19 @@ class ContentCreationService:
                     brand=brand,
                     title=text or "",
                     description="",
-                    media_r2_key=r2_key,
                     content_type=content_type,
                 )
+
+                # Create a ContentMedia record for each uploaded file
+                ContentMedia.objects.bulk_create([
+                    ContentMedia(
+                        content_post=content_post,
+                        r2_key=r2_key,
+                        file_type=content_type,
+                        order=idx,
+                    )
+                    for idx, r2_key in enumerate(uploaded_keys)
+                ])
 
                 ContentPostPlatform.objects.bulk_create([
                     ContentPostPlatform(
@@ -92,12 +106,13 @@ class ContentCreationService:
                 "content.services.content_creation_service",
                 "Failed to dispatch Celery tasks — Redis may be unavailable",
                 extra={
-                    "r2_key": r2_key,
+                    "r2_keys": uploaded_keys,
                     "platforms": platforms,
                 },
             )
-            # Clean up the R2 file since the DB transaction was rolled back
-            R2StorageService.delete_file(r2_key)
+            # Clean up R2 files since the DB transaction was rolled back
+            for key in uploaded_keys:
+                R2StorageService.delete_file(key)
             raise ValueError(
                 "Failed to publish content, queue unavailable at the moment. Please try again later."
             )

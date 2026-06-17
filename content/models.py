@@ -9,9 +9,9 @@ from users.models import Brand
 
 class ContentPost(UUIDTimestampedModel):
     """
-    Represents a single media upload (video or photo) that can be posted
-    to one or more platforms. Platform-specific status is tracked via
-    ContentPostPlatform entries.
+    Represents a media post (video or photo) that can be posted
+    to one or more platforms. Media files are tracked via ContentMedia items.
+    Platform-specific status is tracked via ContentPostPlatform entries.
     """
 
     user = models.ForeignKey(
@@ -27,9 +27,6 @@ class ContentPost(UUIDTimestampedModel):
 
     title = models.CharField(max_length=255, blank=True, default="")
     description = models.TextField(blank=True, default="")
-
-    # R2 object key for the uploaded media (shared across all platforms)
-    media_r2_key = models.CharField(max_length=512)
 
     # Distinguishes whether this post is a video or photo
     content_type = models.CharField(
@@ -50,6 +47,34 @@ class ContentPost(UUIDTimestampedModel):
             self.platform_entries.values_list("platform", flat=True)
         )
         return f"{self.brand.name} → [{platforms}]"
+
+
+class ContentMedia(UUIDTimestampedModel):
+    """
+    Represents a single media file (image or video) belonging to a ContentPost.
+    A photo post may have multiple images (ordered).
+    A video post will have exactly one video.
+    """
+
+    FILE_TYPE_CHOICES = [
+        ("image", "Image"),
+        ("video", "Video"),
+    ]
+
+    content_post = models.ForeignKey(
+        ContentPost,
+        on_delete=models.CASCADE,
+        related_name="media_items",
+    )
+    r2_key = models.CharField(max_length=512)
+    file_type = models.CharField(max_length=10, choices=FILE_TYPE_CHOICES)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"{self.file_type} #{self.order} ({self.r2_key})"
 
 
 class ContentPostPlatform(UUIDTimestampedModel):

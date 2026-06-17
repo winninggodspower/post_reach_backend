@@ -182,50 +182,121 @@ class InstagramService(SocialAccountService):
         return {"platform_post_id": media_id}
 
     @classmethod
-    def publish_photo(cls, access_token, instagram_account_id, photo_url, caption=""):
+    def publish_photo(cls, access_token, instagram_account_id, photo_urls, caption=""):
         """
-        Publish a photo to Instagram using the Content Publishing API.
+        Publish a photo (or carousel of photos) to Instagram.
+
+        For a single photo, creates an IMAGE container and publishes it.
+        For multiple photos, creates a CAROUSEL container with the images as children.
 
         :param access_token: Valid Instagram Graph API access token.
         :param instagram_account_id: Instagram Business/Creator account ID.
-        :param photo_url: Public URL of the photo file.
+        :param photo_urls: List of public/presigned URLs of the photo files.
         :param caption: Photo caption (optional).
         :return: Dict with 'platform_post_id' (Instagram media ID).
         """
+        if len(photo_urls) == 1:
+            # Single photo: create IMAGE container and publish
+            try:
+                container_response = cls().post(
+                    f"/{instagram_account_id}/media",
+                    data={
+                        "media_type": "IMAGE",
+                        "image_url": photo_urls[0],
+                        "caption": caption or "",
+                        "access_token": access_token,
+                    },
+                )
+            except APIError as e:
+                CustomLogger.exception(
+                    "Instagram photo container creation failed",
+                    extra={"operation": "publish_photo"},
+                )
+                raise ValueError(f"Instagram photo container creation failed: {str(e)}") from e
+
+            container_id = container_response.get("id")
+            if not container_id:
+                raise ValueError("Instagram did not return a media container ID")
+
+            try:
+                publish_response = cls().post(
+                    f"/{instagram_account_id}/media_publish",
+                    data={
+                        "creation_id": container_id,
+                        "access_token": access_token,
+                    },
+                )
+            except APIError as e:
+                CustomLogger.exception(
+                    "Instagram photo publish failed",
+                    extra={"operation": "publish_photo"},
+                )
+                raise ValueError(f"Instagram photo publish failed: {str(e)}") from e
+
+            return {"platform_post_id": publish_response.get("id", container_id)}
+
+        # Multiple photos: create a CAROUSEL
+        # Step 1: Create an IMAGE container for each photo
+        child_container_ids = []
+        for url in photo_urls:
+            try:
+                container_response = cls().post(
+                    f"/{instagram_account_id}/media",
+                    data={
+                        "media_type": "IMAGE",
+                        "image_url": url,
+                        "is_carousel_item": "true",
+                        "access_token": access_token,
+                    },
+                )
+            except APIError as e:
+                CustomLogger.exception(
+                    "Instagram carousel image container failed",
+                    extra={"operation": "publish_photo", "url": url},
+                )
+                raise ValueError(f"Instagram carousel image container creation failed: {str(e)}") from e
+
+            child_id = container_response.get("id")
+            if not child_id:
+                raise ValueError(f"Instagram did not return container ID for image: {url}")
+            child_container_ids.append(child_id)
+
+        # Step 2: Create a CAROUSEL container with children
         try:
-            container_response = cls().post(
+            carousel_container = cls().post(
                 f"/{instagram_account_id}/media",
                 data={
-                    "media_type": "IMAGE",
-                    "image_url": photo_url,
+                    "media_type": "CAROUSEL",
+                    "children": ",".join(child_container_ids),
                     "caption": caption or "",
                     "access_token": access_token,
                 },
             )
         except APIError as e:
             CustomLogger.exception(
-                "Instagram photo container creation failed",
+                "Instagram carousel container creation failed",
                 extra={"operation": "publish_photo"},
             )
-            raise ValueError(f"Instagram photo container creation failed: {str(e)}") from e
+            raise ValueError(f"Instagram carousel container creation failed: {str(e)}") from e
 
-        container_id = container_response.get("id")
-        if not container_id:
-            raise ValueError("Instagram did not return a media container ID")
+        carousel_id = carousel_container.get("id")
+        if not carousel_id:
+            raise ValueError("Instagram did not return a carousel container ID")
 
+        # Step 3: Publish the carousel
         try:
             publish_response = cls().post(
                 f"/{instagram_account_id}/media_publish",
                 data={
-                    "creation_id": container_id,
+                    "creation_id": carousel_id,
                     "access_token": access_token,
                 },
             )
         except APIError as e:
             CustomLogger.exception(
-                "Instagram photo publish failed",
+                "Instagram carousel publish failed",
                 extra={"operation": "publish_photo"},
             )
-            raise ValueError(f"Instagram photo publish failed: {str(e)}") from e
+            raise ValueError(f"Instagram carousel publish failed: {str(e)}") from e
 
-        return {"platform_post_id": publish_response.get("id", container_id)}
+        return {"platform_post_id": publish_response.get("id", carousel_id)}
