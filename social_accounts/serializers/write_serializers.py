@@ -5,6 +5,7 @@ from users.models import Brand
 
 __all__ = [
     "FacebookAuthCodeSerializer",
+    "FacebookPagesRequestSerializer",
     "GoogleAuthCodeSerializer",
     "InstagramAuthCodeSerializer",
     "LinkedinAuthCodeSerializer",
@@ -24,6 +25,11 @@ class GoogleAuthCodeSerializer(serializers.Serializer):
     )
 
 
+class FacebookPagesRequestSerializer(serializers.Serializer):
+    code = serializers.CharField(required=True)
+    redirect_uri = serializers.URLField(required=True)
+
+
 class FacebookAuthCodeSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
     redirect_uri = serializers.URLField(required=True)
@@ -32,6 +38,7 @@ class FacebookAuthCodeSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    page_id = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class InstagramAuthCodeSerializer(serializers.Serializer):

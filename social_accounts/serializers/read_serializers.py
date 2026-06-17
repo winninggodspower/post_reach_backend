@@ -3,12 +3,24 @@ from rest_framework import serializers
 
 __all__ = [
     "ConnectAccountResponseSerializer",
+    "FacebookPagesListResponseSerializer",
+    "FacebookPagesResponseSerializer",
     "YoutubeAuthUrlResponseSerializer",
     "FacebookAuthUrlResponseSerializer",
     "InstagramAuthUrlResponseSerializer",
     "TiktokAuthUrlResponseSerializer",
     "LinkedinAuthUrlResponseSerializer",
 ]
+
+
+class FacebookPagesResponseSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    picture_url = serializers.URLField(allow_null=True)
+
+
+class FacebookPagesListResponseSerializer(serializers.Serializer):
+    pages = FacebookPagesResponseSerializer(many=True)
 
 
 

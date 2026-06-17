@@ -11,8 +11,9 @@ urlpatterns = [
     # YouTube uses a ViewSet with auth-url and connect actions
     path('youtube/auth-url/', YoutubeAuthViewSet.as_view({'get': 'auth_url'}), name='youtube-auth-url'),
     path('youtube/connect/', YoutubeAuthViewSet.as_view({'post': 'connect'}), name='youtube-auth-connect'),
-    # Facebook uses a ViewSet with auth-url and connect actions (same pattern as YouTube)
+    # Facebook uses a ViewSet with auth-url, pages, and connect actions
     path('facebook/auth-url/', FacebookAuthViewSet.as_view({'get': 'auth_url'}), name='facebook-auth-url'),
+    path('facebook/pages/', FacebookAuthViewSet.as_view({'post': 'pages'}), name='facebook-pages'),
     path('facebook/connect/', FacebookAuthViewSet.as_view({'post': 'connect'}), name='facebook-auth-connect'),
     # Instagram uses a ViewSet with auth-url and connect actions (same pattern as Facebook/YouTube)
     path('instagram/auth-url/', InstagramAuthViewSet.as_view({'get': 'auth_url'}), name='instagram-auth-url'),

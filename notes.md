@@ -10,7 +10,7 @@ https://www.instagram.com/oauth/authorize
 &force_authentication=1
 
 ## Start celery
-celery -A social_ploadify_backend worker -l info
+celery -A post_reach_backend worker -l info  -P solo
 
 ## Celery beat
-celery -A social_ploadify_backend beat -l  info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+celery -A post_reach_backend beat -l  info --scheduler django_celery_beat.schedulers:DatabaseScheduler

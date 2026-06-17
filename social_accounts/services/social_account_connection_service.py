@@ -54,16 +54,21 @@ class SocialAccountConnectionService:
 
     @classmethod
     @log_exceptions()
-    def connect_facebook(cls, *, user, brand, code, redirect_uri):
+    def connect_facebook(cls, *, user, brand, code, redirect_uri, page_id=""):
         resolved_brand = SocialAccountService._resolve_brand(user, brand)
 
         long_lived_token, expires_in = FacebookService.exchange_code_for_token(
             code, redirect_uri
         )
 
-        # Fetch the first Facebook page to get account name and external ID
+        # Fetch Facebook pages and select the target page
         pages = FacebookService.get_facebook_pages(long_lived_token)
-        page = pages[0]  # Use the first page
+        if page_id:
+            page = next((p for p in pages if p["id"] == page_id), None)
+            if not page:
+                raise ValueError(f"Facebook page with ID '{page_id}' not found in your account")
+        else:
+            page = pages[0]  # Default to the first page
 
         return cls._save_account(
             brand=resolved_brand,
@@ -71,7 +76,7 @@ class SocialAccountConnectionService:
             defaults={
                 "account_name": page["name"],
                 "external_id": page["id"],
-                "access_token": long_lived_token,
+                "access_token": page["access_token"],
                 "token_expires_at": timezone.now() + timedelta(seconds=expires_in),
             },
         )

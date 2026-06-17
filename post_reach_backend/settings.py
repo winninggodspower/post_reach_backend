@@ -90,8 +90,8 @@ SIMPLE_JWT = {
     # An old refresh token is black-listed the moment it is replaced
     # 'BLACKLIST_AFTER_ROTATION': True,
 
-    # 25 minutes is short enough to limit damage, long enough for a SPA
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=25),
+    # 35 minutes is short enough to limit damage, long enough for a SPA
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=35),
     # Three days keeps the user logged in through normal work hours
     'REFRESH_TOKEN_LIFETIME': timedelta(days=3),
 

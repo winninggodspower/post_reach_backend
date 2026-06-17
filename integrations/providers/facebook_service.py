@@ -19,6 +19,7 @@ class FacebookService(SocialAccountService):
 
     REQUIRED_SCOPES = {
         "pages_show_list",
+        # "pages_manage_engagement",
         "pages_read_engagement",
         "pages_manage_posts"
     }
@@ -145,7 +146,10 @@ class FacebookService(SocialAccountService):
         try:
             data = cls().get(
                 "/me/accounts",
-                params={"access_token": access_token},
+                params={
+                    "access_token": access_token,
+                    "fields": "id,name,picture",
+                },
             )
         except APIError as e:
             CustomLogger.exception("Failed to fetch Facebook pages", extra={"operation": "get_facebook_pages"})
@@ -156,7 +160,12 @@ class FacebookService(SocialAccountService):
             raise ValueError("No Facebook pages found for this account")
 
         return [
-            {"id": page["id"], "name": page["name"]}
+            {
+                "id": page["id"],
+                "name": page["name"],
+                "access_token": page["access_token"],
+                "picture_url": page.get("picture", {}).get("data", {}).get("url", None),
+            }
             for page in pages
         ]
 

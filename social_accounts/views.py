@@ -11,6 +11,8 @@ from social_accounts.serializers import (
     ConnectAccountResponseSerializer,
     FacebookAuthCodeSerializer,
     FacebookAuthUrlResponseSerializer,
+    FacebookPagesListResponseSerializer,
+    FacebookPagesRequestSerializer,
     GoogleAuthCodeSerializer,
     InstagramAuthCodeSerializer,
     InstagramAuthUrlResponseSerializer,
@@ -149,6 +151,7 @@ class FacebookAuthViewSet(viewsets.ViewSet):
                 brand=serializer.validated_data.get("brand"),
                 code=serializer.validated_data["code"],
                 redirect_uri=serializer.validated_data["redirect_uri"],
+                page_id=serializer.validated_data.get("page_id", ""),
             )
         except ValueError as e:
             return CustomErrorResponse(
@@ -162,6 +165,44 @@ class FacebookAuthViewSet(viewsets.ViewSet):
                 "platform": "facebook",
                 "is_connected": True,
             },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"], url_path="pages")
+    @swagger_auto_schema(
+        request_body=FacebookPagesRequestSerializer,
+        responses={200: FacebookPagesListResponseSerializer},
+    )
+    def pages(self, request):
+        """
+        POST /social-accounts/facebook/pages/
+        Exchanges the authorization code for a long-lived token and returns
+        the list of Facebook Pages the user manages, including their IDs and names.
+        The user can then select a page and pass its ID to the connect endpoint.
+        """
+        serializer = FacebookPagesRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            long_lived_token, _ = FacebookService.exchange_code_for_token(
+                serializer.validated_data["code"],
+                serializer.validated_data["redirect_uri"],
+            )
+            pages = FacebookService.get_facebook_pages(long_lived_token)
+        except ValueError as e:
+            return CustomErrorResponse(
+                {"message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Strip access_tokens from response — not needed by the frontend at this stage
+        safe_pages = [
+            {"id": p["id"], "name": p["name"], "picture_url": p["picture_url"]}
+            for p in pages
+        ]
+
+        return CustomSuccessResponse(
+            {"pages": safe_pages},
             status=status.HTTP_200_OK,
         )
 
