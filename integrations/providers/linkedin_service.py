@@ -1,5 +1,7 @@
 import uuid
 
+import httpx
+
 from django.conf import settings
 from django.core.cache import cache
 
@@ -107,28 +109,149 @@ class LinkedinService(SocialAccountService):
     def refresh_access_token(cls, refresh_token):
         return None
 
+    # ------------------------------------------------------------------
+    # Media upload helpers (shared by image and video publishing)
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def _download_media_binary(cls, media_url):
+        """
+        Downloads binary data from the given URL.
+
+        :param media_url: Public URL of the media file.
+        :return: Raw bytes of the media.
+        """
+        try:
+            with httpx.Client(timeout=120.0, follow_redirects=True) as client:
+                response = client.get(media_url)
+                response.raise_for_status()
+                return response.content
+        except Exception as e:
+            CustomLogger.exception(
+                "Failed to download media for LinkedIn upload",
+                extra={"operation": "_download_media_binary", "media_url": media_url},
+            )
+            raise ValueError(f"Failed to download media from {media_url}: {str(e)}") from e
+
+    @classmethod
+    def _register_media_upload(cls, access_token, person_urn, recipe):
+        """
+        Registers a media (image/video) upload with LinkedIn and returns
+        the upload URL and media asset URN.
+
+        :param access_token: Valid LinkedIn access token.
+        :param person_urn: LinkedIn person URN.
+        :param recipe: The digital media recipe URN, e.g.
+                       "urn:li:digitalmediaRecipe:feedshare-image" or
+                       "urn:li:digitalmediaRecipe:feedshare-video".
+        :return: Tuple of (upload_url, asset_urn).
+        """
+        try:
+            response = cls().post(
+                f"{cls.API_BASE_URL}/assets?action=registerUpload",
+                json_data={
+                    "registerUploadRequest": {
+                        "recipes": [recipe],
+                        "owner": person_urn,
+                        "serviceRelationships": [
+                            {
+                                "relationshipType": "OWNER",
+                                "identifier": "urn:li:userGeneratedContent",
+                            }
+                        ],
+                    }
+                },
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "LinkedIn media registration failed",
+                extra={"operation": "_register_media_upload", "recipe": recipe},
+            )
+            raise ValueError(f"LinkedIn media registration failed: {str(e)}") from e
+
+        try:
+            value = response["value"]
+            upload_mechanism = value["uploadMechanism"][
+                "com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"
+            ]
+            upload_url = upload_mechanism["uploadUrl"]
+            asset_urn = value["asset"]
+        except (KeyError, TypeError) as e:
+            raise ValueError(
+                f"LinkedIn media registration response missing expected fields: {e}"
+            ) from e
+
+        return upload_url, asset_urn
+
+    @classmethod
+    def _upload_media_to_linkedin(cls, upload_url, media_binary):
+        """
+        Uploads raw binary data to the LinkedIn-provided upload URL.
+
+        :param upload_url: The upload URL obtained from registerUpload.
+        :param media_binary: Raw bytes of the media file.
+        """
+        try:
+            with httpx.Client(timeout=300.0) as client:
+                response = client.request(
+                    method="POST",
+                    url=upload_url,
+                    content=media_binary,
+                    headers={
+                        "Content-Type": "application/octet-stream",
+                    },
+                )
+                response.raise_for_status()
+        except Exception as e:
+            CustomLogger.exception(
+                "LinkedIn media binary upload failed",
+                extra={"operation": "_upload_media_to_linkedin"},
+            )
+            raise ValueError(f"LinkedIn media binary upload failed: {str(e)}") from e
+
+    # ------------------------------------------------------------------
+    # Publishing methods
+    # ------------------------------------------------------------------
+
     @classmethod
     def publish_video(cls, access_token, person_urn, video_url, title="", description=""):
         """
         Publish a video post to LinkedIn using the UGC Posts API.
 
-        Step 1: Initialize a video upload via /videos?action=startUpload
-        Step 2: Upload the video bytes to the returned upload URL
-        Step 3: Finalize upload and create a share on LinkedIn
+        LinkedIn requires a multi-step process for video sharing:
+        1. Register the video upload via /assets?action=registerUpload
+        2. Download the video from the source URL
+        3. Upload the video binary to LinkedIn's upload URL
+        4. Create the share with the media asset URN
 
         :param access_token: Valid LinkedIn access token with w_member_social scope.
         :param person_urn: LinkedIn person URN (e.g., "urn:li:person:xxxxx").
-        :param video_url: Public URL of the video file for LinkedIn to pull.
+        :param video_url: Public URL of the video file to download and upload.
         :param title: Post text / commentary (optional).
         :param description: Additional description (optional).
         :return: Dict with 'platform_post_id' (the LinkedIn activity/share URN).
         """
+        # Step 1: Register the video upload with LinkedIn
+        upload_url, asset_urn = cls._register_media_upload(
+            access_token, person_urn, "urn:li:digitalmediaRecipe:feedshare-video"
+        )
+
+        # Step 2: Download the video binary from the source URL
+        video_binary = cls._download_media_binary(video_url)
+
+        # Step 3: Upload the video binary to LinkedIn
+        cls._upload_media_to_linkedin(upload_url, video_binary)
+
+        # Step 4: Create the share post with the media asset URN
         try:
-            # For LinkedIn, we create a share with the video URL directly
-            # LinkedIn API supports sharing video URLs natively
             response = cls().post(
                 f"{cls.API_BASE_URL}/ugcPosts",
-                data={
+                json_data={
                     "author": person_urn,
                     "lifecycleState": "PUBLISHED",
                     "specificContent": {
@@ -140,10 +263,7 @@ class LinkedinService(SocialAccountService):
                             "media": [
                                 {
                                     "status": "READY",
-                                    "originalUrl": video_url,
-                                    "title": {
-                                        "text": title or "Video",
-                                    },
+                                    "media": asset_urn,
                                 }
                             ],
                         }
@@ -176,16 +296,34 @@ class LinkedinService(SocialAccountService):
         """
         Publish a photo post to LinkedIn using the UGC Posts API.
 
-        :param access_token: Valid LinkedIn access token.
-        :param person_urn: LinkedIn person URN.
-        :param photo_url: Public URL of the photo file.
+        LinkedIn requires a multi-step process for image sharing:
+        1. Register the image upload via /assets?action=registerUpload
+        2. Download the image from the source URL
+        3. Upload the image binary to LinkedIn's upload URL
+        4. Create the share with the media asset URN
+
+        :param access_token: Valid LinkedIn access token with w_member_social scope.
+        :param person_urn: LinkedIn person URN (e.g., "urn:li:person:xxxxx").
+        :param photo_url: Public URL of the photo file to download and upload.
         :param text: Post text (optional).
         :return: Dict with 'platform_post_id'.
         """
+        # Step 1: Register the image upload with LinkedIn
+        upload_url, asset_urn = cls._register_media_upload(
+            access_token, person_urn, "urn:li:digitalmediaRecipe:feedshare-image"
+        )
+
+        # Step 2: Download the image binary from the source URL
+        image_binary = cls._download_media_binary(photo_url)
+
+        # Step 3: Upload the image binary to LinkedIn
+        cls._upload_media_to_linkedin(upload_url, image_binary)
+
+        # Step 4: Create the share post with the media asset URN
         try:
             response = cls().post(
                 f"{cls.API_BASE_URL}/ugcPosts",
-                data={
+                json_data={
                     "author": person_urn,
                     "lifecycleState": "PUBLISHED",
                     "specificContent": {
@@ -197,7 +335,7 @@ class LinkedinService(SocialAccountService):
                             "media": [
                                 {
                                     "status": "READY",
-                                    "originalUrl": photo_url,
+                                    "media": asset_urn,
                                 }
                             ],
                         }
