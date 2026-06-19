@@ -12,3 +12,11 @@ class FileTypeChoice(models.TextChoices):
     IMAGE = "image", "Image"
     VIDEO = "video", "Video"
 
+
+class PhotoPlatformOptions(models.TextChoices):
+    """Platforms that support photo posts (YouTube does not support photos)."""
+    INSTAGRAM = "instagram", "Instagram"
+    FACEBOOK = "facebook", "Facebook"
+    TIKTOK = "tiktok", "TikTok"
+    LINKEDIN = "linkedin", "LinkedIn"
+    TWITTER = "twitter", "Twitter"

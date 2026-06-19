@@ -152,11 +152,10 @@ class TiktokService(SocialAccountService):
     @classmethod
     def publish_video(cls, access_token, video_url, title):
         """
-        Publish a video to TikTok using the upload-then-publish workflow.
+        Publish a video to TikTok using the Direct Post API (PULL_FROM_URL).
 
-        Step 1: Initialize video upload (POST /v2/video/upload/)
-        Step 2: Upload the video bytes to the returned upload URL
-        Step 3: POST /v2/post/publish/video/ to publish with title
+        Uses the /v2/post/publish/video/init/ endpoint with PULL_FROM_URL source.
+        See: https://developers.tiktok.com/doc/content-posting-api-reference-direct-post
 
         :param access_token: Valid TikTok access token.
         :param video_url: Public/presigned URL of the video file.
@@ -164,39 +163,17 @@ class TiktokService(SocialAccountService):
         :return: Dict with 'platform_post_id' (the publish_id).
         """
         try:
-            # Step 1: Initialize upload
-            init_response = cls().post(
-                "/v2/video/upload/",
-                data={
-                    "video_url": video_url,
-                },
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json; charset=UTF-8",
-                },
-            )
-        except APIError as e:
-            CustomLogger.exception(
-                "TikTok video upload init failed",
-                extra={"operation": "publish_video"},
-            )
-            raise ValueError(f"TikTok video upload init failed: {str(e)}") from e
-
-        if not init_response or "data" not in init_response:
-            raise ValueError("TikTok video upload init returned unexpected response")
-
-        video_id = init_response["data"].get("video_id")
-        if not video_id:
-            raise ValueError("TikTok video upload did not return a video_id")
-
-        # Step 2: Publish the uploaded video
-        try:
             publish_response = cls().post(
-                "/v2/post/publish/video/",
-                data={
-                    "video_id": video_id,
-                    "title": title or "",
-                    "privacy_level": "PUBLIC_TO_EVERYONE",
+                "/v2/post/publish/video/init/",
+                json_data={
+                    "post_info": {
+                        "title": title or "",
+                        "privacy_level": "SELF_ONLY",
+                    },
+                    "source_info": {
+                        "source": "PULL_FROM_URL",
+                        "video_url": video_url,
+                    },
                 },
                 headers={
                     "Authorization": f"Bearer {access_token}",
@@ -210,15 +187,19 @@ class TiktokService(SocialAccountService):
             )
             raise ValueError(f"TikTok video publish failed: {str(e)}") from e
 
-        publish_id = publish_response.get("data", {}).get("publish_id", video_id)
-        return {"platform_post_id": publish_id}
+        if not publish_response or "data" not in publish_response:
+            raise ValueError("TikTok video publish init returned unexpected response")
+
+        publish_id = publish_response.get("data", {}).get("publish_id", "")
+        return {"platform_post_id": publish_id or "unknown"}
 
     @classmethod
     def publish_photo(cls, access_token, photo_urls, text=""):
         """
-        Publish a photo (or multiple photos) to TikTok using the photo publish workflow.
+        Publish a photo (or multiple photos) to TikTok using the Content Posting API.
 
-        TikTok's photo endpoint accepts a `photo_images` array of image URLs.
+        Uses the /v2/post/publish/content/init/ endpoint with PULL_FROM_URL source.
+        See: https://developers.tiktok.com/doc/content-posting-api-reference-photo-post
 
         :param access_token: Valid TikTok access token.
         :param photo_urls: List of public/presigned URLs of the photo files.
@@ -227,11 +208,20 @@ class TiktokService(SocialAccountService):
         """
         try:
             publish_response = cls().post(
-                "/v2/post/publish/photo/",
-                data={
-                    "photo_images": photo_urls,
-                    "title": text or "",
-                    "privacy_level": "PUBLIC_TO_EVERYONE",
+                "/v2/post/publish/content/init/",
+                json_data={
+                    "post_info": {
+                        "title": text or "",
+                        "description": text or "",
+                        "privacy_level": "SELF_ONLY",
+                    },
+                    "source_info": {
+                        "source": "PULL_FROM_URL",
+                        "photo_cover_index": 0,
+                        "photo_images": photo_urls,
+                    },
+                    "post_mode": "DIRECT_POST",
+                    "media_type": "PHOTO",
                 },
                 headers={
                     "Authorization": f"Bearer {access_token}",

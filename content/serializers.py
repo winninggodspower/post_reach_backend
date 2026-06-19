@@ -1,12 +1,14 @@
 from drf_yasg import openapi
 from rest_framework import serializers
 
+from content.enums import PhotoPlatformOptions
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from social_accounts.enums import PlatformChoices
 
 
 # Used by the swagger_auto_schema in views.py for the platforms enum dropdown
 PLATFORM_ENUMS = [choice[0] for choice in PlatformChoices.choices]
+PHOTO_PLATFORM_ENUMS = [choice[0] for choice in PhotoPlatformOptions.choices]
 
 # Swagger manual parameters for the photo post endpoint
 photo_post_parameters = [
@@ -29,9 +31,9 @@ photo_post_parameters = [
         "platforms",
         openapi.IN_FORM,
         type=openapi.TYPE_ARRAY,
-        items=openapi.Items(type=openapi.TYPE_STRING, enum=PLATFORM_ENUMS),
+        items=openapi.Items(type=openapi.TYPE_STRING, enum=PHOTO_PLATFORM_ENUMS),
         required=True,
-        description="Target platforms to publish to.",
+        description="Target platforms to publish to (YouTube does not support photos).",
     ),
 ]
 
@@ -66,7 +68,7 @@ class PhotoPostCreateSerializer(serializers.Serializer):
     )
     text = serializers.CharField(required=False, allow_blank=True, default="")
     platforms = serializers.MultipleChoiceField(
-        choices=PlatformChoices.choices, required=True
+        choices=PhotoPlatformOptions.choices, required=True
     )
 
 

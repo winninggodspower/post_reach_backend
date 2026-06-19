@@ -234,6 +234,7 @@ CLOUDFLARE_R2_ACCESS_KEY = env('CLOUDFLARE_R2_ACCESS_KEY')
 CLOUDFLARE_R2_SECRET = env('CLOUDFLARE_R2_SECRET')
 CLOUDFLARE_R2_BUCKET = env('CLOUDFLARE_R2_BUCKET')
 CLOUDFLARE_R2_ENDPOINT = f"https://{env('CLOUDFLARE_ACCOUNT_ID')}.r2.cloudflarestorage.com"
+CLOUDFLARE_R2_PUBLIC_DOMAIN = "https://postreach.media.winningtech.xyz"
 
 # Celery Settings
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379')

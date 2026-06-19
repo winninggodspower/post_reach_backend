@@ -159,12 +159,22 @@ class R2StorageService:
     @classmethod
     def generate_presigned_url(cls, key: str, expiration: int = 3600) -> Optional[str]:
         """
-        Generate a presigned URL for temporary public access to an R2 object.
+       Generate a public URL for an R2 object.
+
+        If CLOUDFLARE_R2_PUBLIC_DOMAIN is configured, it builds a clean, 
+        permanent public URL. Otherwise, it falls back to a signed S3 URL.
 
         :param key: Object key in the bucket.
         :param expiration: URL lifetime in seconds (default 1 hour).
         :return: Presigned URL string, or None on failure.
         """
+        # 1. Use the custom domain if available (Perfect for TikTok photo pull)
+        public_domain = getattr(settings, "CLOUDFLARE_R2_PUBLIC_DOMAIN", None)
+        if public_domain:
+            base_url = public_domain.rstrip("/")
+            return f"{base_url}/{key}"
+        
+        # 2. Fallback to default boto3 presigned URL
         client = cls._get_client()
         try:
             url = client.generate_presigned_url(
