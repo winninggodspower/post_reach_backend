@@ -32,7 +32,8 @@ class ContentCreationService:
         *,
         user,
         media_files: list,
-        text: str,
+        title: str,
+        description: str = "",
         platforms: List[str],
         content_type: str = "video",
     ) -> ContentPost:
@@ -71,11 +72,13 @@ class ContentCreationService:
         # 4. Create ContentPost + ContentMedia + per-platform entries + dispatch Celery tasks
         try:
             with transaction.atomic():
+                # Description only applies to video posts; photo posts use text as title
+                post_description = description if content_type == "video" else ""
                 content_post = ContentPost.objects.create(
                     user=user,
                     brand=brand,
-                    title=text or "",
-                    description="",
+                    title=title or "",
+                    description=post_description,
                     content_type=content_type,
                 )
 

@@ -48,14 +48,11 @@ class ContentPostViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
         validated = serializer.validated_data
 
-        text = validated["title"]
-        if validated.get("description"):
-            text = f"{validated['title']}\n{validated['description']}"
-
         return self._create_and_dispatch(
             request=request,
             media_files=[validated["video"]],
-            text=text,
+            title=validated["title"],
+            description=validated.get("description", ""),
             platforms=validated["platforms"],
             content_type="video",
         )
@@ -89,7 +86,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         return self._create_and_dispatch(
             request=request,
             media_files=validated["photos"],
-            text=validated.get("text", ""),
+            title=validated.get("text", ""),
             platforms=validated["platforms"],
             content_type="photo",
         )
@@ -128,7 +125,7 @@ class ContentPostViewSet(viewsets.ViewSet):
 
     # ── shared helper ──────────────────────────────────────
 
-    def _create_and_dispatch(self, *, request, media_files, text, platforms, content_type):
+    def _create_and_dispatch(self, *, request, media_files, platforms, content_type, title, description=""):
         """
         Shared pipeline: call the service (which handles R2 + DB + Celery),
         return the serialized response.
@@ -137,7 +134,8 @@ class ContentPostViewSet(viewsets.ViewSet):
             content_post = ContentCreationService.create_content_post(
                 user=request.user,
                 media_files=media_files,
-                text=text,
+                title=title,
+                description=description,
                 platforms=platforms,
                 content_type=content_type,
             )
