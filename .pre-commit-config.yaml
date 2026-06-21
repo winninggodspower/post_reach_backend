@@ -23,3 +23,19 @@ repos:
     hooks:
     -   id: pyupgrade
         args: [--py311-plus]  # Use the latest Python syntax features
+
+- repo: https://github.com/astral-sh/uv-pre-commit
+    rev: v0.1.0 
+    hooks:
+    # This compiles pyproject.toml into requirements.txt automatically on commit
+    -   id: uv-pre-commit
+        args: [pyproject.toml, -o, requirements.txt]
+
+- repo: local
+    hooks:
+      - id: git-add-modified
+        name: Auto-stage hook-modified files
+        entry: git add -u
+        language: system
+        pass_filenames: false
+        always_run: true
