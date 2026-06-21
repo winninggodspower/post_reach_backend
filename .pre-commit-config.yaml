@@ -25,13 +25,13 @@ repos:
         args: [--py311-plus]  # Use the latest Python syntax features
 
     # This compiles pyproject.toml into requirements.txt automatically on commit
-- repo: https://github.com/astral-sh/uv-pre-commit
+-   repo: https://github.com/astral-sh/uv-pre-commit
     rev: v0.1.0 
     hooks:
     -   id: uv-pre-commit
         args: [pyproject.toml, -o, requirements.txt]
 
-repo: local
+-   repo: local
     hooks:
       - id: uv-compile-and-commit
         name: Auto-stage all modified files and commit
