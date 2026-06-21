@@ -26,9 +26,9 @@ repos:
 
     # This compiles pyproject.toml into requirements.txt automatically on commit
 -   repo: https://github.com/astral-sh/uv-pre-commit
-    rev: v0.1.0 
+    rev: 0.11.23  
     hooks:
-    -   id: uv-pre-commit
+      - id: pip-compile
         args: [pyproject.toml, -o, requirements.txt]
 
 -   repo: local
