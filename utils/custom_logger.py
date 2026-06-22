@@ -3,8 +3,9 @@ import json
 import logging
 import sys
 from functools import wraps
-from typing import Any, Callable, Mapping, Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
+from collections.abc import Callable, Mapping
 
 T = TypeVar("T", bound=Callable[..., object])
 REDACTED_VALUE = "<redacted>"
@@ -46,7 +47,7 @@ def get_logger(name: str) -> logging.Logger:
     return logger
 
 
-def log_exceptions(logger: Optional[logging.Logger] = None):
+def log_exceptions(logger: logging.Logger | None = None):
     """Decorator to log any exception raised by the wrapped function.
 
     The original exception is re-raised after logging.
@@ -62,7 +63,9 @@ def log_exceptions(logger: Optional[logging.Logger] = None):
             try:
                 return func(*args, **kwargs)
             except Exception:
-                CustomLogger.exception(func.__module__, f"Unhandled exception in {func.__qualname__}")
+                CustomLogger.exception(
+                    func.__module__, f"Unhandled exception in {func.__qualname__}"
+                )
                 raise
 
         return wrapper  # type: ignore
@@ -105,7 +108,7 @@ def _sanitize_value(value: Any, redact_keys: set[str], depth: int = 0) -> Any:
     return str(value)
 
 
-def _sanitize_extra(extra: Optional[dict[str, Any]]) -> dict[str, Any]:
+def _sanitize_extra(extra: dict[str, Any] | None) -> dict[str, Any]:
     if not extra:
         return {}
 
@@ -125,7 +128,9 @@ def _normalize_message(message: Any) -> str:
     return str(sanitized)
 
 
-def _write_local_log(source: str, level: str, message: str, extra: dict[str, Any]) -> None:
+def _write_local_log(
+    source: str, level: str, message: str, extra: dict[str, Any]
+) -> None:
     level_number = getattr(logging, level.upper(), logging.INFO)
     logger = get_logger(source)
     if extra:
@@ -138,10 +143,10 @@ def _dispatch_log_event(
     source: str,
     level: str,
     message: Any,
-    extra: Optional[dict[str, Any]] = None,
+    extra: dict[str, Any] | None = None,
     emit_local: bool,
     emit_discord: bool,
-    mention_here: Optional[bool] = None,
+    mention_here: bool | None = None,
 ) -> None:
     normalized_source = str(source)
     normalized_level = str(level).upper()
@@ -173,7 +178,7 @@ class CustomLogger:
         logger.info("Created user", {"user_id": 1})
     """
 
-    def __init__(self, source: Optional[str] = None):
+    def __init__(self, source: str | None = None):
         self.source = source or self._infer_caller_module(skip=2)
 
     @staticmethod
@@ -184,7 +189,11 @@ class CustomLogger:
             for _ in range(skip):
                 caller = caller.f_back if caller else None
             module = inspect.getmodule(caller) if caller else None
-            return module.__name__ if module and hasattr(module, "__name__") else "__main__"
+            return (
+                module.__name__
+                if module and hasattr(module, "__name__")
+                else "__main__"
+            )
         finally:
             del frame
 
@@ -193,7 +202,7 @@ class CustomLogger:
         first_arg: "CustomLogger | str",
         args: tuple[Any, ...],
         default_message: Any = "",
-    ) -> tuple[str, Any, Optional[dict[str, Any]]]:
+    ) -> tuple[str, Any, dict[str, Any] | None]:
         extra = None
         if isinstance(first_arg, CustomLogger):
             source = first_arg.source
@@ -212,36 +221,101 @@ class CustomLogger:
 
         return source, resolved_message, extra
 
-    def debug(self: "CustomLogger | str", *args: Any, extra: Optional[dict[str, Any]] = None) -> None:
-        source, resolved_message, positional_extra = CustomLogger._resolve_call(self, args)
-        _dispatch_log_event(source=source, level="DEBUG", message=resolved_message, extra=extra or positional_extra, emit_local=True, emit_discord=True)
+    def debug(
+        self: "CustomLogger | str", *args: Any, extra: dict[str, Any] | None = None
+    ) -> None:
+        source, resolved_message, positional_extra = CustomLogger._resolve_call(
+            self, args
+        )
+        _dispatch_log_event(
+            source=source,
+            level="DEBUG",
+            message=resolved_message,
+            extra=extra or positional_extra,
+            emit_local=True,
+            emit_discord=True,
+        )
 
-    def info(self: "CustomLogger | str", *args: Any, extra: Optional[dict[str, Any]] = None) -> None:
-        source, resolved_message, positional_extra = CustomLogger._resolve_call(self, args)
-        _dispatch_log_event(source=source, level="INFO", message=resolved_message, extra=extra or positional_extra, emit_local=True, emit_discord=True)
+    def info(
+        self: "CustomLogger | str", *args: Any, extra: dict[str, Any] | None = None
+    ) -> None:
+        source, resolved_message, positional_extra = CustomLogger._resolve_call(
+            self, args
+        )
+        _dispatch_log_event(
+            source=source,
+            level="INFO",
+            message=resolved_message,
+            extra=extra or positional_extra,
+            emit_local=True,
+            emit_discord=True,
+        )
 
-    def warning(self: "CustomLogger | str", *args: Any, extra: Optional[dict[str, Any]] = None) -> None:
-        source, resolved_message, positional_extra = CustomLogger._resolve_call(self, args)
-        _dispatch_log_event(source=source, level="WARNING", message=resolved_message, extra=extra or positional_extra, emit_local=True, emit_discord=True)
+    def warning(
+        self: "CustomLogger | str", *args: Any, extra: dict[str, Any] | None = None
+    ) -> None:
+        source, resolved_message, positional_extra = CustomLogger._resolve_call(
+            self, args
+        )
+        _dispatch_log_event(
+            source=source,
+            level="WARNING",
+            message=resolved_message,
+            extra=extra or positional_extra,
+            emit_local=True,
+            emit_discord=True,
+        )
 
-    def error(self: "CustomLogger | str", *args: Any, extra: Optional[dict[str, Any]] = None) -> None:
-        source, resolved_message, positional_extra = CustomLogger._resolve_call(self, args)
-        _dispatch_log_event(source=source, level="ERROR", message=resolved_message, extra=extra or positional_extra, emit_local=True, emit_discord=True)
+    def error(
+        self: "CustomLogger | str", *args: Any, extra: dict[str, Any] | None = None
+    ) -> None:
+        source, resolved_message, positional_extra = CustomLogger._resolve_call(
+            self, args
+        )
+        _dispatch_log_event(
+            source=source,
+            level="ERROR",
+            message=resolved_message,
+            extra=extra or positional_extra,
+            emit_local=True,
+            emit_discord=True,
+        )
 
-    def critical(self: "CustomLogger | str", *args: Any, extra: Optional[dict[str, Any]] = None) -> None:
-        source, resolved_message, positional_extra = CustomLogger._resolve_call(self, args)
-        _dispatch_log_event(source=source, level="CRITICAL", message=resolved_message, extra=extra or positional_extra, emit_local=True, emit_discord=True)
+    def critical(
+        self: "CustomLogger | str", *args: Any, extra: dict[str, Any] | None = None
+    ) -> None:
+        source, resolved_message, positional_extra = CustomLogger._resolve_call(
+            self, args
+        )
+        _dispatch_log_event(
+            source=source,
+            level="CRITICAL",
+            message=resolved_message,
+            extra=extra or positional_extra,
+            emit_local=True,
+            emit_discord=True,
+        )
 
-    def exception(self: "CustomLogger | str", *args: Any, extra: Optional[dict[str, Any]] = None) -> None:
-        source, resolved_message, positional_extra = CustomLogger._resolve_call(self, args, default_message="Unhandled exception")
+    def exception(
+        self: "CustomLogger | str", *args: Any, extra: dict[str, Any] | None = None
+    ) -> None:
+        source, resolved_message, positional_extra = CustomLogger._resolve_call(
+            self, args, default_message="Unhandled exception"
+        )
         exc_type, exc_value, _ = sys.exc_info()
         merged_extra = dict(extra or positional_extra or {})
         if exc_type:
             merged_extra.setdefault("exception_type", exc_type.__name__)
         if exc_value:
             merged_extra.setdefault("exception", str(exc_value))
-        _dispatch_log_event(source=source, level="ERROR", message=resolved_message, extra=merged_extra, emit_local=True, emit_discord=True)
+        _dispatch_log_event(
+            source=source,
+            level="ERROR",
+            message=resolved_message,
+            extra=merged_extra,
+            emit_local=True,
+            emit_discord=True,
+        )
 
     def __getattr__(self, item):
         return getattr(get_logger(self.source), item)
-

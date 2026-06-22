@@ -35,6 +35,7 @@ class TestGenerateAuthUrl:
         auth_url = LinkedinService.generate_auth_url(user_id=user.id)
 
         import urllib.parse
+
         parsed = urllib.parse.urlparse(auth_url)
         params = urllib.parse.parse_qs(parsed.query)
         state_from_url = params["state"][0]
@@ -49,6 +50,7 @@ class TestGenerateAuthUrl:
         auth_url = LinkedinService.generate_auth_url(user_id=user.id)
 
         import urllib.parse
+
         parsed = urllib.parse.urlparse(auth_url)
         params = urllib.parse.parse_qs(parsed.query)
 
@@ -61,6 +63,7 @@ class TestGenerateAuthUrl:
 
         # Create a second user
         from users.models import User
+
         user2 = User.objects.create_user(
             email="user2@example.com",
             password="StrongPass123!",
@@ -101,17 +104,25 @@ class TestExchangeCodeForToken:
         """Should raise ValueError when the token exchange API call fails."""
         from utils.http import APIError
 
-        mocker.patch.object(LinkedinService, "post", side_effect=APIError("Token exchange failed"))
+        mocker.patch.object(
+            LinkedinService, "post", side_effect=APIError("Token exchange failed")
+        )
 
         with pytest.raises(ValueError, match="LinkedIn Auth Error"):
-            LinkedinService.exchange_code_for_token("bad_code", "https://example.com/callback")
+            LinkedinService.exchange_code_for_token(
+                "bad_code", "https://example.com/callback"
+            )
 
     def test_exchange_code_for_token_missing_access_token(self, mocker):
         """Should raise ValueError when response has no access_token."""
-        mocker.patch.object(LinkedinService, "post", return_value={"error": "invalid_grant"})
+        mocker.patch.object(
+            LinkedinService, "post", return_value={"error": "invalid_grant"}
+        )
 
         with pytest.raises(ValueError, match="LinkedIn Auth Error"):
-            LinkedinService.exchange_code_for_token("bad_code", "https://example.com/callback")
+            LinkedinService.exchange_code_for_token(
+                "bad_code", "https://example.com/callback"
+            )
 
     def test_exchange_code_for_token_sends_correct_data(self, mocker):
         """Should send the correct data payload to /accessToken."""
@@ -121,7 +132,9 @@ class TestExchangeCodeForToken:
             return_value={"access_token": "token"},
         )
 
-        LinkedinService.exchange_code_for_token("auth_code", "https://example.com/callback")
+        LinkedinService.exchange_code_for_token(
+            "auth_code", "https://example.com/callback"
+        )
 
         call_args = mock_post.call_args[0]
         call_kwargs = mock_post.call_args[1]
@@ -131,7 +144,10 @@ class TestExchangeCodeForToken:
         assert call_kwargs["data"]["redirect_uri"] == "https://example.com/callback"
         assert "client_id" in call_kwargs["data"]
         assert "client_secret" in call_kwargs["data"]
-        assert call_kwargs["headers"]["Content-Type"] == "application/x-www-form-urlencoded"
+        assert (
+            call_kwargs["headers"]["Content-Type"]
+            == "application/x-www-form-urlencoded"
+        )
 
 
 class TestFetchUserInfo:
@@ -161,7 +177,10 @@ class TestFetchUserInfo:
         # Verify it used the correct endpoint
         assert mock_get.call_args[0][0] == "https://api.linkedin.com/v2/userinfo"
         # Verify Bearer token header
-        assert mock_get.call_args[1]["headers"]["Authorization"] == "Bearer valid_access_token"
+        assert (
+            mock_get.call_args[1]["headers"]["Authorization"]
+            == "Bearer valid_access_token"
+        )
 
     def test_fetch_user_info_no_given_name(self, mocker):
         """Should handle missing given_name/family_name gracefully."""

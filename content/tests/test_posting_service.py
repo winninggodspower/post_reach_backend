@@ -10,10 +10,8 @@ from django.utils import timezone
 
 from content.enums import PostStatus
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
-from content.serializers import (
-    ContentPostCreateSerializer,
-    PhotoPostCreateSerializer,
-)
+from content.serializers import (ContentPostCreateSerializer,
+                                 PhotoPostCreateSerializer)
 from content.services.content_creation_service import ContentCreationService
 from content.services.posting_service import PostingService
 from social_accounts.enums import PlatformChoices
@@ -155,7 +153,9 @@ class TestContentCreationService:
         mock_delay = mocker.patch(
             "content.tasks.publish_platform_entry.delay",
         )
-        self._setup_accounts(brand, [PlatformChoices.FACEBOOK, PlatformChoices.INSTAGRAM])
+        self._setup_accounts(
+            brand, [PlatformChoices.FACEBOOK, PlatformChoices.INSTAGRAM]
+        )
 
         content_post = ContentCreationService.create_content_post(
             user=user,
@@ -179,7 +179,9 @@ class TestContentCreationService:
         assert mock_delay.call_count == 2
         assert mock_upload.call_count == 3
 
-    def test_create_multiple_dispatches_one_task_per_platform(self, db, user, brand, mocker):
+    def test_create_multiple_dispatches_one_task_per_platform(
+        self, db, user, brand, mocker
+    ):
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
         )
@@ -204,6 +206,7 @@ class TestContentCreationService:
 
     def test_raises_when_no_brand(self, db, user, mocker):
         from users.models import Brand
+
         Brand.objects.filter(user=user).delete()
         with pytest.raises(ValueError, match="No default brand"):
             ContentCreationService.create_content_post(
@@ -299,16 +302,26 @@ class TestPostingService:
 
         expires = timezone.now() + timezone.timedelta(days=30)
         SocialAccount.objects.create(
-            brand=brand, platform=PlatformChoices.FACEBOOK,
-            account_name="acct_fb", external_id="ext_fb",
-            access_token="token", token_type="Bearer", token_expires_at=expires,
+            brand=brand,
+            platform=PlatformChoices.FACEBOOK,
+            account_name="acct_fb",
+            external_id="ext_fb",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
         )
         content_post = ContentPost.objects.create(
             user=user, brand=brand, title="Multi Photo", content_type="photo"
         )
-        ContentMedia.objects.create(content_post=content_post, r2_key="photos/a.jpg", file_type="image", order=0)
-        ContentMedia.objects.create(content_post=content_post, r2_key="photos/b.jpg", file_type="image", order=1)
-        ContentMedia.objects.create(content_post=content_post, r2_key="photos/c.jpg", file_type="image", order=2)
+        ContentMedia.objects.create(
+            content_post=content_post, r2_key="photos/a.jpg", file_type="image", order=0
+        )
+        ContentMedia.objects.create(
+            content_post=content_post, r2_key="photos/b.jpg", file_type="image", order=1
+        )
+        ContentMedia.objects.create(
+            content_post=content_post, r2_key="photos/c.jpg", file_type="image", order=2
+        )
         entry = ContentPostPlatform.objects.create(
             content_post=content_post, platform=PlatformChoices.FACEBOOK
         )
@@ -347,8 +360,12 @@ class TestPostingService:
         cp = ContentPost.objects.create(
             user=user, brand=brand, title="C", content_type="video"
         )
-        ContentMedia.objects.create(content_post=cp, r2_key="videos/k.mp4", file_type="video", order=0)
-        ContentMedia.objects.create(content_post=cp, r2_key="videos/thumb.jpg", file_type="image", order=1)
+        ContentMedia.objects.create(
+            content_post=cp, r2_key="videos/k.mp4", file_type="video", order=0
+        )
+        ContentMedia.objects.create(
+            content_post=cp, r2_key="videos/thumb.jpg", file_type="image", order=1
+        )
         ContentPostPlatform.objects.create(
             content_post=cp, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
         )
@@ -366,12 +383,16 @@ class TestPostingService:
         cp = ContentPost.objects.create(
             user=user, brand=brand, title="P", content_type="video"
         )
-        ContentMedia.objects.create(content_post=cp, r2_key="videos/k.mp4", file_type="video", order=0)
+        ContentMedia.objects.create(
+            content_post=cp, r2_key="videos/k.mp4", file_type="video", order=0
+        )
         ContentPostPlatform.objects.create(
             content_post=cp, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
         )
         ContentPostPlatform.objects.create(
-            content_post=cp, platform=PlatformChoices.FACEBOOK, status=PostStatus.PENDING
+            content_post=cp,
+            platform=PlatformChoices.FACEBOOK,
+            status=PostStatus.PENDING,
         )
         PostingService.cleanup_r2_media(cp)
         mock_delete.assert_not_called()

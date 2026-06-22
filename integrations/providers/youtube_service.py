@@ -74,10 +74,14 @@ class YoutubeService(SocialAccountService):
             youtube = googleapiclient.discovery.build(
                 "youtube", "v3", credentials=credentials
             )
-            channels_response = youtube.channels().list(
-                part="snippet",
-                mine=True,
-            ).execute()
+            channels_response = (
+                youtube.channels()
+                .list(
+                    part="snippet",
+                    mine=True,
+                )
+                .execute()
+            )
 
             items = channels_response.get("items", [])
             if not items:
@@ -185,10 +189,22 @@ class YoutubeService(SocialAccountService):
 
             return credentials, missing_scopes
         except oauthlib.oauth2.rfc6749.errors.InvalidGrantError:
-            CustomLogger.exception("YouTube authorization code exchange failed due to invalid grant", extra={"operation": "exchange_code_for_token", "redirect_uri": redirect_uri})
+            CustomLogger.exception(
+                "YouTube authorization code exchange failed due to invalid grant",
+                extra={
+                    "operation": "exchange_code_for_token",
+                    "redirect_uri": redirect_uri,
+                },
+            )
             raise ValueError("Authorization code has expired or is invalid")
         except Exception as e:
-            CustomLogger.exception("Unexpected YouTube token exchange failure", extra={"operation": "exchange_code_for_token", "redirect_uri": redirect_uri})
+            CustomLogger.exception(
+                "Unexpected YouTube token exchange failure",
+                extra={
+                    "operation": "exchange_code_for_token",
+                    "redirect_uri": redirect_uri,
+                },
+            )
             raise Exception(f"Error exchanging code for token: {str(e)}")
 
     @classmethod

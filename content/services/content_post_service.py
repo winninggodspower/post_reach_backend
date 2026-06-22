@@ -44,7 +44,9 @@ class ContentPostService:
         )
 
     @classmethod
-    def get_media_items(cls, content_post: ContentPost, file_type: str = FileTypeChoice.IMAGE):
+    def get_media_items(
+        cls, content_post: ContentPost, file_type: str = FileTypeChoice.IMAGE
+    ):
         """
         Get media items for a post filtered by file_type, ordered by position.
         """

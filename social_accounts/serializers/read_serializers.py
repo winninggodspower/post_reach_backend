@@ -1,6 +1,5 @@
 from rest_framework import serializers
 
-
 __all__ = [
     "ConnectAccountResponseSerializer",
     "FacebookPagesListResponseSerializer",
@@ -21,7 +20,6 @@ class FacebookPagesResponseSerializer(serializers.Serializer):
 
 class FacebookPagesListResponseSerializer(serializers.Serializer):
     pages = FacebookPagesResponseSerializer(many=True)
-
 
 
 class YoutubeAuthUrlResponseSerializer(serializers.Serializer):
@@ -48,5 +46,3 @@ class ConnectAccountResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     platform = serializers.CharField()
     is_connected = serializers.BooleanField()
-
-

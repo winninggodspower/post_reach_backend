@@ -43,9 +43,7 @@ class ContentPost(UUIDTimestampedModel):
         ]
 
     def __str__(self):
-        platforms = ", ".join(
-            self.platform_entries.values_list("platform", flat=True)
-        )
+        platforms = ", ".join(self.platform_entries.values_list("platform", flat=True))
         return f"{self.brand.name} → [{platforms}]"
 
 
@@ -94,11 +92,14 @@ class ContentPostPlatform(UUIDTimestampedModel):
         default=PostStatus.PENDING,
     )
     platform_post_id = models.CharField(
-        max_length=255, blank=True, default="",
+        max_length=255,
+        blank=True,
+        default="",
         help_text="The post/media ID returned by the platform API.",
     )
     error_message = models.TextField(
-        blank=True, default="",
+        blank=True,
+        default="",
         help_text="Error details if this platform post failed.",
     )
 

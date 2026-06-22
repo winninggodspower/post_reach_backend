@@ -24,7 +24,9 @@ class OnboardingService:
                 user=user,
                 is_default=True,
                 defaults={
-                    "name": user.handle or user.get_full_name().strip() or user.email.split("@")[0],
+                    "name": user.handle
+                    or user.get_full_name().strip()
+                    or user.email.split("@")[0],
                 },
             )
 

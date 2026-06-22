@@ -33,8 +33,12 @@ class TestGetContentPost:
         post = ContentPost.objects.create(
             user=user, brand=brand, title="With Media", content_type="photo"
         )
-        ContentMedia.objects.create(content_post=post, r2_key="photos/a.jpg", file_type="image", order=0)
-        ContentMedia.objects.create(content_post=post, r2_key="photos/b.jpg", file_type="image", order=1)
+        ContentMedia.objects.create(
+            content_post=post, r2_key="photos/a.jpg", file_type="image", order=0
+        )
+        ContentMedia.objects.create(
+            content_post=post, r2_key="photos/b.jpg", file_type="image", order=1
+        )
 
         result = ContentPostService.get_content_post(post.id, user)
         # Access media_items after retrieval — should use prefetched cache
@@ -46,8 +50,12 @@ class TestGetContentPost:
         post = ContentPost.objects.create(
             user=user, brand=brand, title="With Platforms", content_type="video"
         )
-        ContentPostPlatform.objects.create(content_post=post, platform=PlatformChoices.YOUTUBE)
-        ContentPostPlatform.objects.create(content_post=post, platform=PlatformChoices.FACEBOOK)
+        ContentPostPlatform.objects.create(
+            content_post=post, platform=PlatformChoices.YOUTUBE
+        )
+        ContentPostPlatform.objects.create(
+            content_post=post, platform=PlatformChoices.FACEBOOK
+        )
 
         result = ContentPostService.get_content_post(post.id, user)
         entries = list(result.platform_entries.all())
@@ -56,9 +64,13 @@ class TestGetContentPost:
     def test_raises_does_not_exist_for_other_user(self, db, user, brand):
         """Should raise DoesNotExist when a different user requests the post."""
         from users.models import User
+
         other_user = User.objects.create_user(
-            email="other@example.com", password="Pass1234!",
-            first_name="O", last_name="T", handle="othertest",
+            email="other@example.com",
+            password="Pass1234!",
+            first_name="O",
+            last_name="T",
+            handle="othertest",
         )
 
         post = ContentPost.objects.create(
@@ -82,9 +94,15 @@ class TestGetMediaItems:
         post = ContentPost.objects.create(
             user=user, brand=brand, title="Mixed Media", content_type="video"
         )
-        v1 = ContentMedia.objects.create(content_post=post, r2_key="videos/a.mp4", file_type="video", order=0)
-        ContentMedia.objects.create(content_post=post, r2_key="photos/thumb.jpg", file_type="image", order=1)
-        v2 = ContentMedia.objects.create(content_post=post, r2_key="videos/b.mp4", file_type="video", order=2)
+        v1 = ContentMedia.objects.create(
+            content_post=post, r2_key="videos/a.mp4", file_type="video", order=0
+        )
+        ContentMedia.objects.create(
+            content_post=post, r2_key="photos/thumb.jpg", file_type="image", order=1
+        )
+        v2 = ContentMedia.objects.create(
+            content_post=post, r2_key="videos/b.mp4", file_type="video", order=2
+        )
 
         videos = list(ContentPostService.get_media_items(post, file_type="video"))
         assert len(videos) == 2
@@ -96,9 +114,15 @@ class TestGetMediaItems:
         post = ContentPost.objects.create(
             user=user, brand=brand, title="Ordered", content_type="photo"
         )
-        second = ContentMedia.objects.create(content_post=post, r2_key="photos/b.jpg", file_type="image", order=1)
-        first = ContentMedia.objects.create(content_post=post, r2_key="photos/a.jpg", file_type="image", order=0)
-        third = ContentMedia.objects.create(content_post=post, r2_key="photos/c.jpg", file_type="image", order=2)
+        second = ContentMedia.objects.create(
+            content_post=post, r2_key="photos/b.jpg", file_type="image", order=1
+        )
+        first = ContentMedia.objects.create(
+            content_post=post, r2_key="photos/a.jpg", file_type="image", order=0
+        )
+        third = ContentMedia.objects.create(
+            content_post=post, r2_key="photos/c.jpg", file_type="image", order=2
+        )
 
         items = list(ContentPostService.get_media_items(post, file_type="image"))
         assert items[0].id == first.id
@@ -110,7 +134,9 @@ class TestGetMediaItems:
         post = ContentPost.objects.create(
             user=user, brand=brand, title="Empty", content_type="video"
         )
-        ContentMedia.objects.create(content_post=post, r2_key="videos/a.mp4", file_type="video", order=0)
+        ContentMedia.objects.create(
+            content_post=post, r2_key="videos/a.mp4", file_type="video", order=0
+        )
 
         images = list(ContentPostService.get_media_items(post, file_type="image"))
         assert len(images) == 0
@@ -125,10 +151,14 @@ class TestHasPendingEntries:
             user=user, brand=brand, title="Pending", content_type="video"
         )
         ContentPostPlatform.objects.create(
-            content_post=post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
+            content_post=post,
+            platform=PlatformChoices.YOUTUBE,
+            status=PostStatus.POSTED,
         )
         ContentPostPlatform.objects.create(
-            content_post=post, platform=PlatformChoices.FACEBOOK, status=PostStatus.PENDING
+            content_post=post,
+            platform=PlatformChoices.FACEBOOK,
+            status=PostStatus.PENDING,
         )
 
         assert ContentPostService.has_pending_entries(post) is True
@@ -139,7 +169,9 @@ class TestHasPendingEntries:
             user=user, brand=brand, title="Uploading", content_type="video"
         )
         ContentPostPlatform.objects.create(
-            content_post=post, platform=PlatformChoices.YOUTUBE, status=PostStatus.UPLOADING
+            content_post=post,
+            platform=PlatformChoices.YOUTUBE,
+            status=PostStatus.UPLOADING,
         )
 
         assert ContentPostService.has_pending_entries(post) is True
@@ -150,10 +182,14 @@ class TestHasPendingEntries:
             user=user, brand=brand, title="Finished", content_type="video"
         )
         ContentPostPlatform.objects.create(
-            content_post=post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
+            content_post=post,
+            platform=PlatformChoices.YOUTUBE,
+            status=PostStatus.POSTED,
         )
         ContentPostPlatform.objects.create(
-            content_post=post, platform=PlatformChoices.FACEBOOK, status=PostStatus.FAILED
+            content_post=post,
+            platform=PlatformChoices.FACEBOOK,
+            status=PostStatus.FAILED,
         )
 
         assert ContentPostService.has_pending_entries(post) is False

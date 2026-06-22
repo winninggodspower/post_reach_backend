@@ -16,9 +16,7 @@ class TestFetchChannelInfo:
             "integrations.providers.youtube_service.googleapiclient.discovery.build"
         )
 
-        mock_channels_list = (
-            mock_build.return_value.channels.return_value.list
-        )
+        mock_channels_list = mock_build.return_value.channels.return_value.list
         mock_execute = mock_channels_list.return_value.execute
         mock_execute.return_value = {
             "items": [
@@ -37,7 +35,9 @@ class TestFetchChannelInfo:
             "account_name": "My YouTube Channel",
             "external_id": "UC_test_channel_id_123",
         }
-        mock_build.assert_called_once_with("youtube", "v3", credentials=mock_credentials)
+        mock_build.assert_called_once_with(
+            "youtube", "v3", credentials=mock_credentials
+        )
         mock_channels_list.assert_called_once_with(part="snippet", mine=True)
 
     def test_fetch_channel_info_no_channel(self, mocker):
@@ -47,12 +47,9 @@ class TestFetchChannelInfo:
             "integrations.providers.youtube_service.googleapiclient.discovery.build"
         )
 
-        mock_execute = (
-            mocker.patch(
-                "integrations.providers.youtube_service.googleapiclient.discovery.build"
-            )
-            .return_value.channels.return_value.list.return_value.execute
-        )
+        mock_execute = mocker.patch(
+            "integrations.providers.youtube_service.googleapiclient.discovery.build"
+        ).return_value.channels.return_value.list.return_value.execute
         mock_execute.return_value = {"items": []}
 
         with pytest.raises(
@@ -118,6 +115,7 @@ class TestConnectAccount:
     def test_connect_account_invalid_state(self, mocker, user, brand):
         """Should raise ValueError when state is invalid."""
         from django.core.cache import cache
+
         from social_accounts.utils.cache_keys import youtube_oauth_state
 
         cache.set(youtube_oauth_state(user.id), "expected_state", 600)

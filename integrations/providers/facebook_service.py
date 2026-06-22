@@ -6,8 +6,8 @@ from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
 from social_accounts.utils.cache_keys import facebook_oauth_state
-from utils.http import APIError
 from utils.custom_logger import CustomLogger
+from utils.http import APIError
 
 OAUTH_STATE_TTL = 600  # 10 minutes
 
@@ -22,7 +22,7 @@ class FacebookService(SocialAccountService):
         "pages_show_list",
         # "pages_manage_engagement",
         "pages_read_engagement",
-        "pages_manage_posts"
+        "pages_manage_posts",
     }
 
     @classmethod
@@ -70,12 +70,17 @@ class FacebookService(SocialAccountService):
                 },
             )
         except APIError as e:
-            CustomLogger.exception("Facebook code exchange failed", extra={"operation": "exchange_code_for_token"})
+            CustomLogger.exception(
+                "Facebook code exchange failed",
+                extra={"operation": "exchange_code_for_token"},
+            )
             raise ValueError(str(e)) from e
 
         if "access_token" not in short_lived_data:
             raise ValueError(
-                short_lived_data.get("error", {}).get("message", "Failed to exchange code for short-lived token")
+                short_lived_data.get("error", {}).get(
+                    "message", "Failed to exchange code for short-lived token"
+                )
             )
 
         short_lived_token = short_lived_data["access_token"]
@@ -88,7 +93,10 @@ class FacebookService(SocialAccountService):
         try:
             is_valid, missing_permissions = cls.verify_granted_scope(short_lived_token)
         except APIError as e:
-            CustomLogger.exception("Facebook permission verification failed", extra={"operation": "verify_granted_scope"})
+            CustomLogger.exception(
+                "Facebook permission verification failed",
+                extra={"operation": "verify_granted_scope"},
+            )
             raise ValueError(str(e)) from e
 
         if not is_valid:
@@ -107,13 +115,18 @@ class FacebookService(SocialAccountService):
                 },
             )
         except APIError as e:
-            CustomLogger.exception("Facebook token exchange failed", extra={"operation": "exchange_short_lived_token"})
+            CustomLogger.exception(
+                "Facebook token exchange failed",
+                extra={"operation": "exchange_short_lived_token"},
+            )
             raise ValueError(str(e)) from e
 
         if "access_token" not in data:
             raise ValueError(data.get("error", {}).get("message", "Unknown error"))
-        
-        return data["access_token"], int(data.get("expires_in", 5184000)) # default expires_in to 60days
+
+        return data["access_token"], int(
+            data.get("expires_in", 5184000)
+        )  # default expires_in to 60days
 
     @classmethod
     def verify_granted_scope(cls, access_token):
@@ -153,7 +166,10 @@ class FacebookService(SocialAccountService):
                 },
             )
         except APIError as e:
-            CustomLogger.exception("Failed to fetch Facebook pages", extra={"operation": "get_facebook_pages"})
+            CustomLogger.exception(
+                "Failed to fetch Facebook pages",
+                extra={"operation": "get_facebook_pages"},
+            )
             raise ValueError(f"Failed to fetch Facebook pages: {str(e)}") from e
 
         pages = data.get("data", [])
@@ -171,7 +187,9 @@ class FacebookService(SocialAccountService):
         ]
 
     @classmethod
-    def publish_video(cls, page_access_token, page_id, video_url, title="", description=""):
+    def publish_video(
+        cls, page_access_token, page_id, video_url, title="", description=""
+    ):
         """
         Publish a video to a Facebook Page.
 
@@ -273,7 +291,9 @@ class FacebookService(SocialAccountService):
                 f"/{page_id}/feed",
                 data={
                     "message": text or "",
-                    "attached_media": json.dumps([{"media_fbid": fbid} for fbid in media_fbids]),
+                    "attached_media": json.dumps(
+                        [{"media_fbid": fbid} for fbid in media_fbids]
+                    ),
                     "access_token": page_access_token,
                 },
             )
@@ -282,7 +302,9 @@ class FacebookService(SocialAccountService):
                 "Facebook multi-photo feed publish failed",
                 extra={"operation": "publish_photo"},
             )
-            raise ValueError(f"Facebook multi-photo feed publish failed: {str(e)}") from e
+            raise ValueError(
+                f"Facebook multi-photo feed publish failed: {str(e)}"
+            ) from e
 
         post_id = feed_data.get("id", "")
         if not post_id:

@@ -3,9 +3,7 @@ from django.urls import reverse
 
 from social_accounts.models import Brand
 from users.models import User
-from users.services import OnboardingService
-from users.services import UserService
-
+from users.services import OnboardingService, UserService
 
 pytestmark = pytest.mark.django_db
 

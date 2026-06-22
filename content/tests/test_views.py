@@ -8,12 +8,12 @@ import io
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from content.enums import PostStatus
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
-from django.utils import timezone
 
 
 class TestRetrieveEndpoint:
@@ -27,13 +27,19 @@ class TestRetrieveEndpoint:
             content_post=content_post, r2_key="videos/k.mp4", file_type="video", order=0
         )
         ContentPostPlatform.objects.create(
-            content_post=content_post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED, platform_post_id="yt_001"
+            content_post=content_post,
+            platform=PlatformChoices.YOUTUBE,
+            status=PostStatus.POSTED,
+            platform_post_id="yt_001",
         )
         ContentPostPlatform.objects.create(
-            content_post=content_post, platform=PlatformChoices.FACEBOOK, status=PostStatus.PENDING
+            content_post=content_post,
+            platform=PlatformChoices.FACEBOOK,
+            status=PostStatus.PENDING,
         )
 
         from django.urls import reverse
+
         url = reverse("content-post-detail", kwargs={"pk": content_post.id})
         response = authenticated_client.get(url)
 
@@ -48,14 +54,21 @@ class TestRetrieveEndpoint:
 
     def test_retrieve_other_users_post_returns_404(self, db, api_client, mocker):
         from users.models import User
+
         owner = User.objects.create_user(
-            email="owner@example.com", password="Pass1234!",
-            first_name="O", last_name="W", handle="owner",
+            email="owner@example.com",
+            password="Pass1234!",
+            first_name="O",
+            last_name="W",
+            handle="owner",
         )
         from users.models import Brand as BrandModel
+
         brand = BrandModel.objects.filter(user=owner, is_default=True).first()
         if not brand:
-            brand = BrandModel.objects.create(user=owner, name="OwnerBrand", is_default=True)
+            brand = BrandModel.objects.create(
+                user=owner, name="OwnerBrand", is_default=True
+            )
 
         content_post = ContentPost.objects.create(
             user=owner, brand=brand, title="Other's Post", content_type="video"
@@ -64,19 +77,26 @@ class TestRetrieveEndpoint:
             content_post=content_post, r2_key="videos/o.mp4", file_type="video", order=0
         )
         ContentPostPlatform.objects.create(
-            content_post=content_post, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
+            content_post=content_post,
+            platform=PlatformChoices.YOUTUBE,
+            status=PostStatus.POSTED,
         )
 
         # Authenticate as a different user
         other = User.objects.create_user(
-            email="other@example.com", password="Pass1234!",
-            first_name="O", last_name="T", handle="otheruser",
+            email="other@example.com",
+            password="Pass1234!",
+            first_name="O",
+            last_name="T",
+            handle="otheruser",
         )
         from users.models import Brand as OtherBrand
+
         OtherBrand.objects.filter(user=other).delete()  # clean up auto-created brand
         api_client.force_authenticate(user=other)
 
         from django.urls import reverse
+
         url = reverse("content-post-detail", kwargs={"pk": content_post.id})
         response = api_client.get(url)
 
@@ -84,7 +104,9 @@ class TestRetrieveEndpoint:
 
     def test_retrieve_not_found(self, db, authenticated_client, user, brand):
         import uuid
+
         from django.urls import reverse
+
         url = reverse("content-post-detail", kwargs={"pk": uuid.uuid4()})
         response = authenticated_client.get(url)
         assert response.status_code == 404
@@ -95,7 +117,9 @@ class TestVideoEndpoint:
 
     URL = "content-post-video"
 
-    def test_success_single_platform(self, db, authenticated_client, user, brand, mocker):
+    def test_success_single_platform(
+        self, db, authenticated_client, user, brand, mocker
+    ):
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
         )
@@ -109,9 +133,13 @@ class TestVideoEndpoint:
 
         expires = timezone.now() + timezone.timedelta(days=30)
         SocialAccount.objects.create(
-            brand=brand, platform=PlatformChoices.YOUTUBE,
-            account_name="ch", external_id="ext",
-            access_token="token", token_type="Bearer", token_expires_at=expires,
+            brand=brand,
+            platform=PlatformChoices.YOUTUBE,
+            account_name="ch",
+            external_id="ext",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
         )
 
         video = io.BytesIO(b"fake-video")
@@ -119,7 +147,11 @@ class TestVideoEndpoint:
 
         response = authenticated_client.post(
             reverse(self.URL),
-            {"video": video, "title": "Test Video", "platforms": [PlatformChoices.YOUTUBE]},
+            {
+                "video": video,
+                "title": "Test Video",
+                "platforms": [PlatformChoices.YOUTUBE],
+            },
             format="multipart",
         )
 
@@ -135,8 +167,12 @@ class TestVideoEndpoint:
         mock_upload.assert_called_once()
         mock_delay.assert_called_once()
 
-    def test_success_multiple_platforms(self, db, authenticated_client, user, brand, mocker):
-        mocker.patch("content.services.content_creation_service.R2StorageService.upload_file")
+    def test_success_multiple_platforms(
+        self, db, authenticated_client, user, brand, mocker
+    ):
+        mocker.patch(
+            "content.services.content_creation_service.R2StorageService.upload_file"
+        )
         mocker.patch(
             "content.services.content_creation_service.R2StorageService.generate_key",
             return_value="videos/2026-06-15/m.mp4",
@@ -148,9 +184,13 @@ class TestVideoEndpoint:
         expires = timezone.now() + timezone.timedelta(days=30)
         for plat in [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK]:
             SocialAccount.objects.create(
-                brand=brand, platform=plat,
-                account_name=f"a_{plat}", external_id=f"e_{plat}",
-                access_token=f"t_{plat}", token_type="Bearer", token_expires_at=expires,
+                brand=brand,
+                platform=plat,
+                account_name=f"a_{plat}",
+                external_id=f"e_{plat}",
+                access_token=f"t_{plat}",
+                token_type="Bearer",
+                token_expires_at=expires,
             )
 
         video = io.BytesIO(b"v")
@@ -158,7 +198,11 @@ class TestVideoEndpoint:
 
         response = authenticated_client.post(
             reverse(self.URL),
-            {"video": video, "title": "Multi", "platforms": [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK]},
+            {
+                "video": video,
+                "title": "Multi",
+                "platforms": [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
+            },
             format="multipart",
         )
 
@@ -167,10 +211,14 @@ class TestVideoEndpoint:
         assert mock_delay.call_count == 2
 
     def test_no_default_brand(self, db, api_client, mocker):
-        from users.models import User, Brand
+        from users.models import Brand, User
+
         user = User.objects.create_user(
-            email="nb@example.com", password="P@ss1234!",
-            first_name="X", last_name="Y", handle="nobrand",
+            email="nb@example.com",
+            password="P@ss1234!",
+            first_name="X",
+            last_name="Y",
+            handle="nobrand",
         )
         Brand.objects.filter(user=user).delete()
         api_client.force_authenticate(user=user)
@@ -188,6 +236,7 @@ class TestVideoEndpoint:
 
     def test_unauthenticated(self, db):
         from rest_framework.test import APIClient
+
         client = APIClient()
         response = client.post(reverse(self.URL), {}, format="multipart")
         assert response.status_code == 401
@@ -212,9 +261,13 @@ class TestPhotoEndpoint:
 
         expires = timezone.now() + timezone.timedelta(days=30)
         SocialAccount.objects.create(
-            brand=brand, platform=PlatformChoices.INSTAGRAM,
-            account_name="ig", external_id="ext_ig",
-            access_token="token", token_type="Bearer", token_expires_at=expires,
+            brand=brand,
+            platform=PlatformChoices.INSTAGRAM,
+            account_name="ig",
+            external_id="ext_ig",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
         )
 
         photo = io.BytesIO(b"fake-photo")
@@ -222,7 +275,11 @@ class TestPhotoEndpoint:
 
         response = authenticated_client.post(
             reverse(self.URL),
-            {"photos": [photo], "text": "Nice shot", "platforms": [PlatformChoices.INSTAGRAM]},
+            {
+                "photos": [photo],
+                "text": "Nice shot",
+                "platforms": [PlatformChoices.INSTAGRAM],
+            },
             format="multipart",
         )
 
@@ -238,7 +295,9 @@ class TestPhotoEndpoint:
         mock_upload.assert_called_once()
         mock_delay.assert_called_once()
 
-    def test_success_multiple_photos(self, db, authenticated_client, user, brand, mocker):
+    def test_success_multiple_photos(
+        self, db, authenticated_client, user, brand, mocker
+    ):
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
         )
@@ -255,9 +314,13 @@ class TestPhotoEndpoint:
 
         expires = timezone.now() + timezone.timedelta(days=30)
         SocialAccount.objects.create(
-            brand=brand, platform=PlatformChoices.FACEBOOK,
-            account_name="fb", external_id="ext_fb",
-            access_token="token", token_type="Bearer", token_expires_at=expires,
+            brand=brand,
+            platform=PlatformChoices.FACEBOOK,
+            account_name="fb",
+            external_id="ext_fb",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
         )
 
         photo1 = io.BytesIO(b"fake-photo-1")
@@ -267,7 +330,11 @@ class TestPhotoEndpoint:
 
         response = authenticated_client.post(
             reverse(self.URL),
-            {"photos": [photo1, photo2], "text": "Multi photo", "platforms": [PlatformChoices.FACEBOOK]},
+            {
+                "photos": [photo1, photo2],
+                "text": "Multi photo",
+                "platforms": [PlatformChoices.FACEBOOK],
+            },
             format="multipart",
         )
 
@@ -289,7 +356,11 @@ class TestPhotoEndpoint:
 
         response = authenticated_client.post(
             reverse(self.URL),
-            {"photos": [photo], "text": "Test", "platforms": [PlatformChoices.INSTAGRAM]},
+            {
+                "photos": [photo],
+                "text": "Test",
+                "platforms": [PlatformChoices.INSTAGRAM],
+            },
             format="multipart",
         )
         assert response.status_code == 400
@@ -297,6 +368,7 @@ class TestPhotoEndpoint:
 
     def test_unauthenticated(self, db):
         from rest_framework.test import APIClient
+
         client = APIClient()
         response = client.post(reverse(self.URL), {}, format="multipart")
         assert response.status_code == 401

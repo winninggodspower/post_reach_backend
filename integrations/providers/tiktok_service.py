@@ -7,9 +7,10 @@ from django.conf import settings
 from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
-from social_accounts.utils.cache_keys import tiktok_code_verifier, tiktok_oauth_state
-from utils.http import APIError
+from social_accounts.utils.cache_keys import (tiktok_code_verifier,
+                                              tiktok_oauth_state)
 from utils.custom_logger import CustomLogger
+from utils.http import APIError
 
 # TikTok OAuth flow can take a while (user needs to log in, authorize, then get redirected back).
 # Use a generous TTL to avoid the code_verifier expiring before the callback completes.
@@ -105,7 +106,10 @@ class TiktokService(SocialAccountService):
                 },
             )
         except APIError as e:
-            CustomLogger.exception("TikTok token exchange failed", extra={"operation": "exchange_code_for_token"})
+            CustomLogger.exception(
+                "TikTok token exchange failed",
+                extra={"operation": "exchange_code_for_token"},
+            )
             raise ValueError(str(e)) from e
         if not response:
             raise ValueError("Error while fetching access token from TikTok")
@@ -145,7 +149,8 @@ class TiktokService(SocialAccountService):
 
         user_data = data["data"]
         return {
-            "account_name": user_data.get("display_name", "") or user_data.get("username", ""),
+            "account_name": user_data.get("display_name", "")
+            or user_data.get("username", ""),
             "external_id": user_data.get("open_id", ""),
         }
 
@@ -251,7 +256,10 @@ class TiktokService(SocialAccountService):
                 },
             )
         except APIError as e:
-            CustomLogger.exception("TikTok access token refresh failed", extra={"operation": "refresh_access_token"})
+            CustomLogger.exception(
+                "TikTok access token refresh failed",
+                extra={"operation": "refresh_access_token"},
+            )
             raise ValueError(str(e)) from e
         if not response:
             raise ValueError("Error while refreshing access token from TikTok")

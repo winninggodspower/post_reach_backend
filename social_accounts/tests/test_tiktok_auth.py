@@ -53,7 +53,9 @@ class TestTiktokConnectEndpoint:
 
         assert response.status_code == 200
         assert response.data["success"] is True
-        assert response.data["data"]["message"] == "TikTok account successfully connected"
+        assert (
+            response.data["data"]["message"] == "TikTok account successfully connected"
+        )
         assert response.data["data"]["platform"] == "tiktok"
         assert response.data["data"]["is_connected"] is True
 
@@ -113,7 +115,9 @@ class TestTiktokConnectEndpoint:
         """Should return 400 when connect_tiktok raises a ValueError."""
         mocker.patch(
             "social_accounts.services.social_account_connection_service.SocialAccountConnectionService.connect_tiktok",
-            side_effect=ValueError("Code verifier not found. Please restart the OAuth flow."),
+            side_effect=ValueError(
+                "Code verifier not found. Please restart the OAuth flow."
+            ),
         )
 
         payload = {

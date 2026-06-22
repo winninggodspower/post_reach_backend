@@ -11,7 +11,9 @@ class TestLinkedinAuthUrlEndpoint:
 
     def test_auth_url_success(self, authenticated_client, mocker):
         """Should return an auth_url using the redirect URI from backend settings."""
-        mock_auth_url = "https://www.linkedin.com/oauth/v2/authorization?state=abc123&..."
+        mock_auth_url = (
+            "https://www.linkedin.com/oauth/v2/authorization?state=abc123&..."
+        )
         mocker.patch(
             "integrations.providers.linkedin_service.LinkedinService.generate_auth_url",
             return_value=mock_auth_url,
@@ -53,7 +55,10 @@ class TestLinkedinConnectEndpoint:
 
         assert response.status_code == 200
         assert response.data["success"] is True
-        assert response.data["data"]["message"] == "LinkedIn account successfully connected"
+        assert (
+            response.data["data"]["message"]
+            == "LinkedIn account successfully connected"
+        )
         assert response.data["data"]["platform"] == "linkedin"
         assert response.data["data"]["is_connected"] is True
 

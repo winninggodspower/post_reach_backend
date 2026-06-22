@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
 from social_accounts.enums import PlatformChoices as SocialPlatformChoices
+from social_accounts.models import Brand
 from users.enums import IndustryChoices, PlatformChoices, TeamSizeChoices
 
 from .models import User
-from social_accounts.models import Brand
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
@@ -12,7 +12,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'handle', 'password']
+        fields = ["email", "first_name", "last_name", "handle", "password"]
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -21,7 +21,16 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'handle', 'role', 'has_completed_onboarding', 'brand']
+        fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "handle",
+            "role",
+            "has_completed_onboarding",
+            "brand",
+        ]
         read_only_fields = fields
 
     def get_has_completed_onboarding(self, user):
@@ -40,8 +49,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     def _get_default_brand(self, user):
         """Return the user's default brand, preferring prefetched data."""
-        if hasattr(user, '_prefetched_objects_cache') and 'brands' in user._prefetched_objects_cache:
-            brands = user._prefetched_objects_cache['brands']
+        if (
+            hasattr(user, "_prefetched_objects_cache")
+            and "brands" in user._prefetched_objects_cache
+        ):
+            brands = user._prefetched_objects_cache["brands"]
             return next((b for b in brands if b.is_default), None)
         return user.brands.filter(is_default=True).first()
 
@@ -55,11 +67,11 @@ class UserSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'handle']
+        fields = ["first_name", "last_name", "handle"]
         extra_kwargs = {
-            'first_name': {'required': False},
-            'last_name': {'required': False},
-            'handle': {'required': False, 'allow_null': True, 'allow_blank': True},
+            "first_name": {"required": False},
+            "last_name": {"required": False},
+            "handle": {"required": False, "allow_null": True, "allow_blank": True},
         }
 
 
@@ -114,26 +126,23 @@ class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
         fields = [
-            'id',
-            'name',
-            'industry',
-            'posting_frequency',
-            'primary_platform',
-            'team_size',
-            'is_youtube_connected',
-            'is_instagram_connected',
-            'is_tiktok_connected',
-            'is_facebook_connected',
-            'is_linkedin_connected',
-            'is_x_connected',
+            "id",
+            "name",
+            "industry",
+            "posting_frequency",
+            "primary_platform",
+            "team_size",
+            "is_youtube_connected",
+            "is_instagram_connected",
+            "is_tiktok_connected",
+            "is_facebook_connected",
+            "is_linkedin_connected",
+            "is_x_connected",
         ]
         read_only_fields = fields
 
     def _platform_connected(self, brand, platform):
-        return any(
-            sa.platform == platform
-            for sa in brand.social_accounts.all()
-        )
+        return any(sa.platform == platform for sa in brand.social_accounts.all())
 
     def get_is_youtube_connected(self, brand):
         return self._platform_connected(brand, SocialPlatformChoices.YOUTUBE)
@@ -152,6 +161,7 @@ class BrandSerializer(serializers.ModelSerializer):
 
     def get_is_x_connected(self, brand):
         return self._platform_connected(brand, SocialPlatformChoices.TWITTER)
+
 
 class OnboardingResponseDataSerializer(serializers.Serializer):
     user = UserSerializer()

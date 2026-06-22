@@ -1,4 +1,5 @@
 from datetime import timedelta
+
 from django.db import models
 from django.db.models import UniqueConstraint
 from django.utils import timezone
@@ -6,26 +7,29 @@ from django.utils import timezone
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
+from post_reach_backend.models import UUIDTimestampedModel
 from social_accounts.enums import PlatformChoices
 from social_accounts.utils.encryption import decrypt_text, encrypt_text
-from post_reach_backend.models import UUIDTimestampedModel
 from users.models import Brand
 
 # Create your models here.
 
+
 class SocialAccount(UUIDTimestampedModel):
-    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='social_accounts')
+    brand = models.ForeignKey(
+        Brand, on_delete=models.CASCADE, related_name="social_accounts"
+    )
     platform = models.CharField(max_length=50, choices=PlatformChoices.choices)
 
     account_name = models.CharField(
         max_length=255,
         blank=True,
         default="",
-        help_text="The username or page name associated with the social account (e.g., @username for Instagram or page name for Facebook)."
+        help_text="The username or page name associated with the social account (e.g., @username for Instagram or page name for Facebook).",
     )
     external_id = models.CharField(
         max_length=255,
-        help_text="The unique identifier for the social account on the platform."
+        help_text="The unique identifier for the social account on the platform.",
     )
 
     _access_token = models.TextField()
@@ -67,7 +71,7 @@ class SocialAccount(UUIDTimestampedModel):
         return self.scope.split() if self.scope else []
 
     def is_token_expired(self):
-        return self.token_expires_at  and self.token_expires_at  <= timezone.now()
+        return self.token_expires_at and self.token_expires_at <= timezone.now()
 
     def get_access_token(self):
         """
@@ -91,14 +95,16 @@ class SocialAccount(UUIDTimestampedModel):
                 response = YoutubeService.refresh_access_token(self.refresh_token)
                 self.access_token = response["access_token"]
                 self.refresh_token = response["refresh_token"]
-                self.token_expires_at  = response["expires_in"]
+                self.token_expires_at = response["expires_in"]
                 self.save()
                 return True
 
             elif self.platform == PlatformChoices.INSTAGRAM:
                 response = InstagramService.refresh_access_token(self.access_token)
                 self.access_token = response["access_token"]
-                self.token_expires_at  = timezone.now() + timedelta(seconds=response["expires_in"])
+                self.token_expires_at = timezone.now() + timedelta(
+                    seconds=response["expires_in"]
+                )
                 self.save()
                 return True
 
@@ -106,7 +112,9 @@ class SocialAccount(UUIDTimestampedModel):
                 response = TiktokService.refresh_access_token(self.refresh_token)
                 self.access_token = response["access_token"]
                 self.refresh_token = response.get("refresh_token")
-                self.token_expires_at  = timezone.now() + timedelta(seconds=response["expires_in"])
+                self.token_expires_at = timezone.now() + timedelta(
+                    seconds=response["expires_in"]
+                )
                 self.save()
                 return True
 

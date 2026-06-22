@@ -11,7 +11,5 @@ class BrandService:
         """
         brand = Brand.objects.filter(user=user, is_default=True).first()
         if not brand:
-            raise ValueError(
-                "No default brand found. Please create a brand first."
-            )
+            raise ValueError("No default brand found. Please create a brand first.")
         return brand

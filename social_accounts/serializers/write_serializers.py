@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from users.models import Brand
 
-
 __all__ = [
     "FacebookAuthCodeSerializer",
     "FacebookPagesRequestSerializer",

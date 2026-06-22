@@ -6,24 +6,21 @@ from rest_framework.permissions import IsAuthenticated
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.youtube_service import YoutubeService
-from social_accounts.services.social_account_connection_service import SocialAccountConnectionService
-from social_accounts.serializers import (
-    ConnectAccountResponseSerializer,
-    FacebookAuthCodeSerializer,
-    FacebookAuthUrlResponseSerializer,
-    FacebookPagesListResponseSerializer,
-    FacebookPagesRequestSerializer,
-    GoogleAuthCodeSerializer,
-    InstagramAuthCodeSerializer,
-    InstagramAuthUrlResponseSerializer,
-    LinkedinAuthCodeSerializer,
-    LinkedinAuthUrlResponseSerializer,
-    TiktokAuthCodeSerializer,
-    TiktokAuthUrlResponseSerializer,
-    YoutubeAuthUrlResponseSerializer,
-)
-
-
+from social_accounts.serializers import (ConnectAccountResponseSerializer,
+                                         FacebookAuthCodeSerializer,
+                                         FacebookAuthUrlResponseSerializer,
+                                         FacebookPagesListResponseSerializer,
+                                         FacebookPagesRequestSerializer,
+                                         GoogleAuthCodeSerializer,
+                                         InstagramAuthCodeSerializer,
+                                         InstagramAuthUrlResponseSerializer,
+                                         LinkedinAuthCodeSerializer,
+                                         LinkedinAuthUrlResponseSerializer,
+                                         TiktokAuthCodeSerializer,
+                                         TiktokAuthUrlResponseSerializer,
+                                         YoutubeAuthUrlResponseSerializer)
+from social_accounts.services.social_account_connection_service import \
+    SocialAccountConnectionService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 # Create your views here.
@@ -83,7 +80,11 @@ class YoutubeAuthViewSet(viewsets.ViewSet):
                 brand=serializer.validated_data.get("brand"),
             )
         except (PermissionError, ValueError) as e:
-            status_code = status.HTTP_403_FORBIDDEN if isinstance(e, PermissionError) else status.HTTP_400_BAD_REQUEST
+            status_code = (
+                status.HTTP_403_FORBIDDEN
+                if isinstance(e, PermissionError)
+                else status.HTTP_400_BAD_REQUEST
+            )
             return CustomErrorResponse(
                 {"message": str(e)},
                 status=status_code,
@@ -416,5 +417,3 @@ class LinkedinAuthViewSet(viewsets.ViewSet):
             },
             status=status.HTTP_200_OK,
         )
-
-

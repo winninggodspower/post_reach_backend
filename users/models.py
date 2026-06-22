@@ -1,14 +1,14 @@
-from django.db import models
-from django.db.models import Q
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
-from django.db.models import UniqueConstraint
+from django.db import models
+from django.db.models import Q, UniqueConstraint
 
 from post_reach_backend.models import UUIDModel, UUIDTimestampedModel
 from users.enums import IndustryChoices, PlatformChoices, TeamSizeChoices
 from users.managers import UserManager
 
 # Create your models here.
+
 
 class User(AbstractUser, UUIDModel):
     class RoleChoices(models.TextChoices):
@@ -32,17 +32,16 @@ class User(AbstractUser, UUIDModel):
         blank=True,
     )
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name']
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
 
     objects = UserManager()
+
 
 class Brand(UUIDTimestampedModel):
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='brands'
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="brands"
     )
     name = models.CharField(max_length=100)
     is_default = models.BooleanField(default=False)
@@ -75,5 +74,5 @@ class Brand(UUIDTimestampedModel):
             UniqueConstraint(
                 fields=["user", "is_default"],
                 name="unique_user_default_brand",
-            )
+            ),
         ]

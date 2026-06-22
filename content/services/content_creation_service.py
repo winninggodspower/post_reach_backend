@@ -12,8 +12,9 @@ from django.db import transaction
 from content.enums import FileTypeChoice
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from content.tasks import publish_platform_entry
+from social_accounts.services.social_account_validation_service import \
+    SocialAccountValidationService
 from users.services.brand_service import BrandService
-from social_accounts.services.social_account_validation_service import SocialAccountValidationService
 from utils.custom_logger import CustomLogger, log_exceptions
 from utils.r2_storage import R2StorageService
 
@@ -34,7 +35,7 @@ class ContentCreationService:
         media_files: list,
         title: str,
         description: str = "",
-        platforms: List[str],
+        platforms: list[str],
         content_type: str = "video",
     ) -> ContentPost:
         """
@@ -61,7 +62,9 @@ class ContentCreationService:
             for idx, media_file in enumerate(media_files):
                 file_bytes = media_file.read()
                 r2_key = R2StorageService.generate_key(content_type=content_type)
-                R2StorageService.upload_file(file_bytes, r2_key, content_type=content_type)
+                R2StorageService.upload_file(
+                    file_bytes, r2_key, content_type=content_type
+                )
                 uploaded_keys.append(r2_key)
         except Exception as e:
             # Clean up any keys that were already uploaded
@@ -83,28 +86,38 @@ class ContentCreationService:
                 )
 
                 # Create a ContentMedia record for each uploaded file
-                ContentMedia.objects.bulk_create([
-                    ContentMedia(
-                        content_post=content_post,
-                        r2_key=r2_key,
-                        file_type=FileTypeChoice.IMAGE if content_type == "photo" else FileTypeChoice.VIDEO,
-                        order=idx,
-                    )
-                    for idx, r2_key in enumerate(uploaded_keys)
-                ])
+                ContentMedia.objects.bulk_create(
+                    [
+                        ContentMedia(
+                            content_post=content_post,
+                            r2_key=r2_key,
+                            file_type=(
+                                FileTypeChoice.IMAGE
+                                if content_type == "photo"
+                                else FileTypeChoice.VIDEO
+                            ),
+                            order=idx,
+                        )
+                        for idx, r2_key in enumerate(uploaded_keys)
+                    ]
+                )
 
-                ContentPostPlatform.objects.bulk_create([
-                    ContentPostPlatform(
-                        content_post=content_post,
-                        platform=platform,
-                    )
-                    for platform in platforms
-                ])
+                ContentPostPlatform.objects.bulk_create(
+                    [
+                        ContentPostPlatform(
+                            content_post=content_post,
+                            platform=platform,
+                        )
+                        for platform in platforms
+                    ]
+                )
 
                 content_post.refresh_from_db()
 
                 for entry in content_post.platform_entries.all():
-                    publish_platform_entry.delay(str(entry.id), content_type=content_type)
+                    publish_platform_entry.delay(
+                        str(entry.id), content_type=content_type
+                    )
         except Exception:
             CustomLogger.exception(
                 "content.services.content_creation_service",

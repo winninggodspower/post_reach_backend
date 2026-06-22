@@ -5,8 +5,8 @@ from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
 from social_accounts.utils.cache_keys import instagram_oauth_state
-from utils.http import APIError
 from utils.custom_logger import CustomLogger
+from utils.http import APIError
 
 OAUTH_STATE_TTL = 600  # 10 minutes
 
@@ -47,7 +47,9 @@ class InstagramService(SocialAccountService):
     @classmethod
     def exchange_code_for_token(cls, auth_code, redirect_uri):
         short_lived_token_data = cls._get_short_lived_token(auth_code, redirect_uri)
-        long_lived_token_data = cls._get_long_lived_token(short_lived_token_data["access_token"])
+        long_lived_token_data = cls._get_long_lived_token(
+            short_lived_token_data["access_token"]
+        )
 
         return {
             "access_token": long_lived_token_data["access_token"],
@@ -69,7 +71,10 @@ class InstagramService(SocialAccountService):
                 },
             )
         except APIError as e:
-            CustomLogger.exception("Instagram short-lived token exchange failed", extra={"operation": "_get_short_lived_token"})
+            CustomLogger.exception(
+                "Instagram short-lived token exchange failed",
+                extra={"operation": "_get_short_lived_token"},
+            )
             raise ValueError(str(e)) from e
 
         if "access_token" not in response_data:
@@ -91,12 +96,17 @@ class InstagramService(SocialAccountService):
                 },
             )
         except APIError as e:
-            CustomLogger.exception("Instagram long-lived token exchange failed", extra={"operation": "_get_long_lived_token"})
+            CustomLogger.exception(
+                "Instagram long-lived token exchange failed",
+                extra={"operation": "_get_long_lived_token"},
+            )
             raise ValueError(str(e)) from e
 
         if "access_token" not in response_data:
             raise ValueError(
-                response_data.get("error", {}).get("message", "Could not get long-lived token")
+                response_data.get("error", {}).get(
+                    "message", "Could not get long-lived token"
+                )
             )
 
         return response_data
@@ -112,7 +122,10 @@ class InstagramService(SocialAccountService):
                 },
             )
         except APIError as e:
-            CustomLogger.exception("Instagram access token refresh failed", extra={"operation": "refresh_access_token"})
+            CustomLogger.exception(
+                "Instagram access token refresh failed",
+                extra={"operation": "refresh_access_token"},
+            )
             raise ValueError(str(e)) from e
 
         if "access_token" not in response_data:
@@ -156,7 +169,9 @@ class InstagramService(SocialAccountService):
                 "Instagram media container creation failed",
                 extra={"operation": "publish_video"},
             )
-            raise ValueError(f"Instagram media container creation failed: {str(e)}") from e
+            raise ValueError(
+                f"Instagram media container creation failed: {str(e)}"
+            ) from e
 
         container_id = container_response.get("id")
         if not container_id:
@@ -212,7 +227,9 @@ class InstagramService(SocialAccountService):
                     "Instagram photo container creation failed",
                     extra={"operation": "publish_photo"},
                 )
-                raise ValueError(f"Instagram photo container creation failed: {str(e)}") from e
+                raise ValueError(
+                    f"Instagram photo container creation failed: {str(e)}"
+                ) from e
 
             container_id = container_response.get("id")
             if not container_id:
@@ -254,11 +271,15 @@ class InstagramService(SocialAccountService):
                     "Instagram carousel image container failed",
                     extra={"operation": "publish_photo", "url": url},
                 )
-                raise ValueError(f"Instagram carousel image container creation failed: {str(e)}") from e
+                raise ValueError(
+                    f"Instagram carousel image container creation failed: {str(e)}"
+                ) from e
 
             child_id = container_response.get("id")
             if not child_id:
-                raise ValueError(f"Instagram did not return container ID for image: {url}")
+                raise ValueError(
+                    f"Instagram did not return container ID for image: {url}"
+                )
             child_container_ids.append(child_id)
 
         # Step 2: Create a CAROUSEL container with children
@@ -277,7 +298,9 @@ class InstagramService(SocialAccountService):
                 "Instagram carousel container creation failed",
                 extra={"operation": "publish_photo"},
             )
-            raise ValueError(f"Instagram carousel container creation failed: {str(e)}") from e
+            raise ValueError(
+                f"Instagram carousel container creation failed: {str(e)}"
+            ) from e
 
         carousel_id = carousel_container.get("id")
         if not carousel_id:

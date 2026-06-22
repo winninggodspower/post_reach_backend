@@ -1,39 +1,33 @@
+from django.db.models import Prefetch
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from rest_framework import status
-
-from django.db.models import Prefetch
 
 from integrations.services.google_auth_service import GoogleAuthService
+from users.models import Brand, User
 from users.services import OnboardingService, UserService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
-from .serializers import (
-    AuthResponseSerializer,
-    GoogleAuthSerializer,
-    OnboardingResponseSerializer,
-    OnboardingSerializer,
-    RegisterUserSerializer,
-    SignInSerializer,
-    UserResponseSerializer,
-    UserSerializer,
-    UserUpdateSerializer,
-)
 
-from users.models import Brand, User
+from .serializers import (AuthResponseSerializer, GoogleAuthSerializer,
+                          OnboardingResponseSerializer, OnboardingSerializer,
+                          RegisterUserSerializer, SignInSerializer,
+                          UserResponseSerializer, UserSerializer,
+                          UserUpdateSerializer)
+
 
 # Create your views here.
 def _prefetch_user_for_serialization(user):
     """Prefetch brands and their social_accounts to avoid N+1 queries."""
     return User.objects.prefetch_related(
-        Prefetch('brands', queryset=Brand.objects.prefetch_related('social_accounts'))
+        Prefetch("brands", queryset=Brand.objects.prefetch_related("social_accounts"))
     ).get(pk=user.pk)
 
 
 def get_auth_response_data(user):
     return {
-        'user': UserSerializer(_prefetch_user_for_serialization(user)).data,
-        'tokens': UserService.get_auth_tokens(user),
+        "user": UserSerializer(_prefetch_user_for_serialization(user)).data,
+        "tokens": UserService.get_auth_tokens(user),
     }
 
 
@@ -62,16 +56,16 @@ class RegisterUserView(APIView):
 
         try:
             user = UserService.register_with_password(
-                email=serializer.validated_data['email'],
-                first_name=serializer.validated_data.get('first_name', ''),
-                last_name=serializer.validated_data.get('last_name', ''),
-                handle=serializer.validated_data.get('handle'),
-                password=serializer.validated_data['password'],
+                email=serializer.validated_data["email"],
+                first_name=serializer.validated_data.get("first_name", ""),
+                last_name=serializer.validated_data.get("last_name", ""),
+                handle=serializer.validated_data.get("handle"),
+                password=serializer.validated_data["password"],
             )
         except ValueError as exc:
             return CustomErrorResponse(
                 message="Registration failed.",
-                errors={'detail': exc.args[0]},
+                errors={"detail": exc.args[0]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -103,14 +97,14 @@ class SignInView(APIView):
 
         try:
             user = UserService.sign_in_with_password(
-                username=serializer.validated_data['username'],
-                password=serializer.validated_data['password'],
+                username=serializer.validated_data["username"],
+                password=serializer.validated_data["password"],
                 request=request,
             )
         except ValueError as exc:
             return CustomErrorResponse(
                 message="Sign in failed.",
-                errors={'detail': str(exc)},
+                errors={"detail": str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -143,15 +137,15 @@ class GoogleSignInView(APIView):
         try:
 
             google_helper = GoogleAuthService(
-                redirect_uri=serializer.validated_data['redirect_uri']
+                redirect_uri=serializer.validated_data["redirect_uri"]
             )
 
             user_info = google_helper.verify_and_get_user_info(
-                serializer.validated_data['auth_code']
+                serializer.validated_data["auth_code"]
             )
-            email = user_info['email']
-            first_name = user_info['first_name']
-            last_name = user_info['last_name']
+            email = user_info["email"]
+            first_name = user_info["first_name"]
+            last_name = user_info["last_name"]
 
             user, _created = UserService.get_or_create_social_user(
                 email=email,
@@ -167,7 +161,7 @@ class GoogleSignInView(APIView):
         except ValueError as e:
             return CustomErrorResponse(
                 message="Google sign in failed.",
-                errors={'detail': str(e)},
+                errors={"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -175,7 +169,7 @@ class GoogleSignInView(APIView):
             # Catch any other unexpected errors
             print(f"Authentication error: {e}")  # Log the full exception for debugging
             return CustomErrorResponse(
-                message='An unexpected error occurred during authentication.',
+                message="An unexpected error occurred during authentication.",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

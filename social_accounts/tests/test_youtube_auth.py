@@ -49,7 +49,9 @@ class TestYoutubeConnectEndpoint:
 
         assert response.status_code == 200
         assert response.data["success"] is True
-        assert response.data["data"]["message"] == "YouTube account successfully connected"
+        assert (
+            response.data["data"]["message"] == "YouTube account successfully connected"
+        )
         assert response.data["data"]["platform"] == "youtube"
         assert response.data["data"]["is_connected"] is True
 
@@ -69,7 +71,9 @@ class TestYoutubeConnectEndpoint:
         """Should return 403 when user lacks permission for the brand."""
         mocker.patch(
             "integrations.providers.youtube_service.YoutubeService.connect_account",
-            side_effect=PermissionError("You do not have permission to access this brand."),
+            side_effect=PermissionError(
+                "You do not have permission to access this brand."
+            ),
         )
 
         payload = {

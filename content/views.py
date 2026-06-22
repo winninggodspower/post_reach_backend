@@ -6,12 +6,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
 from content.models import ContentPost
-from content.serializers import (
-    ContentPostCreateSerializer,
-    ContentPostResponseSerializer,
-    PhotoPostCreateSerializer,
-    photo_post_parameters,
-)
+from content.serializers import (ContentPostCreateSerializer,
+                                 ContentPostResponseSerializer,
+                                 PhotoPostCreateSerializer,
+                                 photo_post_parameters)
 from content.services.content_creation_service import ContentCreationService
 from content.services.content_post_service import ContentPostService
 from utils.custom_logger import CustomLogger
@@ -125,7 +123,9 @@ class ContentPostViewSet(viewsets.ViewSet):
 
     # ── shared helper ──────────────────────────────────────
 
-    def _create_and_dispatch(self, *, request, media_files, platforms, content_type, title, description=""):
+    def _create_and_dispatch(
+        self, *, request, media_files, platforms, content_type, title, description=""
+    ):
         """
         Shared pipeline: call the service (which handles R2 + DB + Celery),
         return the serialized response.

@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class IndustryChoices(models.TextChoices):
     TECHNOLOGY = "technology", "Technology"
     MARKETING = "marketing", "Marketing"
@@ -10,6 +11,7 @@ class IndustryChoices(models.TextChoices):
     FINANCE = "finance", "Finance"
     OTHER = "other", "Other"
 
+
 class PlatformChoices(models.TextChoices):
     INSTAGRAM = "instagram", "Instagram"
     LINKEDIN = "linkedin", "LinkedIn"
@@ -17,6 +19,7 @@ class PlatformChoices(models.TextChoices):
     FACEBOOK = "facebook", "Facebook"
     X = "x", "X"
     YOUTUBE = "youtube", "YouTube"
+
 
 class TeamSizeChoices(models.TextChoices):
     JUST_ME = "just_me", "Just Me"

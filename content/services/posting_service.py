@@ -12,9 +12,8 @@ from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.enums import PlatformChoices
-from social_accounts.services.social_account_validation_service import (
-    SocialAccountValidationService,
-)
+from social_accounts.services.social_account_validation_service import \
+    SocialAccountValidationService
 from utils.custom_logger import CustomLogger
 from utils.r2_storage import R2StorageService
 
@@ -76,20 +75,18 @@ class PostingService:
             media_bytes = None
 
             # Photo platforms need URLs for each image; video platforms vary
-            needs_url = (
-                content_type == "photo"
-                or entry.platform in URL_PLATFORMS
-            )
-            needs_bytes = (
-                content_type == "video"
-                and entry.platform in BYTES_PLATFORMS
-            )
+            needs_url = content_type == "photo" or entry.platform in URL_PLATFORMS
+            needs_bytes = content_type == "video" and entry.platform in BYTES_PLATFORMS
 
             if content_type == "photo":
                 # Generate a presigned URL for each image
-                image_items = ContentPostService.get_media_items(content_post, file_type=FileTypeChoice.IMAGE)
+                image_items = ContentPostService.get_media_items(
+                    content_post, file_type=FileTypeChoice.IMAGE
+                )
                 presigned_urls = [
-                    R2StorageService.generate_presigned_url(item.r2_key, expiration=7200)
+                    R2StorageService.generate_presigned_url(
+                        item.r2_key, expiration=7200
+                    )
                     for item in image_items
                 ]
                 if not presigned_urls or any(url is None for url in presigned_urls):
@@ -103,7 +100,9 @@ class PostingService:
                     raise ValueError("Failed to generate presigned URLs for photos")
             elif needs_url:
                 # Single video → single presigned URL
-                video_items = ContentPostService.get_media_items(content_post, file_type=FileTypeChoice.VIDEO)
+                video_items = ContentPostService.get_media_items(
+                    content_post, file_type=FileTypeChoice.VIDEO
+                )
                 video_item = video_items.first()
                 if not video_item:
                     CustomLogger.error(
@@ -121,7 +120,9 @@ class PostingService:
                     raise ValueError("Failed to generate presigned URL")
 
             if needs_bytes:
-                video_items = ContentPostService.get_media_items(content_post, file_type=FileTypeChoice.VIDEO)
+                video_items = ContentPostService.get_media_items(
+                    content_post, file_type=FileTypeChoice.VIDEO
+                )
                 video_item = video_items.first()
                 if not video_item:
                     raise ValueError("No video media found for this post")
@@ -177,7 +178,14 @@ class PostingService:
 
     @classmethod
     def _dispatch_video(
-        cls, platform, access_token, social_account, media_bytes, video_url, title, description
+        cls,
+        platform,
+        access_token,
+        social_account,
+        media_bytes,
+        video_url,
+        title,
+        description,
     ) -> dict:
         if platform == PlatformChoices.YOUTUBE:
             return YoutubeService.publish_video(

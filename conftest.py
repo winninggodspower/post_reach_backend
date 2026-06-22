@@ -20,6 +20,7 @@ def user(db):
         handle="testuser",
     )
 
+
 @pytest.fixture
 def authenticated_client(api_client, user):
     api_client.force_authenticate(user=user)

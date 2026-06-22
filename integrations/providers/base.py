@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+
 from utils.http import BaseHTTPClient
+
 
 class SocialAccountService(BaseHTTPClient, ABC):
     BASE_URL = ""
@@ -18,12 +20,16 @@ class SocialAccountService(BaseHTTPClient, ABC):
 
         if brand_from_request is not None:
             if brand_from_request.user != user:
-                raise PermissionError("You do not have permission to access this brand.")
+                raise PermissionError(
+                    "You do not have permission to access this brand."
+                )
             return brand_from_request
 
         default_brand = Brand.objects.filter(user=user, is_default=True).first()
         if default_brand is None:
-            raise ValueError("No default brand found. Please create a brand or specify one.")
+            raise ValueError(
+                "No default brand found. Please create a brand or specify one."
+            )
         return default_brand
 
     @classmethod

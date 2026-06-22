@@ -7,7 +7,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from utils.custom_logger import CustomLogger, log_exceptions
 
-
 User = get_user_model()
 
 
@@ -40,7 +39,10 @@ class UserService:
         try:
             validate_password(password)
         except DjangoValidationError as exc:
-            CustomLogger.exception("Password validation failed in register_with_password", extra={"email": email, "handle": handle})
+            CustomLogger.exception(
+                "Password validation failed in register_with_password",
+                extra={"email": email, "handle": handle},
+            )
             raise ValueError(exc.messages)
 
         try:
@@ -53,17 +55,19 @@ class UserService:
                     handle=handle,
                 )
         except IntegrityError:
-            CustomLogger.exception("User creation failed in register_with_password", extra={"email": email, "handle": handle})
+            CustomLogger.exception(
+                "User creation failed in register_with_password",
+                extra={"email": email, "handle": handle},
+            )
             raise ValueError("A user with this email or handle already exists.")
 
     @staticmethod
     @log_exceptions()
     def sign_in_with_password(*, username, password, request=None):
         username = username.strip()
-        user = (
-            User.objects.filter(Q(email__iexact=username) | Q(handle__iexact=username))
-            .first()
-        )
+        user = User.objects.filter(
+            Q(email__iexact=username) | Q(handle__iexact=username)
+        ).first()
 
         if not user:
             raise ValueError("Invalid username or password.")

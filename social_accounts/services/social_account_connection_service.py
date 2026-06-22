@@ -3,12 +3,12 @@ from datetime import timedelta
 from django.utils import timezone
 
 from integrations.providers.base import SocialAccountService
-from social_accounts.models import SocialAccount
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
+from social_accounts.models import SocialAccount
 from utils.custom_logger import log_exceptions
 
 
@@ -66,7 +66,9 @@ class SocialAccountConnectionService:
         if page_id:
             page = next((p for p in pages if p["id"] == page_id), None)
             if not page:
-                raise ValueError(f"Facebook page with ID '{page_id}' not found in your account")
+                raise ValueError(
+                    f"Facebook page with ID '{page_id}' not found in your account"
+                )
         else:
             page = pages[0]  # Default to the first page
 
@@ -101,7 +103,8 @@ class SocialAccountConnectionService:
             platform="instagram",
             defaults={
                 "access_token": credentials["access_token"],
-                "token_expires_at": timezone.now() + timedelta(seconds=credentials["expires_in"]),
+                "token_expires_at": timezone.now()
+                + timedelta(seconds=credentials["expires_in"]),
             },
         )
 
@@ -125,7 +128,8 @@ class SocialAccountConnectionService:
                 "external_id": user_info["external_id"],
                 "access_token": access_token,
                 "refresh_token": token_data.get("refresh_token"),
-                "token_expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),
+                "token_expires_at": timezone.now()
+                + timedelta(seconds=token_data["expires_in"]),
                 "scope": token_data.get("scope", ""),
             },
         )
@@ -149,7 +153,8 @@ class SocialAccountConnectionService:
                 "account_name": user_info["account_name"],
                 "external_id": user_info["external_id"],
                 "access_token": access_token,
-                "token_expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),
+                "token_expires_at": timezone.now()
+                + timedelta(seconds=token_data["expires_in"]),
                 "scope": token_data.get("scope", ""),
             },
         )

@@ -30,6 +30,7 @@ class TestGenerateAuthUrl:
 
         # Extract state from the URL
         import urllib.parse
+
         parsed = urllib.parse.urlparse(auth_url)
         params = urllib.parse.parse_qs(parsed.query)
         state_from_url = params["state"][0]
@@ -45,6 +46,7 @@ class TestGenerateAuthUrl:
         auth_url = FacebookService.generate_auth_url(user_id=user.id)
 
         import urllib.parse
+
         parsed = urllib.parse.urlparse(auth_url)
         params = urllib.parse.parse_qs(parsed.query)
 
@@ -82,14 +84,18 @@ class TestVerifyGrantedScope:
         }
         mocker.patch.object(FacebookService, "get", return_value=mock_response)
 
-        is_valid, missing = FacebookService.verify_granted_scope("token_with_missing_scope")
+        is_valid, missing = FacebookService.verify_granted_scope(
+            "token_with_missing_scope"
+        )
 
         assert is_valid is False
         assert missing == {"pages_manage_posts"}
 
     def test_verify_granted_scope_no_data_key(self, mocker):
         """Should raise ValueError when response has no 'data' key."""
-        mocker.patch.object(FacebookService, "get", return_value={"error": "something went wrong"})
+        mocker.patch.object(
+            FacebookService, "get", return_value={"error": "something went wrong"}
+        )
 
         with pytest.raises(ValueError, match="something went wrong"):
             FacebookService.verify_granted_scope("bad_token")
@@ -108,10 +114,15 @@ class TestExchangeShortLivedToken:
         mocker.patch.object(
             FacebookService,
             "get",
-            return_value={"access_token": "long_lived_token_123", "expires_in": 5184000},
+            return_value={
+                "access_token": "long_lived_token_123",
+                "expires_in": 5184000,
+            },
         )
 
-        token, expires_in = FacebookService.exchange_short_lived_token("short_lived_token")
+        token, expires_in = FacebookService.exchange_short_lived_token(
+            "short_lived_token"
+        )
 
         assert token == "long_lived_token_123"
         assert expires_in == 5184000
@@ -174,7 +185,10 @@ class TestExchangeCodeForToken:
             "get",
             side_effect=[
                 {"access_token": "short_lived_token_456"},  # code exchange response
-                {"access_token": "long_lived_token_789", "expires_in": 5184000},  # short-lived exchange response
+                {
+                    "access_token": "long_lived_token_789",
+                    "expires_in": 5184000,
+                },  # short-lived exchange response
             ],
         )
         mocker.patch.object(
@@ -202,7 +216,9 @@ class TestExchangeCodeForToken:
         )
 
         with pytest.raises(ValueError, match="Code exchange failed"):
-            FacebookService.exchange_code_for_token("bad_code", "https://example.com/callback")
+            FacebookService.exchange_code_for_token(
+                "bad_code", "https://example.com/callback"
+            )
 
     def test_exchange_code_for_token_no_access_token(self, mocker):
         """Should raise ValueError when code exchange response has no access_token."""
@@ -213,7 +229,9 @@ class TestExchangeCodeForToken:
         )
 
         with pytest.raises(ValueError, match="Invalid code"):
-            FacebookService.exchange_code_for_token("bad_code", "https://example.com/callback")
+            FacebookService.exchange_code_for_token(
+                "bad_code", "https://example.com/callback"
+            )
 
 
 class TestGetFacebookPages:
@@ -262,7 +280,9 @@ class TestGetFacebookPages:
         mock_get = mocker.patch.object(
             FacebookService,
             "get",
-            return_value={"data": [{"id": "123", "name": "Page", "access_token": "tok"}]},
+            return_value={
+                "data": [{"id": "123", "name": "Page", "access_token": "tok"}]
+            },
         )
 
         FacebookService.get_facebook_pages("valid_token")
@@ -270,7 +290,10 @@ class TestGetFacebookPages:
         _call = mock_get.call_args
         assert _call == mocker.call(
             "/me/accounts",
-            params={"access_token": "valid_token", "fields": "id,name,picture,access_token"},
+            params={
+                "access_token": "valid_token",
+                "fields": "id,name,picture,access_token",
+            },
         )
 
     def test_get_facebook_pages_no_pages(self, mocker):
@@ -281,7 +304,9 @@ class TestGetFacebookPages:
             return_value={"data": []},
         )
 
-        with pytest.raises(ValueError, match="No Facebook pages found for this account"):
+        with pytest.raises(
+            ValueError, match="No Facebook pages found for this account"
+        ):
             FacebookService.get_facebook_pages("token_with_no_pages")
 
     def test_get_facebook_pages_api_error(self, mocker):

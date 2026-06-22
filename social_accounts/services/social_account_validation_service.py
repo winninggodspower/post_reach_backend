@@ -6,15 +6,14 @@ from users.models import Brand
 
 class SocialAccountValidationService:
     @staticmethod
-    def get_connected_platforms(brand: Brand) -> Set[str]:
+    def get_connected_platforms(brand: Brand) -> set[str]:
         """Return the set of platform values connected to the brand."""
         return set(
-            SocialAccount.objects.filter(brand=brand)
-            .values_list("platform", flat=True)
+            SocialAccount.objects.filter(brand=brand).values_list("platform", flat=True)
         )
 
     @staticmethod
-    def ensure_platforms_connected(brand: Brand, platforms: List[str]) -> None:
+    def ensure_platforms_connected(brand: Brand, platforms: list[str]) -> None:
         """
         Validate that every requested platform has a connected SocialAccount.
 

@@ -30,5 +30,3 @@ def test_error_response_shape():
         "message": "Invalid request.",
         "errors": {"field": ["This field is required."]},
     }
-
-

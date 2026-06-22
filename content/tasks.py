@@ -1,7 +1,7 @@
 from celery import shared_task
 
 from content.models import ContentPostPlatform
-from content.services.posting_service import PostingService, PHOTO_PLATFORMS
+from content.services.posting_service import PHOTO_PLATFORMS, PostingService
 from utils.custom_logger import CustomLogger
 
 
@@ -24,7 +24,9 @@ def publish_platform_entry(platform_entry_id, content_type="video"):
         )
         return {"status": "error", "message": "ContentPostPlatform not found"}
 
-    result_entry = PostingService.publish_platform_entry(entry, content_type=content_type)
+    result_entry = PostingService.publish_platform_entry(
+        entry, content_type=content_type
+    )
 
     PostingService.cleanup_r2_media(result_entry.content_post)
 

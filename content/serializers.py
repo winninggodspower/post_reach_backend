@@ -5,7 +5,6 @@ from content.enums import PhotoPlatformOptions
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from social_accounts.enums import PlatformChoices
 
-
 # Used by the swagger_auto_schema in views.py for the platforms enum dropdown
 PLATFORM_ENUMS = [choice[0] for choice in PlatformChoices.choices]
 PHOTO_PLATFORM_ENUMS = [choice[0] for choice in PhotoPlatformOptions.choices]

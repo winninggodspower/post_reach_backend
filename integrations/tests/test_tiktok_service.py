@@ -4,12 +4,11 @@ import uuid
 import pytest
 from django.core.cache import cache
 
-from integrations.providers.tiktok_service import (
-    TiktokService,
-    _generate_code_challenge,
-    _generate_code_verifier,
-)
-from social_accounts.utils.cache_keys import tiktok_code_verifier, tiktok_oauth_state
+from integrations.providers.tiktok_service import (TiktokService,
+                                                   _generate_code_challenge,
+                                                   _generate_code_verifier)
+from social_accounts.utils.cache_keys import (tiktok_code_verifier,
+                                              tiktok_oauth_state)
 
 
 class TestPKCEHelpers:
@@ -23,7 +22,9 @@ class TestPKCEHelpers:
     def test_generate_code_verifier_valid_characters(self):
         """Should only contain unreserved characters [A-Za-z0-9-._~]."""
         verifier = _generate_code_verifier()
-        valid_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        valid_chars = set(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+        )
         assert all(c in valid_chars for c in verifier)
 
     def test_generate_code_verifier_randomness(self):
@@ -82,6 +83,7 @@ class TestGenerateAuthUrl:
         auth_url = TiktokService.generate_auth_url(user_id=user.id)
 
         import urllib.parse
+
         parsed = urllib.parse.urlparse(auth_url)
         params = urllib.parse.parse_qs(parsed.query)
         state_from_url = params["state"][0]
@@ -102,6 +104,7 @@ class TestGenerateAuthUrl:
         auth_url = TiktokService.generate_auth_url(user_id=user.id)
 
         import urllib.parse
+
         parsed = urllib.parse.urlparse(auth_url)
         params = urllib.parse.parse_qs(parsed.query)
         code_challenge_from_url = params["code_challenge"][0]
@@ -117,6 +120,7 @@ class TestGenerateAuthUrl:
         auth_url = TiktokService.generate_auth_url(user_id=user.id)
 
         import urllib.parse
+
         parsed = urllib.parse.urlparse(auth_url)
         params = urllib.parse.parse_qs(parsed.query)
 
@@ -158,7 +162,9 @@ class TestExchangeCodeForToken:
         """Should raise ValueError when the token exchange API call fails."""
         from utils.http import APIError
 
-        mocker.patch.object(TiktokService, "post", side_effect=APIError("Token exchange failed"))
+        mocker.patch.object(
+            TiktokService, "post", side_effect=APIError("Token exchange failed")
+        )
 
         verifier = _generate_code_verifier()
         cache.set(tiktok_code_verifier(user.id), verifier, 600)
@@ -173,7 +179,9 @@ class TestExchangeCodeForToken:
         verifier = _generate_code_verifier()
         cache.set(tiktok_code_verifier(user.id), verifier, 600)
 
-        with pytest.raises(ValueError, match="Error while fetching access token from TikTok"):
+        with pytest.raises(
+            ValueError, match="Error while fetching access token from TikTok"
+        ):
             TiktokService.exchange_code_for_token("bad_code", user.id)
 
     def test_exchange_code_for_token_sends_correct_data(self, mocker, user):
@@ -260,7 +268,9 @@ class TestFetchUserInfo:
             return_value={"error": "something went wrong"},
         )
 
-        with pytest.raises(ValueError, match="Unable to retrieve TikTok user information"):
+        with pytest.raises(
+            ValueError, match="Unable to retrieve TikTok user information"
+        ):
             TiktokService.fetch_user_info("bad_token")
 
     def test_fetch_user_info_api_error(self, mocker):
@@ -297,7 +307,9 @@ class TestRefreshAccessToken:
         """Should raise ValueError when the refresh API call fails."""
         from utils.http import APIError
 
-        mocker.patch.object(TiktokService, "post", side_effect=APIError("Refresh failed"))
+        mocker.patch.object(
+            TiktokService, "post", side_effect=APIError("Refresh failed")
+        )
 
         with pytest.raises(ValueError, match="Refresh failed"):
             TiktokService.refresh_access_token("bad_token")
@@ -306,7 +318,9 @@ class TestRefreshAccessToken:
         """Should raise ValueError when response is empty."""
         mocker.patch.object(TiktokService, "post", return_value=None)
 
-        with pytest.raises(ValueError, match="Error while refreshing access token from TikTok"):
+        with pytest.raises(
+            ValueError, match="Error while refreshing access token from TikTok"
+        ):
             TiktokService.refresh_access_token("bad_token")
 
     def test_refresh_access_token_sends_correct_data(self, mocker):

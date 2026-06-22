@@ -1,14 +1,13 @@
 import uuid
 
 import httpx
-
 from django.conf import settings
 from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
 from social_accounts.utils.cache_keys import linkedin_oauth_state
-from utils.http import APIError
 from utils.custom_logger import CustomLogger
+from utils.http import APIError
 
 OAUTH_STATE_TTL = 600  # 10 minutes
 
@@ -64,7 +63,13 @@ class LinkedinService(SocialAccountService):
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
         except APIError as e:
-            CustomLogger.exception("LinkedIn token exchange failed", extra={"operation": "exchange_code_for_token", "redirect_uri": redirect_uri})
+            CustomLogger.exception(
+                "LinkedIn token exchange failed",
+                extra={
+                    "operation": "exchange_code_for_token",
+                    "redirect_uri": redirect_uri,
+                },
+            )
             raise ValueError(f"LinkedIn Auth Error: {e}") from e
         if "access_token" not in response_data:
             error_message = (
@@ -88,7 +93,10 @@ class LinkedinService(SocialAccountService):
                 headers={"Authorization": f"Bearer {access_token}"},
             )
         except APIError as e:
-            CustomLogger.exception("Failed to fetch LinkedIn user info", extra={"operation": "fetch_user_info"})
+            CustomLogger.exception(
+                "Failed to fetch LinkedIn user info",
+                extra={"operation": "fetch_user_info"},
+            )
             raise ValueError(f"Failed to fetch LinkedIn user info: {str(e)}") from e
 
         external_id = data.get("sub")
@@ -98,7 +106,9 @@ class LinkedinService(SocialAccountService):
         # Build account name from given name and family name
         given_name = data.get("given_name", "")
         family_name = data.get("family_name", "")
-        account_name = f"{given_name} {family_name}".strip() or data.get("name", "LinkedIn User")
+        account_name = f"{given_name} {family_name}".strip() or data.get(
+            "name", "LinkedIn User"
+        )
 
         return {
             "account_name": account_name,
@@ -131,7 +141,9 @@ class LinkedinService(SocialAccountService):
                 "Failed to download media for LinkedIn upload",
                 extra={"operation": "_download_media_binary", "media_url": media_url},
             )
-            raise ValueError(f"Failed to download media from {media_url}: {str(e)}") from e
+            raise ValueError(
+                f"Failed to download media from {media_url}: {str(e)}"
+            ) from e
 
     @classmethod
     def _register_media_upload(cls, access_token, person_urn, recipe):
@@ -219,7 +231,9 @@ class LinkedinService(SocialAccountService):
     # ------------------------------------------------------------------
 
     @classmethod
-    def publish_video(cls, access_token, person_urn, video_url, title="", description=""):
+    def publish_video(
+        cls, access_token, person_urn, video_url, title="", description=""
+    ):
         """
         Publish a video post to LinkedIn using the UGC Posts API.
 
@@ -257,7 +271,9 @@ class LinkedinService(SocialAccountService):
                     "specificContent": {
                         "com.linkedin.ugc.ShareContent": {
                             "shareCommentary": {
-                                "text": f"{title}\n{description}" if description else title,
+                                "text": (
+                                    f"{title}\n{description}" if description else title
+                                ),
                             },
                             "shareMediaCategory": "VIDEO",
                             "media": [

@@ -1,4 +1,5 @@
 import pytest
+
 from integrations.providers.facebook_service import FacebookService
 
 pytestmark = pytest.mark.django_db
@@ -139,7 +140,10 @@ class TestFacebookConnectEndpoint:
 
         assert response.status_code == 200
         assert response.data["success"] is True
-        assert response.data["data"]["message"] == "Facebook account successfully connected"
+        assert (
+            response.data["data"]["message"]
+            == "Facebook account successfully connected"
+        )
         assert response.data["data"]["platform"] == "facebook"
         assert response.data["data"]["is_connected"] is True
 
@@ -228,7 +232,9 @@ class TestFacebookConnectEndpoint:
         """Should return 400 when connect_facebook raises a ValueError."""
         mocker.patch(
             "social_accounts.services.social_account_connection_service.SocialAccountConnectionService.connect_facebook",
-            side_effect=ValueError("Missing required Facebook permissions: pages_manage_posts"),
+            side_effect=ValueError(
+                "Missing required Facebook permissions: pages_manage_posts"
+            ),
         )
 
         payload = {
