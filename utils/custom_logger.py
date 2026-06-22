@@ -2,10 +2,9 @@ import inspect
 import json
 import logging
 import sys
+from collections.abc import Callable, Mapping
 from functools import wraps
 from typing import Any, Optional, TypeVar
-
-from collections.abc import Callable, Mapping
 
 T = TypeVar("T", bound=Callable[..., object])
 REDACTED_VALUE = "<redacted>"
