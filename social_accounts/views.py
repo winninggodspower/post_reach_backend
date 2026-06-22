@@ -6,21 +6,24 @@ from rest_framework.permissions import IsAuthenticated
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.youtube_service import YoutubeService
-from social_accounts.serializers import (ConnectAccountResponseSerializer,
-                                         FacebookAuthCodeSerializer,
-                                         FacebookAuthUrlResponseSerializer,
-                                         FacebookPagesListResponseSerializer,
-                                         FacebookPagesRequestSerializer,
-                                         GoogleAuthCodeSerializer,
-                                         InstagramAuthCodeSerializer,
-                                         InstagramAuthUrlResponseSerializer,
-                                         LinkedinAuthCodeSerializer,
-                                         LinkedinAuthUrlResponseSerializer,
-                                         TiktokAuthCodeSerializer,
-                                         TiktokAuthUrlResponseSerializer,
-                                         YoutubeAuthUrlResponseSerializer)
-from social_accounts.services.social_account_connection_service import \
-    SocialAccountConnectionService
+from social_accounts.serializers import (
+    ConnectAccountResponseSerializer,
+    FacebookAuthCodeSerializer,
+    FacebookAuthUrlResponseSerializer,
+    FacebookPagesListResponseSerializer,
+    FacebookPagesRequestSerializer,
+    GoogleAuthCodeSerializer,
+    InstagramAuthCodeSerializer,
+    InstagramAuthUrlResponseSerializer,
+    LinkedinAuthCodeSerializer,
+    LinkedinAuthUrlResponseSerializer,
+    TiktokAuthCodeSerializer,
+    TiktokAuthUrlResponseSerializer,
+    YoutubeAuthUrlResponseSerializer,
+)
+from social_accounts.services.social_account_connection_service import (
+    SocialAccountConnectionService,
+)
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 # Create your views here.

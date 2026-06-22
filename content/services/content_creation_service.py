@@ -12,8 +12,9 @@ from django.db import transaction
 from content.enums import FileTypeChoice
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from content.tasks import publish_platform_entry
-from social_accounts.services.social_account_validation_service import \
-    SocialAccountValidationService
+from social_accounts.services.social_account_validation_service import (
+    SocialAccountValidationService,
+)
 from users.services.brand_service import BrandService
 from utils.custom_logger import CustomLogger, log_exceptions
 from utils.r2_storage import R2StorageService

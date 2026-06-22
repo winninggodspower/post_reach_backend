@@ -4,11 +4,12 @@ import uuid
 import pytest
 from django.core.cache import cache
 
-from integrations.providers.tiktok_service import (TiktokService,
-                                                   _generate_code_challenge,
-                                                   _generate_code_verifier)
-from social_accounts.utils.cache_keys import (tiktok_code_verifier,
-                                              tiktok_oauth_state)
+from integrations.providers.tiktok_service import (
+    TiktokService,
+    _generate_code_challenge,
+    _generate_code_verifier,
+)
+from social_accounts.utils.cache_keys import tiktok_code_verifier, tiktok_oauth_state
 
 
 class TestPKCEHelpers:

@@ -12,8 +12,9 @@ from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.enums import PlatformChoices
-from social_accounts.services.social_account_validation_service import \
-    SocialAccountValidationService
+from social_accounts.services.social_account_validation_service import (
+    SocialAccountValidationService,
+)
 from utils.custom_logger import CustomLogger
 from utils.r2_storage import R2StorageService
 

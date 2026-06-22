@@ -16,9 +16,18 @@ repos:
     rev: 5.13.2  # 🌟 Updated
     hooks:
       - id: isort
+        args: ["--multi-line=3", "--profile=black", "--filter-files"]
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.16.0  # 🌟 Updated to fix the ast.Str crash
     hooks:
       - id: pyupgrade
         args: [--py311-plus]
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.11.23
+    hooks:
+      - id: pip-compile
+        args: [pyproject.toml, -o, requirements.txt]
+        stages: [pre-push]
+        files: ^pyproject\.toml$

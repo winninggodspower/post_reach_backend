@@ -6,10 +6,12 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
 from content.models import ContentPost
-from content.serializers import (ContentPostCreateSerializer,
-                                 ContentPostResponseSerializer,
-                                 PhotoPostCreateSerializer,
-                                 photo_post_parameters)
+from content.serializers import (
+    ContentPostCreateSerializer,
+    ContentPostResponseSerializer,
+    PhotoPostCreateSerializer,
+    photo_post_parameters,
+)
 from content.services.content_creation_service import ContentCreationService
 from content.services.content_post_service import ContentPostService
 from utils.custom_logger import CustomLogger

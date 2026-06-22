@@ -9,11 +9,17 @@ from users.models import Brand, User
 from users.services import OnboardingService, UserService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
-from .serializers import (AuthResponseSerializer, GoogleAuthSerializer,
-                          OnboardingResponseSerializer, OnboardingSerializer,
-                          RegisterUserSerializer, SignInSerializer,
-                          UserResponseSerializer, UserSerializer,
-                          UserUpdateSerializer)
+from .serializers import (
+    AuthResponseSerializer,
+    GoogleAuthSerializer,
+    OnboardingResponseSerializer,
+    OnboardingSerializer,
+    RegisterUserSerializer,
+    SignInSerializer,
+    UserResponseSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+)
 
 
 # Create your views here.

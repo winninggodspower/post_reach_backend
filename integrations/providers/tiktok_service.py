@@ -7,8 +7,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
-from social_accounts.utils.cache_keys import (tiktok_code_verifier,
-                                              tiktok_oauth_state)
+from social_accounts.utils.cache_keys import tiktok_code_verifier, tiktok_oauth_state
 from utils.custom_logger import CustomLogger
 from utils.http import APIError
 

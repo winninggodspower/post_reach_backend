@@ -10,8 +10,7 @@ from django.utils import timezone
 
 from content.enums import PostStatus
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
-from content.serializers import (ContentPostCreateSerializer,
-                                 PhotoPostCreateSerializer)
+from content.serializers import ContentPostCreateSerializer, PhotoPostCreateSerializer
 from content.services.content_creation_service import ContentCreationService
 from content.services.posting_service import PostingService
 from social_accounts.enums import PlatformChoices

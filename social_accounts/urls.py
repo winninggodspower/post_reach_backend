@@ -1,7 +1,12 @@
 from django.urls import path
 
-from .views import (FacebookAuthViewSet, InstagramAuthViewSet,
-                    LinkedinAuthViewSet, TiktokAuthViewSet, YoutubeAuthViewSet)
+from .views import (
+    FacebookAuthViewSet,
+    InstagramAuthViewSet,
+    LinkedinAuthViewSet,
+    TiktokAuthViewSet,
+    YoutubeAuthViewSet,
+)
 
 urlpatterns = [
     # YouTube uses a ViewSet with auth-url and connect actions

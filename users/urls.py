@@ -1,8 +1,13 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .views import (CurrentUserView, GoogleSignInView, OnboardingView,
-                    RegisterUserView, SignInView)
+from .views import (
+    CurrentUserView,
+    GoogleSignInView,
+    OnboardingView,
+    RegisterUserView,
+    SignInView,
+)
 
 urlpatterns = [
     path("sign-in/", SignInView.as_view(), name="sign-in"),
