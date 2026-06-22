@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='brand',
-            constraint=models.UniqueConstraint(fields=('user', 'is_default'), name='unique_user_default_brand'),
+            constraint=models.UniqueConstraint(fields=('user', 'is_default'), name='unique_user_default_brand_social'),
         ),
         migrations.AddConstraint(
             model_name='socialaccount',
