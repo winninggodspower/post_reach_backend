@@ -46,11 +46,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    
     # Custom user app
     "users.apps.UsersConfig",
     "social_accounts.apps.SocialAccountsConfig",
     "integrations",
     "content.apps.ContentConfig",
+
     # Third-party apps
     "rest_framework",
     "corsheaders",
