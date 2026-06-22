@@ -134,12 +134,17 @@ WSGI_APPLICATION = "post_reach_backend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+if DEBUG:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": env.db("DATABASE_URL"),
+    }
 
 
 # Password validation
@@ -225,17 +230,14 @@ FERNET_SECRET_KEY = env("FERNET_SECRET_KEY").encode()
 
 
 # Cache Settings (using Redis)
-# CACHES = {
-#     "default": {
-#         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-#         "LOCATION": "redis://localhost:6379/1",
-#     }
-# }
+# Reads from env var eg REDIS_URL=redis://:password@host:6379/0
+# Falls back to localhost for dev
+REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-        "LOCATION": "c:/foo/bar",
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
     }
 }
 
@@ -249,7 +251,8 @@ CLOUDFLARE_R2_ENDPOINT = (
 CLOUDFLARE_R2_PUBLIC_DOMAIN = "https://postreach.media.winningtech.xyz"
 
 # Celery Settings
-CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379")
+# Uses the same Redis instance as the cache
+CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_EXTENDED = True
 
