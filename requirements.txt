@@ -215,6 +215,8 @@ protobuf==6.30.2
     #   google-api-core
     #   googleapis-common-protos
     #   proto-plus
+psycopg2==2.9.12
+    # via post-reach-backend (pyproject.toml)
 pyasn1==0.6.1
     # via
     #   post-reach-backend (pyproject.toml)
