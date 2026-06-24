@@ -9,7 +9,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
 from integrations.providers.base import SocialAccountService
-from social_accounts.utils.cache_keys import youtube_oauth_state
+from utils.cache_keys import CacheKeys
 from utils.custom_logger import CustomLogger
 
 OAUTH_STATE_TTL = 600  # 10 minutes
@@ -36,7 +36,7 @@ class YoutubeService(SocialAccountService):
         """
         redirect_uri = cls.redirect_uri
         state = str(uuid.uuid4())
-        cache.set(youtube_oauth_state(user_id), state, OAUTH_STATE_TTL)
+        cache.set(CacheKeys.youtube_oauth_state(user_id), state, OAUTH_STATE_TTL)
 
         client_config = {
             "web": {
@@ -124,10 +124,10 @@ class YoutubeService(SocialAccountService):
 
         # 1. State verification
         if state:
-            cached_state = cache.get(youtube_oauth_state(user.id))
+            cached_state = cache.get(CacheKeys.youtube_oauth_state(user.id))
             if not cached_state or state != cached_state:
                 raise ValueError("Invalid state parameter. Possible CSRF attack.")
-            cache.delete(youtube_oauth_state(user.id))
+            cache.delete(CacheKeys.youtube_oauth_state(user.id))
 
         # 2. Brand resolution
         resolved_brand = cls._resolve_brand(user, brand)

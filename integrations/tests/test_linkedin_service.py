@@ -4,7 +4,7 @@ import pytest
 from django.core.cache import cache
 
 from integrations.providers.linkedin_service import LinkedinService
-from social_accounts.utils.cache_keys import linkedin_oauth_state
+from utils.cache_keys import CacheKeys
 
 
 class TestGenerateAuthUrl:
@@ -40,7 +40,7 @@ class TestGenerateAuthUrl:
         params = urllib.parse.parse_qs(parsed.query)
         state_from_url = params["state"][0]
 
-        cached_state = cache.get(linkedin_oauth_state(user.id))
+        cached_state = cache.get(CacheKeys.linkedin_oauth_state(user.id))
         assert cached_state == state_from_url
 
     def test_generate_auth_url_uses_correct_redirect_uri(self, user):

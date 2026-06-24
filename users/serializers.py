@@ -171,3 +171,27 @@ class OnboardingResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     message = serializers.CharField()
     data = OnboardingResponseDataSerializer()
+
+
+class RequestResetOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+class VerifyResetOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    otp = serializers.CharField(required=True, min_length=6, max_length=6)
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    reset_token = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, min_length=8, write_only=True)
+
+
+class VerifyOTPResponseDataSerializer(serializers.Serializer):
+    reset_token = serializers.CharField()
+
+
+class VerifyOTPResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    data = VerifyOTPResponseDataSerializer()

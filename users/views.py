@@ -1,12 +1,13 @@
 from django.db.models import Prefetch
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import status
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from integrations.services.google_auth_service import GoogleAuthService
 from users.models import Brand, User
-from users.services import OnboardingService, UserService
+from users.services import OnboardingService, PasswordResetService, UserService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 from .serializers import (
@@ -15,10 +16,14 @@ from .serializers import (
     OnboardingResponseSerializer,
     OnboardingSerializer,
     RegisterUserSerializer,
+    RequestResetOTPSerializer,
+    ResetPasswordSerializer,
     SignInSerializer,
     UserResponseSerializer,
     UserSerializer,
     UserUpdateSerializer,
+    VerifyOTPResponseSerializer,
+    VerifyResetOTPSerializer,
 )
 
 
@@ -259,4 +264,120 @@ class CurrentUserView(APIView):
         return CustomSuccessResponse(
             data=UserSerializer(user).data,
             message="User data updated successfully.",
+        )
+
+
+class PasswordResetViewSet(viewsets.ViewSet):
+    """ViewSet for the password reset flow with OTP verification.
+
+    Provides three actions:
+    - `request_otp`: Send a 6-digit OTP to the user's email
+    - `verify_otp`: Verify the OTP and get a reset token
+    - `reset`: Reset the password using the reset token
+    """
+
+    @swagger_auto_schema(
+        operation_summary="Request password reset OTP",
+        operation_description=(
+            "Send a 6-digit OTP to the user's email to initiate password reset. "
+            "Always returns 200 for security (does not reveal if email exists). "
+            "Rate-limited to 1 request per 60 seconds per email."
+        ),
+        request_body=RequestResetOTPSerializer,
+        responses={
+            200: "OTP sent successfully (or email does not exist)",
+            400: "Validation error",
+        },
+    )
+    @action(detail=False, methods=["post"], url_path="request-otp", url_name="request-otp")
+    def request_otp(self, request):
+        serializer = RequestResetOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            PasswordResetService.send_reset_otp(
+                email=serializer.validated_data["email"],
+            )
+        except ValueError as exc:
+            return CustomErrorResponse(
+                message="Failed to send verification code.",
+                errors={"detail": exc.args[0]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return CustomSuccessResponse(
+            message=(
+                "If an account with this email exists, "
+                "a verification code has been sent."
+            ),
+        )
+
+    @swagger_auto_schema(
+        operation_summary="Verify password reset OTP",
+        operation_description=(
+            "Verify the 6-digit OTP sent to the user's email. "
+            "On success, returns a short-lived reset token that must be used "
+            "within 5 minutes to reset the password. "
+            "Max 5 incorrect attempts before the OTP is invalidated."
+        ),
+        request_body=VerifyResetOTPSerializer,
+        responses={
+            200: VerifyOTPResponseSerializer,
+            400: "Invalid or expired OTP",
+        },
+    )
+    @action(detail=False, methods=["post"], url_path="verify-otp", url_name="verify-otp")
+    def verify_otp(self, request):
+        serializer = VerifyResetOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            reset_token = PasswordResetService.verify_reset_otp(
+                email=serializer.validated_data["email"],
+                otp=serializer.validated_data["otp"],
+            )
+        except ValueError as exc:
+            return CustomErrorResponse(
+                message="Verification failed.",
+                errors={"detail": exc.args[0]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return CustomSuccessResponse(
+            data={"reset_token": reset_token},
+            message="Verification successful. You can now reset your password.",
+        )
+
+    @swagger_auto_schema(
+        operation_summary="Reset password",
+        operation_description=(
+            "Reset the user's password using the reset token obtained "
+            "from OTP verification. The new password must meet Django's "
+            "password validation requirements."
+        ),
+        request_body=ResetPasswordSerializer,
+        responses={
+            200: "Password reset successful",
+            400: "Invalid token or password validation error",
+        },
+    )
+    @action(detail=False, methods=["post"], url_path="reset", url_name="reset")
+    def reset(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            PasswordResetService.reset_password(
+                reset_token=serializer.validated_data["reset_token"],
+                new_password=serializer.validated_data["new_password"],
+            )
+        except ValueError as exc:
+            return CustomErrorResponse(
+                message="Password reset failed.",
+                errors={"detail": exc.args[0]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return CustomSuccessResponse(
+            message="Password reset successful. You can now sign in with your new password.",
         )

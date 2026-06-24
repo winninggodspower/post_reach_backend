@@ -4,7 +4,7 @@ import pytest
 from django.core.cache import cache
 
 from integrations.providers.facebook_service import FacebookService
-from social_accounts.utils.cache_keys import facebook_oauth_state
+from utils.cache_keys import CacheKeys
 
 
 class TestGenerateAuthUrl:
@@ -36,7 +36,7 @@ class TestGenerateAuthUrl:
         state_from_url = params["state"][0]
 
         # Verify state is stored in cache
-        cached_state = cache.get(facebook_oauth_state(user.id))
+        cached_state = cache.get(CacheKeys.facebook_oauth_state(user.id))
         assert cached_state == state_from_url
 
     def test_generate_auth_url_uses_correct_redirect_uri(self, user):

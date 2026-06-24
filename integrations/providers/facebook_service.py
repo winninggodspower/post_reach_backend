@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
-from social_accounts.utils.cache_keys import facebook_oauth_state
+from utils.cache_keys import CacheKeys
 from utils.custom_logger import CustomLogger
 from utils.http import APIError
 
@@ -34,7 +34,7 @@ class FacebookService(SocialAccountService):
         """
         redirect_uri = cls.redirect_uri
         state = str(uuid.uuid4())
-        cache.set(facebook_oauth_state(user_id), state, OAUTH_STATE_TTL)
+        cache.set(CacheKeys.facebook_oauth_state(user_id), state, OAUTH_STATE_TTL)
 
         params = {
             "client_id": cls.CLIENT_ID,

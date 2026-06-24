@@ -4,6 +4,16 @@ from rest_framework.test import APIClient
 from social_accounts.models import Brand
 from users.models import User
 
+def pytest_configure():
+    from django.conf import settings
+
+    # Override cache to use LocMemCache so tests don't require Redis
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-password-reset-cache",
+        }
+    }
 
 @pytest.fixture
 def api_client():

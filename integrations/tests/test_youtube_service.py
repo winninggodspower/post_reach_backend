@@ -116,9 +116,9 @@ class TestConnectAccount:
         """Should raise ValueError when state is invalid."""
         from django.core.cache import cache
 
-        from social_accounts.utils.cache_keys import youtube_oauth_state
+        from utils.cache_keys import CacheKeys
 
-        cache.set(youtube_oauth_state(user.id), "expected_state", 600)
+        cache.set(CacheKeys.youtube_oauth_state(user.id), "expected_state", 600)
 
         with pytest.raises(ValueError, match="Invalid state parameter"):
             YoutubeService.connect_account(

@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
-from social_accounts.utils.cache_keys import tiktok_code_verifier, tiktok_oauth_state
+from utils.cache_keys import CacheKeys
 from utils.custom_logger import CustomLogger
 from utils.http import APIError
 
@@ -62,8 +62,8 @@ class TiktokService(SocialAccountService):
         code_verifier = _generate_code_verifier()
         code_challenge = _generate_code_challenge(code_verifier)
 
-        cache.set(tiktok_oauth_state(user_id), state, OAUTH_STATE_TTL)
-        cache.set(tiktok_code_verifier(user_id), code_verifier, OAUTH_STATE_TTL)
+        cache.set(CacheKeys.tiktok_oauth_state(user_id), state, OAUTH_STATE_TTL)
+        cache.set(CacheKeys.tiktok_code_verifier(user_id), code_verifier, OAUTH_STATE_TTL)
 
         params = {
             "client_key": cls.CLIENT_KEY,
@@ -88,7 +88,7 @@ class TiktokService(SocialAccountService):
 
         Retrieves the stored code_verifier from cache for PKCE verification.
         """
-        code_verifier = cache.get(tiktok_code_verifier(user_id))
+        code_verifier = cache.get(CacheKeys.tiktok_code_verifier(user_id))
         if not code_verifier:
             raise ValueError("Code verifier not found. Please restart the OAuth flow.")
 
@@ -114,7 +114,7 @@ class TiktokService(SocialAccountService):
             raise ValueError("Error while fetching access token from TikTok")
 
         # Clean up the used code_verifier
-        cache.delete(tiktok_code_verifier(user_id))
+        cache.delete(CacheKeys.tiktok_code_verifier(user_id))
 
         return response
 

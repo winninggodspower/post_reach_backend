@@ -9,7 +9,7 @@ from integrations.providers.tiktok_service import (
     _generate_code_challenge,
     _generate_code_verifier,
 )
-from social_accounts.utils.cache_keys import tiktok_code_verifier, tiktok_oauth_state
+from utils.cache_keys import CacheKeys
 
 
 class TestPKCEHelpers:
@@ -89,14 +89,14 @@ class TestGenerateAuthUrl:
         params = urllib.parse.parse_qs(parsed.query)
         state_from_url = params["state"][0]
 
-        cached_state = cache.get(tiktok_oauth_state(user.id))
+        cached_state = cache.get(CacheKeys.tiktok_oauth_state(user.id))
         assert cached_state == state_from_url
 
     def test_generate_auth_url_stores_code_verifier_in_cache(self, user):
         """Should store the PKCE code verifier in cache for token exchange."""
         TiktokService.generate_auth_url(user_id=user.id)
 
-        cached_verifier = cache.get(tiktok_code_verifier(user.id))
+        cached_verifier = cache.get(CacheKeys.tiktok_code_verifier(user.id))
         assert cached_verifier is not None
         assert len(cached_verifier) == 128
 
@@ -110,7 +110,7 @@ class TestGenerateAuthUrl:
         params = urllib.parse.parse_qs(parsed.query)
         code_challenge_from_url = params["code_challenge"][0]
 
-        cached_verifier = cache.get(tiktok_code_verifier(user.id))
+        cached_verifier = cache.get(CacheKeys.tiktok_code_verifier(user.id))
         expected_challenge = _generate_code_challenge(cached_verifier)
         assert code_challenge_from_url == expected_challenge
 
@@ -144,17 +144,17 @@ class TestExchangeCodeForToken:
 
         # Set up the code_verifier in cache
         verifier = _generate_code_verifier()
-        cache.set(tiktok_code_verifier(user.id), verifier, 600)
+        cache.set(CacheKeys.tiktok_code_verifier(user.id), verifier, 600)
 
         result = TiktokService.exchange_code_for_token("auth_code_123", user.id)
 
         assert result == mock_response
         # Verify code_verifier is cleaned up after use
-        assert cache.get(tiktok_code_verifier(user.id)) is None
+        assert cache.get(CacheKeys.tiktok_code_verifier(user.id)) is None
 
     def test_exchange_code_for_token_missing_verifier(self, user):
         """Should raise ValueError when no code_verifier is in cache."""
-        cache.delete(tiktok_code_verifier(user.id))
+        cache.delete(CacheKeys.tiktok_code_verifier(user.id))
 
         with pytest.raises(ValueError, match="Code verifier not found"):
             TiktokService.exchange_code_for_token("auth_code_123", user.id)
@@ -168,7 +168,7 @@ class TestExchangeCodeForToken:
         )
 
         verifier = _generate_code_verifier()
-        cache.set(tiktok_code_verifier(user.id), verifier, 600)
+        cache.set(CacheKeys.tiktok_code_verifier(user.id), verifier, 600)
 
         with pytest.raises(ValueError, match="Token exchange failed"):
             TiktokService.exchange_code_for_token("bad_code", user.id)
@@ -178,7 +178,7 @@ class TestExchangeCodeForToken:
         mocker.patch.object(TiktokService, "post", return_value=None)
 
         verifier = _generate_code_verifier()
-        cache.set(tiktok_code_verifier(user.id), verifier, 600)
+        cache.set(CacheKeys.tiktok_code_verifier(user.id), verifier, 600)
 
         with pytest.raises(
             ValueError, match="Error while fetching access token from TikTok"
@@ -194,7 +194,7 @@ class TestExchangeCodeForToken:
         )
 
         verifier = _generate_code_verifier()
-        cache.set(tiktok_code_verifier(user.id), verifier, 600)
+        cache.set(CacheKeys.tiktok_code_verifier(user.id), verifier, 600)
 
         TiktokService.exchange_code_for_token("auth_code", user.id)
 

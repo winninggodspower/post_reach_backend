@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -225,6 +226,19 @@ REDIRECT_URI = {
     "linkedin": f"{_REDIRECT_BASE}/social/oauth/linkedin/callback",
 }
 
+# Email configuration (ZeptoMail via SMTP)
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
+)
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.zeptomail.com")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env(
+    "DEFAULT_FROM_EMAIL", default="noreply@postreach.app"
+)
+
 # Ensure the Fernet key is 32 bytes long
 FERNET_SECRET_KEY = env("FERNET_SECRET_KEY").encode()
 
@@ -234,12 +248,22 @@ FERNET_SECRET_KEY = env("FERNET_SECRET_KEY").encode()
 # Falls back to localhost for dev
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": REDIS_URL,
+TESTING = "pytest" in sys.modules or "test" in sys.argv
+
+if TESTING:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        }
+    }
 
 # Cloudflare R2 Storage
 CLOUDFLARE_R2_ACCESS_KEY = env("CLOUDFLARE_R2_ACCESS_KEY")
