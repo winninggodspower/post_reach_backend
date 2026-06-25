@@ -8,6 +8,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
 
 from utils.cache_keys import CacheKeys
 from utils.custom_logger import CustomLogger, log_exceptions
@@ -82,13 +83,9 @@ class PasswordResetService:
             f"Do not share this code with anyone.\n\n"
             f"If you did not request a password reset, please ignore this email."
         )
-        html_message = (
-            f"<p>Hello {user.first_name or 'User'},</p>"
-            f"<p>Your password reset code is: "
-            f"<strong style='font-size: 24px;'>{otp}</strong></p>"
-            f"<p>This code is valid for <strong>10 minutes</strong>. "
-            f"Do not share this code with anyone.</p>"
-            f"<p>If you did not request a password reset, please ignore this email.</p>"
+        html_message = render_to_string(
+            "emails/password_reset_otp.html",
+            {"user_name": user.first_name or "User", "otp": otp},
         )
 
         try:
