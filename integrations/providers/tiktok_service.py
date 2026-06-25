@@ -63,7 +63,9 @@ class TiktokService(SocialAccountService):
         code_challenge = _generate_code_challenge(code_verifier)
 
         cache.set(CacheKeys.tiktok_oauth_state(user_id), state, OAUTH_STATE_TTL)
-        cache.set(CacheKeys.tiktok_code_verifier(user_id), code_verifier, OAUTH_STATE_TTL)
+        cache.set(
+            CacheKeys.tiktok_code_verifier(user_id), code_verifier, OAUTH_STATE_TTL
+        )
 
         params = {
             "client_key": cls.CLIENT_KEY,

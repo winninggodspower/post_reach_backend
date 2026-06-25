@@ -4,6 +4,7 @@ from rest_framework.test import APIClient
 from social_accounts.models import Brand
 from users.models import User
 
+
 def pytest_configure():
     from django.conf import settings
 
@@ -14,6 +15,7 @@ def pytest_configure():
             "LOCATION": "test-password-reset-cache",
         }
     }
+
 
 @pytest.fixture
 def api_client():

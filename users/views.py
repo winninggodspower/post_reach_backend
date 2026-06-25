@@ -289,7 +289,9 @@ class PasswordResetViewSet(viewsets.ViewSet):
             400: "Validation error",
         },
     )
-    @action(detail=False, methods=["post"], url_path="request-otp", url_name="request-otp")
+    @action(
+        detail=False, methods=["post"], url_path="request-otp", url_name="request-otp"
+    )
     def request_otp(self, request):
         serializer = RequestResetOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -326,7 +328,9 @@ class PasswordResetViewSet(viewsets.ViewSet):
             400: "Invalid or expired OTP",
         },
     )
-    @action(detail=False, methods=["post"], url_path="verify-otp", url_name="verify-otp")
+    @action(
+        detail=False, methods=["post"], url_path="verify-otp", url_name="verify-otp"
+    )
     def verify_otp(self, request):
         serializer = VerifyResetOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

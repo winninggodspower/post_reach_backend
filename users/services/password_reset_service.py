@@ -32,9 +32,7 @@ class PasswordResetService:
     @staticmethod
     def _generate_reset_token(length: int = 32) -> str:
         """Generate a secure random token for password reset authorization."""
-        return "".join(
-            random.choices(string.ascii_letters + string.digits, k=length)
-        )
+        return "".join(random.choices(string.ascii_letters + string.digits, k=length))
 
     @staticmethod
     @log_exceptions()
@@ -135,9 +133,7 @@ class PasswordResetService:
         # Check attempts
         if otp_data["attempts"] >= MAX_OTP_ATTEMPTS:
             cache.delete(otp_key)
-            raise ValueError(
-                "Too many incorrect attempts. Please request a new code."
-            )
+            raise ValueError("Too many incorrect attempts. Please request a new code.")
 
         # Increment attempts
         otp_data["attempts"] += 1
