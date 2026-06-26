@@ -84,7 +84,6 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
-    @log_exceptions()
     def connect_instagram(cls, *, user, brand, auth_code, redirect_uri):
         resolved_brand = SocialAccountService._resolve_brand(user, brand)
 

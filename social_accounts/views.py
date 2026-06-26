@@ -24,6 +24,7 @@ from social_accounts.serializers import (
 from social_accounts.services.social_account_connection_service import (
     SocialAccountConnectionService,
 )
+from utils.custom_logger import CustomLogger
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 # Create your views here.
@@ -234,6 +235,9 @@ class InstagramAuthViewSet(viewsets.ViewSet):
                 user_id=request.user.id,
             )
         except Exception as e:
+            CustomLogger.exception(
+                self.__class__.__name__, f"Failed to generate Instagram auth URL: {str(e)}"
+            )
             return CustomErrorResponse(
                 {"message": f"Failed to generate auth URL: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -265,6 +269,9 @@ class InstagramAuthViewSet(viewsets.ViewSet):
                 redirect_uri=serializer.validated_data["redirect_uri"],
             )
         except ValueError as e:
+            CustomLogger.exception(
+                self.__class__.__name__, f"Failed to connect Instagram account: {str(e)}"
+            )
             return CustomErrorResponse(
                 {"message": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,

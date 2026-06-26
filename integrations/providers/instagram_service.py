@@ -5,7 +5,7 @@ from django.core.cache import cache
 
 from integrations.providers.base import SocialAccountService
 from utils.cache_keys import CacheKeys
-from utils.custom_logger import CustomLogger
+from utils.custom_logger import CustomLogger, log_exceptions
 from utils.http import APIError
 
 OAUTH_STATE_TTL = 600  # 10 minutes
