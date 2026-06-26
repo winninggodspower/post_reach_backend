@@ -30,5 +30,6 @@ jobs:
         env:
           SECRET_KEY: "test-secret-key-not-for-production"
           DEBUG: "False"
+          DATABASE_URL: "sqlite:///db.sqlite3"
         run: |
           pytest -v
