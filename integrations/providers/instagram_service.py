@@ -188,7 +188,7 @@ class InstagramService(SocialAccountService):
             container_response = cls().post(
                 f"/{instagram_account_id}/media",
                 data={
-                    "media_type": "VIDEO",
+                    "media_type": "REELS",
                     "video_url": video_url,
                     "caption": caption or "",
                     "access_token": access_token,
@@ -206,6 +206,36 @@ class InstagramService(SocialAccountService):
         container_id = container_response.get("id")
         if not container_id:
             raise ValueError("Instagram did not return a media container ID")
+
+        # Wait for the Reels video to be processed and ready before publishing
+        import time
+        max_attempts = 30
+        for attempt in range(max_attempts):
+            try:
+                status_response = cls().get(
+                    f"/{container_id}",
+                    params={
+                        "fields": "status_code",
+                        "access_token": access_token,
+                    },
+                )
+                status_code = status_response.get("status_code")
+                if status_code == "FINISHED":
+                    break
+                elif status_code == "ERROR":
+                    raise ValueError(
+                        f"Instagram video processing failed: {status_response.get('status')}"
+                    )
+            except APIError as e:
+                CustomLogger.warning(
+                    f"Failed to check Instagram container status (attempt {attempt + 1}): {str(e)}"
+                )
+
+            time.sleep(5)
+        else:
+            raise ValueError(
+                "Instagram video processing timed out (took longer than 150 seconds)"
+            )
 
         # Step 2: Publish the container
         try:
