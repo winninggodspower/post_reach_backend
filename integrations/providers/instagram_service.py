@@ -140,6 +140,36 @@ class InstagramService(SocialAccountService):
         }
 
     @classmethod
+    def fetch_user_info(cls, access_token: str) -> dict:
+        """
+        Fetches the Instagram user profile info using the access token.
+        Returns a dict with 'account_name' and 'external_id'.
+        """
+        try:
+            response_data = cls().get(
+                "/me",
+                params={
+                    "fields": "id,username",
+                    "access_token": access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Failed to fetch Instagram user info",
+                extra={"operation": "fetch_user_info"},
+            )
+            raise ValueError(f"Failed to fetch Instagram user info: {str(e)}") from e
+
+        external_id = response_data.get("id")
+        if not external_id:
+            raise ValueError("Failed to retrieve Instagram user ID")
+
+        return {
+            "account_name": response_data.get("username", ""),
+            "external_id": str(external_id),
+        }
+
+    @classmethod
     def publish_video(cls, access_token, instagram_account_id, video_url, caption=""):
         """
         Publish a video to Instagram using the Content Publishing API.

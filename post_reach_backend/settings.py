@@ -248,7 +248,7 @@ REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 
 TESTING = "pytest" in sys.modules or "test" in sys.argv
 
-if TESTING:
+if DEBUG:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -277,6 +277,19 @@ CLOUDFLARE_R2_PUBLIC_DOMAIN = "https://postreach.media.winningtech.xyz"
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_EXTENDED = True
+
+# 1. Disable worker-to-worker chatter and heartbeat broadcasts
+CELERY_WORKER_ENABLE_REMOTE_CONTROL = False
+CELERY_WORKER_GOSSIP = False
+
+# 2. Slow down the queue polling interval
+# Instead of hammering Redis constantly, wait 5 seconds between checks when idle
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'polling_interval': 5.0,  # seconds
+}
+
+# 4. Limit local worker concurrency to save connection pools
+CELERY_WORKER_CONCURRENCY = 2
 
 CELERY_BEAT_SCHEDULE = {
     "refresh_social_tokens": {

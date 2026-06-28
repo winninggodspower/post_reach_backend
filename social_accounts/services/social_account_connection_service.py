@@ -97,10 +97,15 @@ class SocialAccountConnectionService:
                 f"Missing required permissions: {', '.join(sorted(missing_scopes))}"
             )
 
+        # Fetch Instagram user info for username and ID
+        user_info = InstagramService.fetch_user_info(credentials["access_token"])
+
         return cls._save_account(
             brand=resolved_brand,
             platform="instagram",
             defaults={
+                "account_name": user_info["account_name"],
+                "external_id": user_info["external_id"],
                 "access_token": credentials["access_token"],
                 "token_expires_at": timezone.now()
                 + timedelta(seconds=credentials["expires_in"]),
