@@ -148,7 +148,10 @@ class PostingService:
                     description=content_post.description,
                 )
 
-            entry.status = PostStatus.POSTED
+            if result.get("status") == "processing":
+                entry.status = PostStatus.UPLOADING
+            else:
+                entry.status = PostStatus.POSTED
             entry.platform_post_id = result.get("platform_post_id", "")
             entry.save(update_fields=["status", "platform_post_id", "updated_at"])
 

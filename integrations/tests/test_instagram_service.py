@@ -63,15 +63,8 @@ class TestInstagramServicePublishing:
     """Tests for InstagramService media publishing methods."""
 
     def test_publish_video_success(self, mocker):
-        """Should create a REELS container and publish it successfully."""
-        mock_post = mocker.patch.object(InstagramService, "post")
-        mock_get = mocker.patch.object(InstagramService, "get", return_value={"status_code": "FINISHED"})
-        # Step 1 response: container creation
-        # Step 2 response: publication
-        mock_post.side_effect = [
-            {"id": "container_reel_123"},
-            {"id": "media_post_456"},
-        ]
+        """Should create a REELS container and return processing status."""
+        mock_post = mocker.patch.object(InstagramService, "post", return_value={"id": "container_reel_123"})
 
         result = InstagramService.publish_video(
             access_token="valid_token",
@@ -80,11 +73,10 @@ class TestInstagramServicePublishing:
             caption="Amazing Reel!",
         )
 
-        assert result["platform_post_id"] == "media_post_456"
-        assert mock_post.call_count == 2
+        assert result == {"platform_post_id": "container_reel_123", "status": "processing"}
+        assert mock_post.call_count == 1
 
-        # Verify Step 1 parameters - must use REELS media_type!
-        mock_post.assert_any_call(
+        mock_post.assert_called_once_with(
             "/17841400797787220/media",
             data={
                 "media_type": "REELS",
@@ -94,31 +86,9 @@ class TestInstagramServicePublishing:
             },
         )
 
-        # Verify Step 2 parameters
-        mock_post.assert_any_call(
-            "/17841400797787220/media_publish",
-            data={
-                "creation_id": "container_reel_123",
-                "access_token": "valid_token",
-            },
-        )
-
-        # Verify status check call parameters
-        mock_get.assert_called_once_with(
-            "/container_reel_123",
-            params={
-                "fields": "status_code",
-                "access_token": "valid_token",
-            },
-        )
-
     def test_publish_photo_single_success(self, mocker):
-        """Should create an IMAGE container and publish it."""
-        mock_post = mocker.patch.object(InstagramService, "post")
-        mock_post.side_effect = [
-            {"id": "container_photo_123"},
-            {"id": "media_post_789"},
-        ]
+        """Should create an IMAGE container and return processing status."""
+        mock_post = mocker.patch.object(InstagramService, "post", return_value={"id": "container_photo_123"})
 
         result = InstagramService.publish_photo(
             access_token="valid_token",
@@ -127,10 +97,10 @@ class TestInstagramServicePublishing:
             caption="Beautiful view!",
         )
 
-        assert result["platform_post_id"] == "media_post_789"
-        assert mock_post.call_count == 2
+        assert result == {"platform_post_id": "container_photo_123", "status": "processing"}
+        assert mock_post.call_count == 1
 
-        mock_post.assert_any_call(
+        mock_post.assert_called_once_with(
             "/17841400797787220/media",
             data={
                 "media_type": "IMAGE",
@@ -141,13 +111,12 @@ class TestInstagramServicePublishing:
         )
 
     def test_publish_photo_carousel_success(self, mocker):
-        """Should create child IMAGE containers, a CAROUSEL container, and publish it."""
+        """Should create child IMAGE containers and parent CAROUSEL container and return processing status."""
         mock_post = mocker.patch.object(InstagramService, "post")
         mock_post.side_effect = [
             {"id": "child_1"},
             {"id": "child_2"},
             {"id": "carousel_parent_999"},
-            {"id": "published_media_111"},
         ]
 
         result = InstagramService.publish_photo(
@@ -157,10 +126,9 @@ class TestInstagramServicePublishing:
             caption="Album post",
         )
 
-        assert result["platform_post_id"] == "published_media_111"
-        assert mock_post.call_count == 4
+        assert result == {"platform_post_id": "carousel_parent_999", "status": "processing"}
+        assert mock_post.call_count == 3
 
-        # Check child container creations
         mock_post.assert_any_call(
             "/17841400797787220/media",
             data={
@@ -171,7 +139,6 @@ class TestInstagramServicePublishing:
             },
         )
 
-        # Check carousel parent container creation
         mock_post.assert_any_call(
             "/17841400797787220/media",
             data={
@@ -179,5 +146,36 @@ class TestInstagramServicePublishing:
                 "children": "child_1,child_2",
                 "caption": "Album post",
                 "access_token": "valid_token",
+            },
+        )
+
+    def test_check_container_status_finished(self, mocker):
+        """Should return the status_code when querying check_container_status."""
+        mocker.patch.object(InstagramService, "get", return_value={"status_code": "FINISHED"})
+
+        status = InstagramService.check_container_status("token", "container_id_123")
+        assert status == "FINISHED"
+
+    def test_check_container_status_error(self, mocker):
+        """Should raise ValueError if status_code is ERROR."""
+        mocker.patch.object(
+            InstagramService, "get", return_value={"status_code": "ERROR", "status": "Video download error"}
+        )
+
+        with pytest.raises(ValueError, match="Instagram container processing failed: Video download error"):
+            InstagramService.check_container_status("token", "container_id_123")
+
+    def test_publish_container_success(self, mocker):
+        """Should publish container and return final media ID."""
+        mock_post = mocker.patch.object(InstagramService, "post", return_value={"id": "media_id_999"})
+
+        result = InstagramService.publish_container("token", "17841400797787220", "container_id_123")
+        assert result == {"platform_post_id": "media_id_999"}
+
+        mock_post.assert_called_once_with(
+            "/17841400797787220/media_publish",
+            data={
+                "creation_id": "container_id_123",
+                "access_token": "token",
             },
         )

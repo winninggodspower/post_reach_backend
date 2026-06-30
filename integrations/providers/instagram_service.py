@@ -173,17 +173,14 @@ class InstagramService(SocialAccountService):
     def publish_video(cls, access_token, instagram_account_id, video_url, caption=""):
         """
         Publish a video to Instagram using the Content Publishing API.
-
-        Step 1: POST /{ig_user_id}/media to create a media container.
-        Step 2: POST /{ig_user_id}/media_publish to publish the container.
+        Step 1: Create a media container. The publishing is handled asynchronously.
 
         :param access_token: Valid Instagram Graph API access token.
         :param instagram_account_id: Instagram Business/Creator account ID.
         :param video_url: Public URL of the video file.
         :param caption: Video caption (optional).
-        :return: Dict with 'platform_post_id' (Instagram media ID).
+        :return: Dict with 'platform_post_id' (container ID) and 'status'.
         """
-        # Step 1: Create media container
         try:
             container_response = cls().post(
                 f"/{instagram_account_id}/media",
@@ -207,71 +204,22 @@ class InstagramService(SocialAccountService):
         if not container_id:
             raise ValueError("Instagram did not return a media container ID")
 
-        # Wait for the Reels video to be processed and ready before publishing
-        import time
-        max_attempts = 30
-        for attempt in range(max_attempts):
-            try:
-                status_response = cls().get(
-                    f"/{container_id}",
-                    params={
-                        "fields": "status_code",
-                        "access_token": access_token,
-                    },
-                )
-                status_code = status_response.get("status_code")
-                if status_code == "FINISHED":
-                    break
-                elif status_code == "ERROR":
-                    raise ValueError(
-                        f"Instagram video processing failed: {status_response.get('status')}"
-                    )
-            except APIError as e:
-                CustomLogger.warning(
-                    f"Failed to check Instagram container status (attempt {attempt + 1}): {str(e)}"
-                )
-
-            time.sleep(5)
-        else:
-            raise ValueError(
-                "Instagram video processing timed out (took longer than 150 seconds)"
-            )
-
-        # Step 2: Publish the container
-        try:
-            publish_response = cls().post(
-                f"/{instagram_account_id}/media_publish",
-                data={
-                    "creation_id": container_id,
-                    "access_token": access_token,
-                },
-            )
-        except APIError as e:
-            CustomLogger.exception(
-                "Instagram media publish failed",
-                extra={"operation": "publish_video"},
-            )
-            raise ValueError(f"Instagram media publish failed: {str(e)}") from e
-
-        media_id = publish_response.get("id", container_id)
-        return {"platform_post_id": media_id}
+        return {"platform_post_id": container_id, "status": "processing"}
 
     @classmethod
     def publish_photo(cls, access_token, instagram_account_id, photo_urls, caption=""):
         """
         Publish a photo (or carousel of photos) to Instagram.
-
-        For a single photo, creates an IMAGE container and publishes it.
-        For multiple photos, creates a CAROUSEL container with the images as children.
+        Step 1: Creates Image/Carousel container. Publishing is handled asynchronously.
 
         :param access_token: Valid Instagram Graph API access token.
         :param instagram_account_id: Instagram Business/Creator account ID.
         :param photo_urls: List of public/presigned URLs of the photo files.
         :param caption: Photo caption (optional).
-        :return: Dict with 'platform_post_id' (Instagram media ID).
+        :return: Dict with 'platform_post_id' (container ID) and 'status'.
         """
         if len(photo_urls) == 1:
-            # Single photo: create IMAGE container and publish
+            # Single photo: create IMAGE container
             try:
                 container_response = cls().post(
                     f"/{instagram_account_id}/media",
@@ -295,22 +243,7 @@ class InstagramService(SocialAccountService):
             if not container_id:
                 raise ValueError("Instagram did not return a media container ID")
 
-            try:
-                publish_response = cls().post(
-                    f"/{instagram_account_id}/media_publish",
-                    data={
-                        "creation_id": container_id,
-                        "access_token": access_token,
-                    },
-                )
-            except APIError as e:
-                CustomLogger.exception(
-                    "Instagram photo publish failed",
-                    extra={"operation": "publish_photo"},
-                )
-                raise ValueError(f"Instagram photo publish failed: {str(e)}") from e
-
-            return {"platform_post_id": publish_response.get("id", container_id)}
+            return {"platform_post_id": container_id, "status": "processing"}
 
         # Multiple photos: create a CAROUSEL
         # Step 1: Create an IMAGE container for each photo
@@ -366,20 +299,57 @@ class InstagramService(SocialAccountService):
         if not carousel_id:
             raise ValueError("Instagram did not return a carousel container ID")
 
-        # Step 3: Publish the carousel
+        return {"platform_post_id": carousel_id, "status": "processing"}
+
+    @classmethod
+    def check_container_status(cls, access_token: str, container_id: str) -> str:
+        """
+        Checks the status of a media container.
+        Returns: "FINISHED", "IN_PROGRESS", "ERROR", etc.
+        """
         try:
-            publish_response = cls().post(
-                f"/{instagram_account_id}/media_publish",
-                data={
-                    "creation_id": carousel_id,
+            response_data = cls().get(
+                f"/{container_id}",
+                params={
+                    "fields": "status_code,status",
                     "access_token": access_token,
                 },
             )
         except APIError as e:
             CustomLogger.exception(
-                "Instagram carousel publish failed",
-                extra={"operation": "publish_photo"},
+                "Failed to check Instagram container status",
+                extra={"operation": "check_container_status", "container_id": container_id},
             )
-            raise ValueError(f"Instagram carousel publish failed: {str(e)}") from e
+            raise ValueError(f"Failed to check container status: {str(e)}") from e
 
-        return {"platform_post_id": publish_response.get("id", carousel_id)}
+        status_code = response_data.get("status_code")
+        if status_code == "ERROR":
+            status_desc = response_data.get("status", "Unknown error")
+            raise ValueError(f"Instagram container processing failed: {status_desc}")
+
+        return status_code
+
+    @classmethod
+    def publish_container(
+        cls, access_token: str, instagram_account_id: str, container_id: str
+    ) -> dict:
+        """
+        Publishes a finished container to the feed.
+        """
+        try:
+            publish_response = cls().post(
+                f"/{instagram_account_id}/media_publish",
+                data={
+                    "creation_id": container_id,
+                    "access_token": access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Instagram container publish failed",
+                extra={"operation": "publish_container", "container_id": container_id},
+            )
+            raise ValueError(f"Instagram media publish failed: {str(e)}") from e
+
+        media_id = publish_response.get("id", container_id)
+        return {"platform_post_id": media_id}

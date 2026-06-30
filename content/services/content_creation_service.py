@@ -11,7 +11,6 @@ from django.db import transaction
 
 from content.enums import FileTypeChoice
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
-from content.tasks import publish_platform_entry
 from social_accounts.services.social_account_validation_service import (
     SocialAccountValidationService,
 )
@@ -114,6 +113,8 @@ class ContentCreationService:
                 )
 
                 content_post.refresh_from_db()
+
+                from content.tasks import publish_platform_entry
 
                 for entry in content_post.platform_entries.all():
                     publish_platform_entry.delay(
