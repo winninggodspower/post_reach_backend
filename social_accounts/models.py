@@ -32,6 +32,8 @@ class SocialAccount(UUIDTimestampedModel):
         help_text="The unique identifier for the social account on the platform.",
     )
 
+    profile_picture_url = models.URLField(blank=True, null=True)
+
     _access_token = models.TextField()
     _refresh_token = models.TextField(blank=True, null=True)
     token_expires_at = models.DateTimeField()

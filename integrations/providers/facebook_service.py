@@ -48,7 +48,7 @@ class FacebookService(SocialAccountService):
         return f"https://www.facebook.com/v18.0/dialog/oauth?{query_string}"
 
     @classmethod
-    def refresh_access_token(self, refresh_token):
+    def refresh_access_token(cls, refresh_token):
         return None
 
     @classmethod

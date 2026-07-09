@@ -115,13 +115,16 @@ class OnboardingSerializer(serializers.Serializer):
     team_size = serializers.ChoiceField(choices=TeamSizeChoices.choices)
 
 
+class ConnectedAccountSerializer(serializers.Serializer):
+    platform = serializers.ChoiceField(choices=SocialPlatformChoices.choices)
+    external_id = serializers.CharField()
+    account_name = serializers.CharField()
+    profile_picture_url = serializers.URLField(allow_null=True, required=False)
+    connected_at = serializers.DateTimeField(source="created_at")
+
+
 class BrandSerializer(serializers.ModelSerializer):
-    is_youtube_connected = serializers.SerializerMethodField()
-    is_instagram_connected = serializers.SerializerMethodField()
-    is_tiktok_connected = serializers.SerializerMethodField()
-    is_facebook_connected = serializers.SerializerMethodField()
-    is_linkedin_connected = serializers.SerializerMethodField()
-    is_x_connected = serializers.SerializerMethodField()
+    connected_accounts = serializers.SerializerMethodField()
 
     class Meta:
         model = Brand
@@ -132,35 +135,16 @@ class BrandSerializer(serializers.ModelSerializer):
             "posting_frequency",
             "primary_platform",
             "team_size",
-            "is_youtube_connected",
-            "is_instagram_connected",
-            "is_tiktok_connected",
-            "is_facebook_connected",
-            "is_linkedin_connected",
-            "is_x_connected",
+            "connected_accounts",
         ]
         read_only_fields = fields
 
-    def _platform_connected(self, brand, platform):
-        return any(sa.platform == platform for sa in brand.social_accounts.all())
-
-    def get_is_youtube_connected(self, brand):
-        return self._platform_connected(brand, SocialPlatformChoices.YOUTUBE)
-
-    def get_is_instagram_connected(self, brand):
-        return self._platform_connected(brand, SocialPlatformChoices.INSTAGRAM)
-
-    def get_is_tiktok_connected(self, brand):
-        return self._platform_connected(brand, SocialPlatformChoices.TIKTOK)
-
-    def get_is_facebook_connected(self, brand):
-        return self._platform_connected(brand, SocialPlatformChoices.FACEBOOK)
-
-    def get_is_linkedin_connected(self, brand):
-        return self._platform_connected(brand, SocialPlatformChoices.LINKEDIN)
-
-    def get_is_x_connected(self, brand):
-        return self._platform_connected(brand, SocialPlatformChoices.TWITTER)
+    def get_connected_accounts(self, brand):
+        accounts = brand.social_accounts.all()
+        return [
+            ConnectedAccountSerializer(account).data
+            for account in sorted(accounts, key=lambda account: account.created_at)
+        ]
 
 
 class OnboardingResponseDataSerializer(serializers.Serializer):

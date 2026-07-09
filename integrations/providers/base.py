@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from utils.http import BaseHTTPClient
+
 
 
 class SocialAccountService(BaseHTTPClient, ABC):
@@ -34,10 +36,11 @@ class SocialAccountService(BaseHTTPClient, ABC):
 
     @classmethod
     @abstractmethod
-    def refresh_access_token(self, refresh_token: str) -> list[str]:
+    def refresh_access_token(cls, refresh_token: str, /) -> dict[str, Any] | None:
         """
         Refresh the access token using the refresh token.
         :param refresh_token: The refresh token to authenticate the request.
         :return: A new access token, refresh_token and expires_at.
         """
         raise NotImplementedError("Subclasses must implement this method.")
+

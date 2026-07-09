@@ -1,0 +1,4 @@
+[rules]
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+

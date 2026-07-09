@@ -23,6 +23,12 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
+    def _base_metadata(cls, platform, **extra):
+        metadata = {"provider": platform}
+        metadata.update({key: value for key, value in extra.items() if value is not None})
+        return metadata
+
+    @classmethod
     @log_exceptions()
     def connect_youtube(cls, *, user, brand, auth_code):
         resolved_brand = SocialAccountService._resolve_brand(user, brand)
@@ -45,10 +51,15 @@ class SocialAccountConnectionService:
             defaults={
                 "account_name": channel_info["account_name"],
                 "external_id": channel_info["external_id"],
+                "profile_picture_url": channel_info.get("profile_picture_url"),
                 "access_token": credentials.token,
                 "refresh_token": credentials.refresh_token,
                 "token_expires_at": credentials.expiry,
                 "scope": " ".join(credentials.scopes),
+                "metadata": cls._base_metadata(
+                    "youtube",
+                    profile_picture_url=channel_info.get("profile_picture_url"),
+                ),
             },
         )
 
@@ -78,8 +89,14 @@ class SocialAccountConnectionService:
             defaults={
                 "account_name": page["name"],
                 "external_id": page["id"],
+                "profile_picture_url": page.get("picture_url"),
                 "access_token": page["access_token"],
                 "token_expires_at": timezone.now() + timedelta(seconds=expires_in),
+                "metadata": cls._base_metadata(
+                    "facebook",
+                    page_name=page["name"],
+                    picture_url=page.get("picture_url"),
+                ),
             },
         )
 
@@ -109,6 +126,10 @@ class SocialAccountConnectionService:
                 "access_token": credentials["access_token"],
                 "token_expires_at": timezone.now()
                 + timedelta(seconds=credentials["expires_in"]),
+                "metadata": cls._base_metadata(
+                    "instagram",
+                    account_name=user_info["account_name"],
+                ),
             },
         )
 
@@ -135,6 +156,10 @@ class SocialAccountConnectionService:
                 "token_expires_at": timezone.now()
                 + timedelta(seconds=token_data["expires_in"]),
                 "scope": token_data.get("scope", ""),
+                "metadata": cls._base_metadata(
+                    "tiktok",
+                    account_name=user_info["account_name"],
+                ),
             },
         )
 
@@ -160,5 +185,9 @@ class SocialAccountConnectionService:
                 "token_expires_at": timezone.now()
                 + timedelta(seconds=token_data["expires_in"]),
                 "scope": token_data.get("scope", ""),
+                "metadata": cls._base_metadata(
+                    "linkedin",
+                    account_name=user_info["account_name"],
+                ),
             },
         )

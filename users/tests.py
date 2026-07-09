@@ -1,7 +1,10 @@
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
+from social_accounts.enums import PlatformChoices as SocialPlatformChoices
 from social_accounts.models import Brand
+from social_accounts.models import SocialAccount
 from users.models import User
 from users.services import OnboardingService, UserService
 
@@ -124,6 +127,34 @@ def test_me_returns_current_user(authenticated_client, user):
     assert response.data["data"]["email"] == user.email
     assert response.data["data"]["handle"] == user.handle
     assert response.data["data"]["has_completed_onboarding"] is False
+
+
+def test_me_includes_connected_accounts(authenticated_client, brand):
+    account = SocialAccount(
+        brand=brand,
+        platform=SocialPlatformChoices.INSTAGRAM,
+        account_name="brand_insta",
+        external_id="ig_123456789",
+        profile_picture_url="https://example.com/profile.jpg",
+        token_expires_at=timezone.now(),
+        metadata={"provider": "instagram", "account_name": "brand_insta"},
+    )
+    account.access_token = "token-123"
+    account.save()
+
+    response = authenticated_client.get(reverse("current-user"))
+
+    assert response.status_code == 200
+    connected_accounts = response.data["data"]["brand"]["connected_accounts"]
+    assert connected_accounts == [
+        {
+            "platform": "instagram",
+            "external_id": "ig_123456789",
+            "account_name": "brand_insta",
+            "profile_picture_url": "https://example.com/profile.jpg",
+            "connected_at": account.created_at.isoformat().replace("+00:00", "Z"),
+        }
+    ]
 
 
 def test_me_patch_updates_editable_user_fields(authenticated_client, user):

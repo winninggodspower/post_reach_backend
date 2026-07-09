@@ -92,9 +92,14 @@ class YoutubeService(SocialAccountService):
 
             channel = items[0]
             snippet = channel.get("snippet", {})
+            thumbnails = snippet.get("thumbnails", {})
             return {
                 "account_name": snippet.get("title", ""),
                 "external_id": channel.get("id", ""),
+                "profile_picture_url": (
+                    thumbnails.get("high", {}).get("url")
+                    or thumbnails.get("default", {}).get("url")
+                ),
             }
         except ValueError:
             raise
