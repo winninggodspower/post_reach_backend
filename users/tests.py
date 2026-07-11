@@ -153,6 +153,8 @@ def test_me_includes_connected_accounts(authenticated_client, brand):
             "account_name": "brand_insta",
             "profile_picture_url": "https://example.com/profile.jpg",
             "connected_at": account.created_at.isoformat().replace("+00:00", "Z"),
+            "is_expired": account.is_token_expired(),
+            "expired_at": account.token_expires_at.isoformat().replace("+00:00", "Z"),
         }
     ]
 

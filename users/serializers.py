@@ -121,6 +121,11 @@ class ConnectedAccountSerializer(serializers.Serializer):
     account_name = serializers.CharField()
     profile_picture_url = serializers.URLField(allow_null=True, required=False)
     connected_at = serializers.DateTimeField(source="created_at")
+    is_expired = serializers.SerializerMethodField()
+    expired_at = serializers.DateTimeField(source="token_expires_at", allow_null=True)
+
+    def get_is_expired(self, obj):
+        return obj.is_token_expired()
 
 
 class BrandSerializer(serializers.ModelSerializer):

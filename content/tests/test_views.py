@@ -382,3 +382,29 @@ class TestPhotoEndpoint:
         client = APIClient()
         response = client.post(reverse(self.URL), {}, format="multipart")
         assert response.status_code == 401
+
+    def test_expired_connection_raises_error(self, db, authenticated_client, user, brand, mocker):
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.INSTAGRAM,
+            account_name="ig_expired",
+            external_id="ext_ig_expired",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=timezone.now() - timezone.timedelta(days=1),
+        )
+
+        photo = io.BytesIO(b"p")
+        photo.name = "p.jpg"
+
+        response = authenticated_client.post(
+            reverse(self.URL),
+            {
+                "photos": [photo],
+                "caption": "Test",
+                "platforms": [PlatformChoices.INSTAGRAM],
+            },
+            format="multipart",
+        )
+        assert response.status_code == 400
+        assert "have expired" in response.data.get("message", "")

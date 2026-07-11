@@ -15,9 +15,9 @@ class SocialAccountValidationService:
     @staticmethod
     def ensure_platforms_connected(brand: Brand, platforms: list[str]) -> None:
         """
-        Validate that every requested platform has a connected SocialAccount.
+        Validate that every requested platform has a connected and active SocialAccount.
 
-        Raises ValueError listing any unconnected platforms.
+        Raises ValueError listing any unconnected or expired platforms.
         """
         connected = SocialAccountValidationService.get_connected_platforms(brand)
         missing = [p for p in platforms if p not in connected]
@@ -26,6 +26,24 @@ class SocialAccountValidationService:
             raise ValueError(
                 f"No connected account(s) found for: {joined}. "
                 "Please connect your account(s) first."
+            )
+
+        # Check for expired/unrefreshable tokens
+        expired = []
+        for platform in platforms:
+            try:
+                account = SocialAccount.objects.get(brand=brand, platform=platform)
+                # get_access_token() will auto-refresh if expired and return None if refresh fails
+                if account.get_access_token() is None:
+                    expired.append(platform)
+            except SocialAccount.DoesNotExist:
+                expired.append(platform)
+
+        if expired:
+            joined = ", ".join(expired)
+            raise ValueError(
+                f"The connection(s) for: {joined} have expired. "
+                "Please reconnect your account(s) first."
             )
 
     @staticmethod
