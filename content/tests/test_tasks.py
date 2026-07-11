@@ -1,11 +1,12 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from celery.exceptions import Retry
 from django.utils import timezone
 
 from content.enums import PostStatus
 from content.models import ContentPost, ContentPostPlatform
-from content.tasks import publish_platform_entry, check_instagram_container_status
+from content.tasks import check_instagram_container_status, publish_platform_entry
 from integrations.providers.instagram_service import InstagramService
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
@@ -48,7 +49,9 @@ class TestPublishPlatformEntryTask:
             ),
         )
 
-        mock_delay = mocker.patch("content.tasks.check_instagram_container_status.delay")
+        mock_delay = mocker.patch(
+            "content.tasks.check_instagram_container_status.delay"
+        )
 
         result = publish_platform_entry(entry.id, content_type="video")
 

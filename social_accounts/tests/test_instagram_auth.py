@@ -1,11 +1,14 @@
-import pytest
-from django.utils import timezone
 from datetime import timedelta
 from unittest.mock import MagicMock
 
+import pytest
+from django.utils import timezone
+
 from integrations.providers.instagram_service import InstagramService
-from social_accounts.services.social_account_connection_service import SocialAccountConnectionService
 from social_accounts.models import SocialAccount
+from social_accounts.services.social_account_connection_service import (
+    SocialAccountConnectionService,
+)
 
 pytestmark = pytest.mark.django_db
 

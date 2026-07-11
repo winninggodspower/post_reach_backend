@@ -3,11 +3,11 @@ from celery import shared_task
 from content.enums import PostStatus
 from content.models import ContentPostPlatform
 from content.services.posting_service import PHOTO_PLATFORMS, PostingService
+from integrations.providers.instagram_service import InstagramService
 from social_accounts.enums import PlatformChoices
 from social_accounts.services.social_account_validation_service import (
     SocialAccountValidationService,
 )
-from integrations.providers.instagram_service import InstagramService
 from utils.custom_logger import CustomLogger
 
 
@@ -43,7 +43,15 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
 
     if result_entry.status == PostStatus.FAILED:
         # Check if error is transient (connection/network issues or 5xx HTTP codes)
-        transient_keywords = ["connection", "forcibly closed", "timeout", "500", "502", "503", "504"]
+        transient_keywords = [
+            "connection",
+            "forcibly closed",
+            "timeout",
+            "500",
+            "502",
+            "503",
+            "504",
+        ]
         if any(kw in result_entry.error_message.lower() for kw in transient_keywords):
             CustomLogger.warning(
                 "Transient failure detected, retrying publish task",
@@ -145,9 +153,7 @@ def check_instagram_container_status(self, platform_entry_id):
 
         if self.request.retries >= self.max_retries:
             entry.status = PostStatus.FAILED
-            entry.error_message = (
-                f"Instagram processing timed out or failed: {str(e)}"
-            )
+            entry.error_message = f"Instagram processing timed out or failed: {str(e)}"
             entry.save(update_fields=["status", "error_message", "updated_at"])
             PostingService.cleanup_r2_media(entry.content_post)
             raise e

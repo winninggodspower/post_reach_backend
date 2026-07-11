@@ -61,7 +61,9 @@ class ContentPostCreateSerializer(serializers.Serializer):
             yt_settings = platform_settings.get("youtube", {})
             if not yt_settings or not yt_settings.get("title"):
                 raise serializers.ValidationError(
-                    {"platform_settings": "YouTube requires a title in platform_settings.youtube.title"}
+                    {
+                        "platform_settings": "YouTube requires a title in platform_settings.youtube.title"
+                    }
                 )
         return attrs
 
@@ -101,7 +103,9 @@ class PhotoPostCreateSerializer(serializers.Serializer):
             yt_settings = platform_settings.get("youtube", {})
             if not yt_settings or not yt_settings.get("title"):
                 raise serializers.ValidationError(
-                    {"platform_settings": "YouTube requires a title in platform_settings.youtube.title"}
+                    {
+                        "platform_settings": "YouTube requires a title in platform_settings.youtube.title"
+                    }
                 )
         return attrs
 

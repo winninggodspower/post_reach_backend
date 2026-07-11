@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import MagicMock
-from django.core.cache import cache
+
+import pytest
 from django.conf import settings
+from django.core.cache import cache
 
 from integrations.providers.instagram_service import InstagramService
 from utils.cache_keys import CacheKeys
@@ -29,6 +30,7 @@ class TestInstagramServiceAuth:
         auth_url = InstagramService.generate_auth_url(user_id=user.id)
 
         import urllib.parse
+
         parsed = urllib.parse.urlparse(auth_url)
         params = urllib.parse.parse_qs(parsed.query)
         state_from_url = params["state"][0]
@@ -64,7 +66,9 @@ class TestInstagramServicePublishing:
 
     def test_publish_video_success(self, mocker):
         """Should create a REELS container and return processing status."""
-        mock_post = mocker.patch.object(InstagramService, "post", return_value={"id": "container_reel_123"})
+        mock_post = mocker.patch.object(
+            InstagramService, "post", return_value={"id": "container_reel_123"}
+        )
 
         result = InstagramService.publish_video(
             access_token="valid_token",
@@ -73,7 +77,10 @@ class TestInstagramServicePublishing:
             caption="Amazing Reel!",
         )
 
-        assert result == {"platform_post_id": "container_reel_123", "status": "processing"}
+        assert result == {
+            "platform_post_id": "container_reel_123",
+            "status": "processing",
+        }
         assert mock_post.call_count == 1
 
         mock_post.assert_called_once_with(
@@ -88,7 +95,9 @@ class TestInstagramServicePublishing:
 
     def test_publish_photo_single_success(self, mocker):
         """Should create an IMAGE container and return processing status."""
-        mock_post = mocker.patch.object(InstagramService, "post", return_value={"id": "container_photo_123"})
+        mock_post = mocker.patch.object(
+            InstagramService, "post", return_value={"id": "container_photo_123"}
+        )
 
         result = InstagramService.publish_photo(
             access_token="valid_token",
@@ -97,7 +106,10 @@ class TestInstagramServicePublishing:
             caption="Beautiful view!",
         )
 
-        assert result == {"platform_post_id": "container_photo_123", "status": "processing"}
+        assert result == {
+            "platform_post_id": "container_photo_123",
+            "status": "processing",
+        }
         assert mock_post.call_count == 1
 
         mock_post.assert_called_once_with(
@@ -126,7 +138,10 @@ class TestInstagramServicePublishing:
             caption="Album post",
         )
 
-        assert result == {"platform_post_id": "carousel_parent_999", "status": "processing"}
+        assert result == {
+            "platform_post_id": "carousel_parent_999",
+            "status": "processing",
+        }
         assert mock_post.call_count == 3
 
         mock_post.assert_any_call(
@@ -151,7 +166,9 @@ class TestInstagramServicePublishing:
 
     def test_check_container_status_finished(self, mocker):
         """Should return the status_code when querying check_container_status."""
-        mocker.patch.object(InstagramService, "get", return_value={"status_code": "FINISHED"})
+        mocker.patch.object(
+            InstagramService, "get", return_value={"status_code": "FINISHED"}
+        )
 
         status = InstagramService.check_container_status("token", "container_id_123")
         assert status == "FINISHED"
@@ -159,17 +176,26 @@ class TestInstagramServicePublishing:
     def test_check_container_status_error(self, mocker):
         """Should raise ValueError if status_code is ERROR."""
         mocker.patch.object(
-            InstagramService, "get", return_value={"status_code": "ERROR", "status": "Video download error"}
+            InstagramService,
+            "get",
+            return_value={"status_code": "ERROR", "status": "Video download error"},
         )
 
-        with pytest.raises(ValueError, match="Instagram container processing failed: Video download error"):
+        with pytest.raises(
+            ValueError,
+            match="Instagram container processing failed: Video download error",
+        ):
             InstagramService.check_container_status("token", "container_id_123")
 
     def test_publish_container_success(self, mocker):
         """Should publish container and return final media ID."""
-        mock_post = mocker.patch.object(InstagramService, "post", return_value={"id": "media_id_999"})
+        mock_post = mocker.patch.object(
+            InstagramService, "post", return_value={"id": "media_id_999"}
+        )
 
-        result = InstagramService.publish_container("token", "17841400797787220", "container_id_123")
+        result = InstagramService.publish_container(
+            "token", "17841400797787220", "container_id_123"
+        )
         assert result == {"platform_post_id": "media_id_999"}
 
         mock_post.assert_called_once_with(

@@ -285,7 +285,7 @@ CELERY_WORKER_GOSSIP = False
 # 2. Slow down the queue polling interval
 # Instead of hammering Redis constantly, wait 5 seconds between checks when idle
 CELERY_BROKER_TRANSPORT_OPTIONS = {
-    'polling_interval': 5.0,  # seconds
+    "polling_interval": 5.0,  # seconds
 }
 
 # 4. Limit local worker concurrency to save connection pools

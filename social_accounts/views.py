@@ -236,7 +236,8 @@ class InstagramAuthViewSet(viewsets.ViewSet):
             )
         except Exception as e:
             CustomLogger.exception(
-                self.__class__.__name__, f"Failed to generate Instagram auth URL: {str(e)}"
+                self.__class__.__name__,
+                f"Failed to generate Instagram auth URL: {str(e)}",
             )
             return CustomErrorResponse(
                 {"message": f"Failed to generate auth URL: {str(e)}"},
@@ -270,7 +271,8 @@ class InstagramAuthViewSet(viewsets.ViewSet):
             )
         except ValueError as e:
             CustomLogger.exception(
-                self.__class__.__name__, f"Failed to connect Instagram account: {str(e)}"
+                self.__class__.__name__,
+                f"Failed to connect Instagram account: {str(e)}",
             )
             return CustomErrorResponse(
                 {"message": str(e)},

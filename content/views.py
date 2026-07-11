@@ -127,7 +127,14 @@ class ContentPostViewSet(viewsets.ViewSet):
     # ── shared helper ──────────────────────────────────────
 
     def _create_and_dispatch(
-        self, *, request, media_files, platforms, content_type, caption="", platform_settings=None
+        self,
+        *,
+        request,
+        media_files,
+        platforms,
+        content_type,
+        caption="",
+        platform_settings=None,
     ):
         """
         Shared pipeline: call the service (which handles R2 + DB + Celery),

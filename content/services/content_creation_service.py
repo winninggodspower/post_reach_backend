@@ -106,10 +106,14 @@ class ContentCreationService:
                     if platform == "youtube":
                         yt_config = platform_settings.get("youtube", {})
                         title = yt_config.get("title", "")
-                        plat_caption = yt_config.get("description", yt_config.get("caption", caption))
+                        plat_caption = yt_config.get(
+                            "description", yt_config.get("caption", caption)
+                        )
                     else:
                         title = ""
-                        plat_caption = platform_settings.get(platform, {}).get("caption", caption)
+                        plat_caption = platform_settings.get(platform, {}).get(
+                            "caption", caption
+                        )
 
                     platform_entries.append(
                         ContentPostPlatform(
@@ -119,7 +123,7 @@ class ContentCreationService:
                             caption=plat_caption,
                         )
                     )
-                
+
                 ContentPostPlatform.objects.bulk_create(platform_entries)
 
                 content_post.refresh_from_db()

@@ -25,11 +25,7 @@ class TestContentPostCreateSerializer:
             "video": MagicMock(),
             "caption": "My Test Video",
             "platforms": [PlatformChoices.YOUTUBE],
-            "platform_settings": {
-                "youtube": {
-                    "title": "YouTube Title"
-                }
-            }
+            "platform_settings": {"youtube": {"title": "YouTube Title"}},
         }
         serializer = ContentPostCreateSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
@@ -39,11 +35,7 @@ class TestContentPostCreateSerializer:
             "video": MagicMock(),
             "caption": "My Test Video",
             "platforms": [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
-            "platform_settings": {
-                "youtube": {
-                    "title": "YouTube Title"
-                }
-            }
+            "platform_settings": {"youtube": {"title": "YouTube Title"}},
         }
         serializer = ContentPostCreateSerializer(data=data)
         assert serializer.is_valid(), serializer.errors

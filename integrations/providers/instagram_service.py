@@ -318,7 +318,10 @@ class InstagramService(SocialAccountService):
         except APIError as e:
             CustomLogger.exception(
                 "Failed to check Instagram container status",
-                extra={"operation": "check_container_status", "container_id": container_id},
+                extra={
+                    "operation": "check_container_status",
+                    "container_id": container_id,
+                },
             )
             raise ValueError(f"Failed to check container status: {str(e)}") from e
 

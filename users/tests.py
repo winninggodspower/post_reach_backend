@@ -3,8 +3,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from social_accounts.enums import PlatformChoices as SocialPlatformChoices
-from social_accounts.models import Brand
-from social_accounts.models import SocialAccount
+from social_accounts.models import Brand, SocialAccount
 from users.models import User
 from users.services import OnboardingService, UserService
 

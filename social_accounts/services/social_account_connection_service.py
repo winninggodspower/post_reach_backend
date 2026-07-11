@@ -25,7 +25,9 @@ class SocialAccountConnectionService:
     @classmethod
     def _base_metadata(cls, platform, **extra):
         metadata = {"provider": platform}
-        metadata.update({key: value for key, value in extra.items() if value is not None})
+        metadata.update(
+            {key: value for key, value in extra.items() if value is not None}
+        )
         return metadata
 
     @classmethod

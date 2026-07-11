@@ -146,13 +146,16 @@ class TestVideoEndpoint:
         video.name = "v.mp4"
 
         import json
+
         response = authenticated_client.post(
             reverse(self.URL),
             {
                 "video": video,
                 "caption": "Test Video",
                 "platforms": [PlatformChoices.YOUTUBE],
-                "platform_settings": json.dumps({"youtube": {"title": "YouTube Title"}}),
+                "platform_settings": json.dumps(
+                    {"youtube": {"title": "YouTube Title"}}
+                ),
             },
             format="multipart",
         )
@@ -199,13 +202,16 @@ class TestVideoEndpoint:
         video.name = "v.mp4"
 
         import json
+
         response = authenticated_client.post(
             reverse(self.URL),
             {
                 "video": video,
                 "caption": "Multi",
                 "platforms": [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
-                "platform_settings": json.dumps({"youtube": {"title": "YouTube Title"}}),
+                "platform_settings": json.dumps(
+                    {"youtube": {"title": "YouTube Title"}}
+                ),
             },
             format="multipart",
         )
@@ -231,13 +237,16 @@ class TestVideoEndpoint:
         video.name = "v.mp4"
 
         import json
+
         response = api_client.post(
             reverse(self.URL),
             {
                 "video": video,
                 "caption": "Test",
                 "platforms": [PlatformChoices.YOUTUBE],
-                "platform_settings": json.dumps({"youtube": {"title": "YouTube Title"}}),
+                "platform_settings": json.dumps(
+                    {"youtube": {"title": "YouTube Title"}}
+                ),
             },
             format="multipart",
         )
@@ -383,7 +392,9 @@ class TestPhotoEndpoint:
         response = client.post(reverse(self.URL), {}, format="multipart")
         assert response.status_code == 401
 
-    def test_expired_connection_raises_error(self, db, authenticated_client, user, brand, mocker):
+    def test_expired_connection_raises_error(
+        self, db, authenticated_client, user, brand, mocker
+    ):
         SocialAccount.objects.create(
             brand=brand,
             platform=PlatformChoices.INSTAGRAM,

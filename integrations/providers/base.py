@@ -4,7 +4,6 @@ from typing import Any
 from utils.http import BaseHTTPClient
 
 
-
 class SocialAccountService(BaseHTTPClient, ABC):
     BASE_URL = ""
 
@@ -43,4 +42,3 @@ class SocialAccountService(BaseHTTPClient, ABC):
         :return: A new access token, refresh_token and expires_at.
         """
         raise NotImplementedError("Subclasses must implement this method.")
-
