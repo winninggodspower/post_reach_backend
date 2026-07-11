@@ -25,8 +25,7 @@ class ContentPost(UUIDTimestampedModel):
         related_name="content_posts",
     )
 
-    title = models.CharField(max_length=255, blank=True, default="")
-    description = models.TextField(blank=True, default="")
+    caption = models.TextField(blank=True, default="")
 
     # Distinguishes whether this post is a video or photo
     content_type = models.CharField(
@@ -101,6 +100,17 @@ class ContentPostPlatform(UUIDTimestampedModel):
         blank=True,
         default="",
         help_text="Error details if this platform post failed.",
+    )
+    title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="The resolved title/caption for this specific platform.",
+    )
+    caption = models.TextField(
+        blank=True,
+        default="",
+        help_text="The resolved caption/description for this specific platform.",
     )
 
     class Meta:

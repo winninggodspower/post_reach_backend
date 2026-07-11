@@ -23,8 +23,13 @@ class TestContentPostCreateSerializer:
     def test_valid_single_platform(self):
         data = {
             "video": MagicMock(),
-            "title": "My Test Video",
+            "caption": "My Test Video",
             "platforms": [PlatformChoices.YOUTUBE],
+            "platform_settings": {
+                "youtube": {
+                    "title": "YouTube Title"
+                }
+            }
         }
         serializer = ContentPostCreateSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
@@ -32,20 +37,25 @@ class TestContentPostCreateSerializer:
     def test_valid_multiple_platforms(self):
         data = {
             "video": MagicMock(),
-            "title": "My Test Video",
+            "caption": "My Test Video",
             "platforms": [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
+            "platform_settings": {
+                "youtube": {
+                    "title": "YouTube Title"
+                }
+            }
         }
         serializer = ContentPostCreateSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
 
-    def test_missing_title(self):
+    def test_missing_youtube_title(self):
         data = {
             "video": MagicMock(),
             "platforms": [PlatformChoices.YOUTUBE],
         }
         serializer = ContentPostCreateSerializer(data=data)
         assert not serializer.is_valid()
-        assert "title" in serializer.errors
+        assert "platform_settings" in serializer.errors
 
 
 class TestPhotoPostCreateSerializer:
@@ -54,7 +64,7 @@ class TestPhotoPostCreateSerializer:
     def test_valid(self):
         data = {
             "photos": [MagicMock()],
-            "text": "A beautiful photo",
+            "caption": "A beautiful photo",
             "platforms": [PlatformChoices.INSTAGRAM],
         }
         serializer = PhotoPostCreateSerializer(data=data)
@@ -63,24 +73,24 @@ class TestPhotoPostCreateSerializer:
     def test_valid_multiple_photos(self):
         data = {
             "photos": [MagicMock(), MagicMock()],
-            "text": "Multi photo post",
+            "caption": "Multi photo post",
             "platforms": [PlatformChoices.FACEBOOK],
         }
         serializer = PhotoPostCreateSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
 
-    def test_text_optional(self):
+    def test_caption_optional(self):
         data = {
             "photos": [MagicMock()],
             "platforms": [PlatformChoices.FACEBOOK],
         }
         serializer = PhotoPostCreateSerializer(data=data)
         assert serializer.is_valid()
-        assert serializer.validated_data.get("text") == ""
+        assert serializer.validated_data.get("caption") == ""
 
     def test_missing_photos(self):
         data = {
-            "text": "Missing photos",
+            "caption": "Missing photos",
             "platforms": [PlatformChoices.INSTAGRAM],
         }
         serializer = PhotoPostCreateSerializer(data=data)
@@ -125,11 +135,12 @@ class TestContentCreationService:
         content_post = ContentCreationService.create_content_post(
             user=user,
             media_files=[self._mock_file()],
-            text="Hello world",
+            caption="Hello world",
             platforms=[PlatformChoices.YOUTUBE],
+            platform_settings={"youtube": {"title": "YouTube Title"}},
         )
 
-        assert content_post.title == "Hello world"
+        assert content_post.caption == "Hello world"
         # Should have 1 ContentMedia record for the video
         assert content_post.media_items.count() == 1
         assert content_post.media_items.first().file_type == "video"
@@ -163,7 +174,7 @@ class TestContentCreationService:
                 self._mock_file(name="b.jpg", content=b"photo-b"),
                 self._mock_file(name="c.jpg", content=b"photo-c"),
             ],
-            text="Multi photo",
+            caption="Multi photo",
             platforms=[PlatformChoices.FACEBOOK, PlatformChoices.INSTAGRAM],
             content_type="photo",
         )
@@ -196,8 +207,9 @@ class TestContentCreationService:
         content_post = ContentCreationService.create_content_post(
             user=user,
             media_files=[self._mock_file()],
-            text="Multi",
+            caption="Multi",
             platforms=[PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
+            platform_settings={"youtube": {"title": "YouTube Title"}},
         )
 
         assert content_post.platform_entries.count() == 2
@@ -211,8 +223,9 @@ class TestContentCreationService:
             ContentCreationService.create_content_post(
                 user=user,
                 media_files=[self._mock_file()],
-                text="Test",
+                caption="Test",
                 platforms=[PlatformChoices.YOUTUBE],
+                platform_settings={"youtube": {"title": "YouTube Title"}},
             )
 
     def test_raises_when_platform_not_connected(self, db, user, brand, mocker):
@@ -220,8 +233,9 @@ class TestContentCreationService:
             ContentCreationService.create_content_post(
                 user=user,
                 media_files=[self._mock_file()],
-                text="Test",
+                caption="Test",
                 platforms=[PlatformChoices.YOUTUBE],
+                platform_settings={"youtube": {"title": "YouTube Title"}},
             )
 
 
@@ -240,7 +254,7 @@ class TestPostingService:
             token_expires_at=expires,
         )
         content_post = ContentPost.objects.create(
-            user=user, brand=brand, title="Test", content_type=file_type
+            user=user, brand=brand, caption="Test", content_type=file_type
         )
         ContentMedia.objects.create(
             content_post=content_post,
@@ -249,7 +263,10 @@ class TestPostingService:
             order=0,
         )
         entry = ContentPostPlatform.objects.create(
-            content_post=content_post, platform=platform
+            content_post=content_post,
+            platform=platform,
+            title="Test Title",
+            caption="Test Description",
         )
         return entry
 
@@ -310,7 +327,7 @@ class TestPostingService:
             token_expires_at=expires,
         )
         content_post = ContentPost.objects.create(
-            user=user, brand=brand, title="Multi Photo", content_type="photo"
+            user=user, brand=brand, caption="Multi Photo", content_type="photo"
         )
         ContentMedia.objects.create(
             content_post=content_post, r2_key="photos/a.jpg", file_type="image", order=0
@@ -322,7 +339,9 @@ class TestPostingService:
             content_post=content_post, r2_key="photos/c.jpg", file_type="image", order=2
         )
         entry = ContentPostPlatform.objects.create(
-            content_post=content_post, platform=PlatformChoices.FACEBOOK
+            content_post=content_post,
+            platform=PlatformChoices.FACEBOOK,
+            caption="Multi Photo",
         )
 
         result = PostingService.publish_platform_entry(entry, content_type="photo")
@@ -357,7 +376,7 @@ class TestPostingService:
             return_value=True,
         )
         cp = ContentPost.objects.create(
-            user=user, brand=brand, title="C", content_type="video"
+            user=user, brand=brand, caption="C", content_type="video"
         )
         ContentMedia.objects.create(
             content_post=cp, r2_key="videos/k.mp4", file_type="video", order=0
@@ -380,7 +399,7 @@ class TestPostingService:
             "content.services.posting_service.R2StorageService.delete_file",
         )
         cp = ContentPost.objects.create(
-            user=user, brand=brand, title="P", content_type="video"
+            user=user, brand=brand, caption="P", content_type="video"
         )
         ContentMedia.objects.create(
             content_post=cp, r2_key="videos/k.mp4", file_type="video", order=0

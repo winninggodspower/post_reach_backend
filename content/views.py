@@ -51,9 +51,9 @@ class ContentPostViewSet(viewsets.ViewSet):
         return self._create_and_dispatch(
             request=request,
             media_files=[validated["video"]],
-            title=validated["title"],
-            description=validated.get("description", ""),
+            caption=validated.get("caption", ""),
             platforms=validated["platforms"],
+            platform_settings=validated.get("platform_settings", {}),
             content_type="video",
         )
 
@@ -86,8 +86,9 @@ class ContentPostViewSet(viewsets.ViewSet):
         return self._create_and_dispatch(
             request=request,
             media_files=validated["photos"],
-            title=validated.get("text", ""),
+            caption=validated.get("caption", ""),
             platforms=validated["platforms"],
+            platform_settings=validated.get("platform_settings", {}),
             content_type="photo",
         )
 
@@ -126,7 +127,7 @@ class ContentPostViewSet(viewsets.ViewSet):
     # ── shared helper ──────────────────────────────────────
 
     def _create_and_dispatch(
-        self, *, request, media_files, platforms, content_type, title, description=""
+        self, *, request, media_files, platforms, content_type, caption="", platform_settings=None
     ):
         """
         Shared pipeline: call the service (which handles R2 + DB + Celery),
@@ -136,9 +137,9 @@ class ContentPostViewSet(viewsets.ViewSet):
             content_post = ContentCreationService.create_content_post(
                 user=request.user,
                 media_files=media_files,
-                title=title,
-                description=description,
+                caption=caption,
                 platforms=platforms,
+                platform_settings=platform_settings,
                 content_type=content_type,
             )
         except ValueError as e:

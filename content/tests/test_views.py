@@ -21,7 +21,7 @@ class TestRetrieveEndpoint:
 
     def test_retrieve_own_post(self, db, authenticated_client, user, brand, mocker):
         content_post = ContentPost.objects.create(
-            user=user, brand=brand, title="Status Check", content_type="video"
+            user=user, brand=brand, caption="Status Check", content_type="video"
         )
         ContentMedia.objects.create(
             content_post=content_post, r2_key="videos/k.mp4", file_type="video", order=0
@@ -46,7 +46,7 @@ class TestRetrieveEndpoint:
         assert response.status_code == 200
         data = response.data
         assert data["success"] is True
-        assert data["data"]["title"] == "Status Check"
+        assert data["data"]["caption"] == "Status Check"
         assert len(data["data"]["platforms"]) == 2
         statuses = {(p["platform"], p["status"]) for p in data["data"]["platforms"]}
         assert ("youtube", "posted") in statuses
@@ -71,7 +71,7 @@ class TestRetrieveEndpoint:
             )
 
         content_post = ContentPost.objects.create(
-            user=owner, brand=brand, title="Other's Post", content_type="video"
+            user=owner, brand=brand, caption="Other's Post", content_type="video"
         )
         ContentMedia.objects.create(
             content_post=content_post, r2_key="videos/o.mp4", file_type="video", order=0
@@ -145,12 +145,14 @@ class TestVideoEndpoint:
         video = io.BytesIO(b"fake-video")
         video.name = "v.mp4"
 
+        import json
         response = authenticated_client.post(
             reverse(self.URL),
             {
                 "video": video,
-                "title": "Test Video",
+                "caption": "Test Video",
                 "platforms": [PlatformChoices.YOUTUBE],
+                "platform_settings": json.dumps({"youtube": {"title": "YouTube Title"}}),
             },
             format="multipart",
         )
@@ -196,12 +198,14 @@ class TestVideoEndpoint:
         video = io.BytesIO(b"v")
         video.name = "v.mp4"
 
+        import json
         response = authenticated_client.post(
             reverse(self.URL),
             {
                 "video": video,
-                "title": "Multi",
+                "caption": "Multi",
                 "platforms": [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
+                "platform_settings": json.dumps({"youtube": {"title": "YouTube Title"}}),
             },
             format="multipart",
         )
@@ -226,9 +230,15 @@ class TestVideoEndpoint:
         video = io.BytesIO(b"v")
         video.name = "v.mp4"
 
+        import json
         response = api_client.post(
             reverse(self.URL),
-            {"video": video, "title": "Test", "platforms": [PlatformChoices.YOUTUBE]},
+            {
+                "video": video,
+                "caption": "Test",
+                "platforms": [PlatformChoices.YOUTUBE],
+                "platform_settings": json.dumps({"youtube": {"title": "YouTube Title"}}),
+            },
             format="multipart",
         )
         assert response.status_code == 400
@@ -277,7 +287,7 @@ class TestPhotoEndpoint:
             reverse(self.URL),
             {
                 "photos": [photo],
-                "text": "Nice shot",
+                "caption": "Nice shot",
                 "platforms": [PlatformChoices.INSTAGRAM],
             },
             format="multipart",
@@ -332,7 +342,7 @@ class TestPhotoEndpoint:
             reverse(self.URL),
             {
                 "photos": [photo1, photo2],
-                "text": "Multi photo",
+                "caption": "Multi photo",
                 "platforms": [PlatformChoices.FACEBOOK],
             },
             format="multipart",
@@ -358,7 +368,7 @@ class TestPhotoEndpoint:
             reverse(self.URL),
             {
                 "photos": [photo],
-                "text": "Test",
+                "caption": "Test",
                 "platforms": [PlatformChoices.INSTAGRAM],
             },
             format="multipart",

@@ -135,7 +135,7 @@ class PostingService:
                     access_token=access_token,
                     social_account=social_account,
                     photo_urls=presigned_urls,
-                    text=content_post.title,
+                    text=entry.caption,
                 )
             else:
                 result = cls._dispatch_video(
@@ -144,8 +144,8 @@ class PostingService:
                     social_account=social_account,
                     media_bytes=media_bytes,
                     video_url=presigned_url or "",
-                    title=content_post.title,
-                    description=content_post.description,
+                    title=entry.title,
+                    description=entry.caption,
                 )
 
             if result.get("status") == "processing":
@@ -202,7 +202,7 @@ class PostingService:
             return TiktokService.publish_video(
                 access_token=access_token,
                 video_url=video_url,
-                title=title,
+                title=description,  # TikTok caption is passed in 'title'
             )
         if platform == PlatformChoices.FACEBOOK:
             return FacebookService.publish_video(
@@ -217,7 +217,7 @@ class PostingService:
                 access_token=access_token,
                 instagram_account_id=social_account.external_id,
                 video_url=video_url,
-                caption=title,
+                caption=description,
             )
         if platform == PlatformChoices.LINKEDIN:
             return LinkedinService.publish_video(

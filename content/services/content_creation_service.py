@@ -33,9 +33,9 @@ class ContentCreationService:
         *,
         user,
         media_files: list,
-        title: str,
-        description: str = "",
+        caption: str = "",
         platforms: list[str],
+        platform_settings: dict = None,
         content_type: str = "video",
     ) -> ContentPost:
         """
@@ -50,6 +50,8 @@ class ContentCreationService:
         :param content_type: "video" or "photo".
         :raises ValueError: On any failure (user-facing message).
         """
+        platform_settings = platform_settings or {}
+
         # 1. Resolve brand via domain service
         brand = BrandService.get_default_brand(user)
 
@@ -75,13 +77,10 @@ class ContentCreationService:
         # 4. Create ContentPost + ContentMedia + per-platform entries + dispatch Celery tasks
         try:
             with transaction.atomic():
-                # Description only applies to video posts; photo posts use text as title
-                post_description = description if content_type == "video" else ""
                 content_post = ContentPost.objects.create(
                     user=user,
                     brand=brand,
-                    title=title or "",
-                    description=post_description,
+                    caption=caption or "",
                     content_type=content_type,
                 )
 
@@ -102,15 +101,26 @@ class ContentCreationService:
                     ]
                 )
 
-                ContentPostPlatform.objects.bulk_create(
-                    [
+                platform_entries = []
+                for platform in platforms:
+                    if platform == "youtube":
+                        yt_config = platform_settings.get("youtube", {})
+                        title = yt_config.get("title", "")
+                        plat_caption = yt_config.get("description", yt_config.get("caption", caption))
+                    else:
+                        title = ""
+                        plat_caption = platform_settings.get(platform, {}).get("caption", caption)
+
+                    platform_entries.append(
                         ContentPostPlatform(
                             content_post=content_post,
                             platform=platform,
+                            title=title,
+                            caption=plat_caption,
                         )
-                        for platform in platforms
-                    ]
-                )
+                    )
+                
+                ContentPostPlatform.objects.bulk_create(platform_entries)
 
                 content_post.refresh_from_db()
 

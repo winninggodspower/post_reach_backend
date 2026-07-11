@@ -20,7 +20,7 @@ photo_post_parameters = [
         description="One or more photo files to upload.",
     ),
     openapi.Parameter(
-        "text",
+        "caption",
         openapi.IN_FORM,
         type=openapi.TYPE_STRING,
         required=False,
@@ -34,16 +34,36 @@ photo_post_parameters = [
         required=True,
         description="Target platforms to publish to (YouTube does not support photos).",
     ),
+    openapi.Parameter(
+        "platform_settings",
+        openapi.IN_FORM,
+        type=openapi.TYPE_OBJECT,
+        required=False,
+        description="Platform-specific settings and overrides.",
+    ),
 ]
 
 
 class ContentPostCreateSerializer(serializers.Serializer):
     video = serializers.FileField(required=True)
-    title = serializers.CharField(required=True, max_length=255)
-    description = serializers.CharField(required=False, allow_blank=True, default="")
+    caption = serializers.CharField(required=False, allow_blank=True, default="")
     platforms = serializers.MultipleChoiceField(
         choices=PlatformChoices.choices, required=True
     )
+    platform_settings = serializers.JSONField(required=False, default=dict)
+
+    def validate(self, attrs):
+        platforms = attrs.get("platforms", set())
+        platform_settings = attrs.get("platform_settings", {})
+
+        # If youtube is selected, we require a YouTube title
+        if "youtube" in platforms:
+            yt_settings = platform_settings.get("youtube", {})
+            if not yt_settings or not yt_settings.get("title"):
+                raise serializers.ValidationError(
+                    {"platform_settings": "YouTube requires a title in platform_settings.youtube.title"}
+                )
+        return attrs
 
 
 class ContentPostPlatformSerializer(serializers.ModelSerializer):
@@ -55,6 +75,8 @@ class ContentPostPlatformSerializer(serializers.ModelSerializer):
             "status",
             "platform_post_id",
             "error_message",
+            "title",
+            "caption",
             "created_at",
             "updated_at",
         ]
@@ -65,10 +87,23 @@ class PhotoPostCreateSerializer(serializers.Serializer):
     photos = serializers.ListField(
         child=serializers.FileField(), required=True, min_length=1
     )
-    text = serializers.CharField(required=False, allow_blank=True, default="")
+    caption = serializers.CharField(required=False, allow_blank=True, default="")
     platforms = serializers.MultipleChoiceField(
         choices=PhotoPlatformOptions.choices, required=True
     )
+    platform_settings = serializers.JSONField(required=False, default=dict)
+
+    def validate(self, attrs):
+        platforms = attrs.get("platforms", set())
+        platform_settings = attrs.get("platform_settings", {})
+
+        if "youtube" in platforms:
+            yt_settings = platform_settings.get("youtube", {})
+            if not yt_settings or not yt_settings.get("title"):
+                raise serializers.ValidationError(
+                    {"platform_settings": "YouTube requires a title in platform_settings.youtube.title"}
+                )
+        return attrs
 
 
 class ContentMediaSerializer(serializers.ModelSerializer):
@@ -94,8 +129,7 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
         model = ContentPost
         fields = [
             "id",
-            "title",
-            "description",
+            "caption",
             "content_type",
             "platforms",
             "created_at",

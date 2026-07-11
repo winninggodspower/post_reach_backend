@@ -11,8 +11,8 @@ from integrations.providers.instagram_service import InstagramService
 from utils.custom_logger import CustomLogger
 
 
-@shared_task
-def publish_platform_entry(platform_entry_id, content_type="video"):
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def publish_platform_entry(self, platform_entry_id, content_type="video"):
     """
     Celery task that publishes a single ContentPostPlatform entry.
 
@@ -30,9 +30,33 @@ def publish_platform_entry(platform_entry_id, content_type="video"):
         )
         return {"status": "error", "message": "ContentPostPlatform not found"}
 
-    result_entry = PostingService.publish_platform_entry(
-        entry, content_type=content_type
-    )
+    try:
+        result_entry = PostingService.publish_platform_entry(
+            entry, content_type=content_type
+        )
+    except Exception as exc:
+        CustomLogger.exception(
+            "Transient exception during publish task, retrying",
+            extra={"platform_entry_id": str(platform_entry_id)},
+        )
+        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1))
+
+    if result_entry.status == PostStatus.FAILED:
+        # Check if error is transient (connection/network issues or 5xx HTTP codes)
+        transient_keywords = ["connection", "forcibly closed", "timeout", "500", "502", "503", "504"]
+        if any(kw in result_entry.error_message.lower() for kw in transient_keywords):
+            CustomLogger.warning(
+                "Transient failure detected, retrying publish task",
+                extra={
+                    "platform_entry_id": str(platform_entry_id),
+                    "error_message": result_entry.error_message,
+                    "retry_count": self.request.retries,
+                },
+            )
+            # Revert status to PENDING before retrying
+            result_entry.status = PostStatus.PENDING
+            result_entry.save(update_fields=["status", "updated_at"])
+            raise self.retry(countdown=60 * (self.request.retries + 1))
 
     if result_entry.status == PostStatus.POSTED:
         PostingService.cleanup_r2_media(result_entry.content_post)

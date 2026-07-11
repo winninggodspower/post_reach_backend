@@ -30,7 +30,7 @@ class TestPublishPlatformEntryTask:
         )
 
         cp = ContentPost.objects.create(
-            user=user, brand=brand, title="Test", content_type="video"
+            user=user, brand=brand, caption="Test", content_type="video"
         )
         entry = ContentPostPlatform.objects.create(
             content_post=cp, platform=PlatformChoices.INSTAGRAM
@@ -73,7 +73,7 @@ class TestCheckInstagramContainerStatusTask:
         )
 
         cp = ContentPost.objects.create(
-            user=user, brand=brand, title="Test", content_type="video"
+            user=user, brand=brand, caption="Test", content_type="video"
         )
         entry = ContentPostPlatform.objects.create(
             content_post=cp,
@@ -113,7 +113,7 @@ class TestCheckInstagramContainerStatusTask:
         )
 
         cp = ContentPost.objects.create(
-            user=user, brand=brand, title="Test", content_type="video"
+            user=user, brand=brand, caption="Test", content_type="video"
         )
         entry = ContentPostPlatform.objects.create(
             content_post=cp,
