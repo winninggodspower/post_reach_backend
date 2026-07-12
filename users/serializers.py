@@ -125,7 +125,7 @@ class ConnectedAccountSerializer(serializers.Serializer):
     expired_at = serializers.DateTimeField(source="token_expires_at", allow_null=True)
 
     def get_is_expired(self, obj):
-        return obj.is_token_expired()
+        return obj.get_access_token() is None
 
 
 class BrandSerializer(serializers.ModelSerializer):

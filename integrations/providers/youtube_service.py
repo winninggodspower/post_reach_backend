@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC
 
 import google_auth_oauthlib
 import googleapiclient.discovery
@@ -151,6 +152,10 @@ class YoutubeService(SocialAccountService):
         channel_info = cls._fetch_channel_info(credentials)
 
         # 5. Save account
+        expiry = credentials.expiry
+        if expiry and expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=UTC)
+
         account, _ = SocialAccount.objects.update_or_create(
             brand=resolved_brand,
             platform="youtube",
@@ -159,7 +164,7 @@ class YoutubeService(SocialAccountService):
                 "external_id": channel_info["external_id"],
                 "access_token": credentials.token,
                 "refresh_token": credentials.refresh_token,
-                "token_expires_at": credentials.expiry,
+                "token_expires_at": expiry,
                 "scope": " ".join(credentials.scopes),
             },
         )
@@ -226,10 +231,15 @@ class YoutubeService(SocialAccountService):
         request = Request()
         credentials.refresh(request)
 
+        # Ensure expiry is timezone-aware UTC
+        expiry = credentials.expiry
+        if expiry and expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=UTC)
+
         return {
             "access_token": credentials.token,
             "refresh_token": credentials.refresh_token,
-            "expires_in": credentials.expiry,
+            "expires_in": expiry,
         }
 
     @classmethod

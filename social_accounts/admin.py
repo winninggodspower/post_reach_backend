@@ -11,6 +11,8 @@ class SocialAccountAdmin(admin.ModelAdmin):
         "platform",
         "account_name",
         "external_id",
+        "profile_picture_url",
+        "token_expires_at",
         "created_at",
         "updated_at",
     )
