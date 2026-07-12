@@ -125,12 +125,14 @@ class SocialAccountConnectionService:
             defaults={
                 "account_name": user_info["account_name"],
                 "external_id": user_info["external_id"],
+                "profile_picture_url": user_info.get("profile_picture_url"),
                 "access_token": credentials["access_token"],
                 "token_expires_at": timezone.now()
                 + timedelta(seconds=credentials["expires_in"]),
                 "metadata": cls._base_metadata(
                     "instagram",
                     account_name=user_info["account_name"],
+                    profile_picture_url=user_info.get("profile_picture_url"),
                 ),
             },
         )
@@ -153,6 +155,7 @@ class SocialAccountConnectionService:
             defaults={
                 "account_name": user_info["account_name"],
                 "external_id": user_info["external_id"],
+                "profile_picture_url": user_info.get("profile_picture_url"),
                 "access_token": access_token,
                 "refresh_token": token_data.get("refresh_token"),
                 "token_expires_at": timezone.now()
@@ -161,6 +164,7 @@ class SocialAccountConnectionService:
                 "metadata": cls._base_metadata(
                     "tiktok",
                     account_name=user_info["account_name"],
+                    profile_picture_url=user_info.get("profile_picture_url"),
                 ),
             },
         )
@@ -183,6 +187,7 @@ class SocialAccountConnectionService:
             defaults={
                 "account_name": user_info["account_name"],
                 "external_id": user_info["external_id"],
+                "profile_picture_url": user_info.get("profile_picture_url"),
                 "access_token": access_token,
                 "token_expires_at": timezone.now()
                 + timedelta(seconds=token_data["expires_in"]),
@@ -190,6 +195,7 @@ class SocialAccountConnectionService:
                 "metadata": cls._base_metadata(
                     "linkedin",
                     account_name=user_info["account_name"],
+                    profile_picture_url=user_info.get("profile_picture_url"),
                 ),
             },
         )

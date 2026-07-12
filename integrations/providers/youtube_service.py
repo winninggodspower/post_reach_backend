@@ -162,6 +162,7 @@ class YoutubeService(SocialAccountService):
             defaults={
                 "account_name": channel_info["account_name"],
                 "external_id": channel_info["external_id"],
+                "profile_picture_url": channel_info.get("profile_picture_url"),
                 "access_token": credentials.token,
                 "refresh_token": credentials.refresh_token,
                 "token_expires_at": expiry,

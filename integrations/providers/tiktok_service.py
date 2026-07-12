@@ -153,6 +153,10 @@ class TiktokService(SocialAccountService):
             "account_name": user_data.get("display_name", "")
             or user_data.get("username", ""),
             "external_id": user_data.get("open_id", ""),
+            "profile_picture_url": user_data.get("avatar_url_large")
+            or user_data.get("avatar_url")
+            or user_data.get("avatar_large")
+            or user_data.get("avatar_url_100"),
         }
 
     @classmethod

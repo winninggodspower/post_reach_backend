@@ -113,6 +113,7 @@ class LinkedinService(SocialAccountService):
         return {
             "account_name": account_name,
             "external_id": external_id,
+            "profile_picture_url": data.get("picture"),
         }
 
     @classmethod

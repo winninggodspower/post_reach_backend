@@ -149,7 +149,7 @@ class InstagramService(SocialAccountService):
             response_data = cls().get(
                 "/me",
                 params={
-                    "fields": "id,username",
+                    "fields": "id,username,profile_picture_url",
                     "access_token": access_token,
                 },
             )
@@ -167,6 +167,7 @@ class InstagramService(SocialAccountService):
         return {
             "account_name": response_data.get("username", ""),
             "external_id": str(external_id),
+            "profile_picture_url": response_data.get("profile_picture_url"),
         }
 
     @classmethod
