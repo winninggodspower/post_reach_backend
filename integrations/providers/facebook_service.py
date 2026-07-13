@@ -310,3 +310,29 @@ class FacebookService(SocialAccountService):
         if not post_id:
             raise ValueError("Facebook multi-photo publish did not return a post ID")
         return {"platform_post_id": post_id}
+
+    @classmethod
+    def publish_text(cls, page_access_token, page_id, text):
+        """
+        Publish a text-only post to a Facebook Page.
+        """
+        try:
+            feed_data = cls().post(
+                f"/{page_id}/feed",
+                data={
+                    "message": text or "",
+                    "access_token": page_access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Facebook text publish failed",
+                extra={"operation": "publish_text"},
+            )
+            raise ValueError(f"Facebook text publish failed: {str(e)}") from e
+
+        post_id = feed_data.get("id", "")
+        if not post_id:
+            raise ValueError("Facebook text publish did not return a post ID")
+        return {"platform_post_id": post_id}
+

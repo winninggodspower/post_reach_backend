@@ -11,6 +11,8 @@ from content.serializers import (
     ContentPostResponseSerializer,
     PhotoPostCreateSerializer,
     photo_post_parameters,
+    TextPostCreateSerializer,
+    text_post_parameters,
 )
 from content.services.content_creation_service import ContentCreationService
 from content.services.content_post_service import ContentPostService
@@ -90,6 +92,41 @@ class ContentPostViewSet(viewsets.ViewSet):
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
             content_type="photo",
+        )
+
+    # ── Text ───────────────────────────────────────────────
+
+    @swagger_auto_schema(
+        operation_summary="Create and publish a text post to multiple platforms",
+        operation_description=(
+            "Creates a ContentPost with per-platform sub-entries, "
+            "and dispatches async Celery tasks to publish the text "
+            "to each selected platform (e.g. Facebook, LinkedIn). "
+            "Each platform must already be connected to the user's active brand."
+        ),
+        manual_parameters=text_post_parameters,
+        responses={
+            201: ContentPostResponseSerializer,
+            400: openapi.Response("Bad Request"),
+        },
+        consumes=["application/x-www-form-urlencoded", "multipart/form-data"],
+    )
+    @action(detail=False, methods=["post"], url_path="text")
+    def create_text(self, request):
+        """
+        POST /api/content/posts/text/
+        """
+        serializer = TextPostCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        return self._create_and_dispatch(
+            request=request,
+            media_files=[],
+            caption=validated["caption"],
+            platforms=validated["platforms"],
+            platform_settings=validated.get("platform_settings", {}),
+            content_type="text",
         )
 
     # ── Retrieve status ────────────────────────────────────

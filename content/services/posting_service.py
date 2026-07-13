@@ -72,81 +72,89 @@ class PostingService:
             entry.status = PostStatus.UPLOADING
             entry.save(update_fields=["status", "updated_at"])
 
-            presigned_url = None
-            media_bytes = None
-
-            # Photo platforms need URLs for each image; video platforms vary
-            needs_url = content_type == "photo" or entry.platform in URL_PLATFORMS
-            needs_bytes = content_type == "video" and entry.platform in BYTES_PLATFORMS
-
-            if content_type == "photo":
-                # Generate a presigned URL for each image
-                image_items = ContentPostService.get_media_items(
-                    content_post, file_type=FileTypeChoice.IMAGE
-                )
-                presigned_urls = [
-                    R2StorageService.generate_presigned_url(
-                        item.r2_key, expiration=7200
-                    )
-                    for item in image_items
-                ]
-                if not presigned_urls or any(url is None for url in presigned_urls):
-                    CustomLogger.error(
-                        "content.services.posting_service",
-                        "Failed to generate presigned URLs for photos",
-                        extra={
-                            "content_post_id": str(content_post.id),
-                        },
-                    )
-                    raise ValueError("Failed to generate presigned URLs for photos")
-            elif needs_url:
-                # Single video → single presigned URL
-                video_items = ContentPostService.get_media_items(
-                    content_post, file_type=FileTypeChoice.VIDEO
-                )
-                video_item = video_items.first()
-                if not video_item:
-                    CustomLogger.error(
-                        "content.services.posting_service",
-                        "No video media found for this post",
-                        extra={
-                            "content_post_id": str(content_post.id),
-                        },
-                    )
-                    raise ValueError("No video media found for this post")
-                presigned_url = R2StorageService.generate_presigned_url(
-                    video_item.r2_key, expiration=7200
-                )
-                if not presigned_url:
-                    raise ValueError("Failed to generate presigned URL")
-
-            if needs_bytes:
-                video_items = ContentPostService.get_media_items(
-                    content_post, file_type=FileTypeChoice.VIDEO
-                )
-                video_item = video_items.first()
-                if not video_item:
-                    raise ValueError("No video media found for this post")
-                media_bytes = R2StorageService.download_file(video_item.r2_key)
-
-            if content_type == "photo":
-                result = cls._dispatch_photo(
+            if content_type == "text":
+                result = cls._dispatch_text(
                     platform=entry.platform,
                     access_token=access_token,
                     social_account=social_account,
-                    photo_urls=presigned_urls,
                     text=entry.caption,
                 )
             else:
-                result = cls._dispatch_video(
-                    platform=entry.platform,
-                    access_token=access_token,
-                    social_account=social_account,
-                    media_bytes=media_bytes,
-                    video_url=presigned_url or "",
-                    title=entry.title,
-                    description=entry.caption,
-                )
+                presigned_url = None
+                media_bytes = None
+
+                # Photo platforms need URLs for each image; video platforms vary
+                needs_url = content_type == "photo" or entry.platform in URL_PLATFORMS
+                needs_bytes = content_type == "video" and entry.platform in BYTES_PLATFORMS
+
+                if content_type == "photo":
+                    # Generate a presigned URL for each image
+                    image_items = ContentPostService.get_media_items(
+                        content_post, file_type=FileTypeChoice.IMAGE
+                    )
+                    presigned_urls = [
+                        R2StorageService.generate_presigned_url(
+                            item.r2_key, expiration=7200
+                        )
+                        for item in image_items
+                    ]
+                    if not presigned_urls or any(url is None for url in presigned_urls):
+                        CustomLogger.error(
+                            "content.services.posting_service",
+                            "Failed to generate presigned URLs for photos",
+                            extra={
+                                "content_post_id": str(content_post.id),
+                            },
+                        )
+                        raise ValueError("Failed to generate presigned URLs for photos")
+                elif needs_url:
+                    # Single video → single presigned URL
+                    video_items = ContentPostService.get_media_items(
+                        content_post, file_type=FileTypeChoice.VIDEO
+                    )
+                    video_item = video_items.first()
+                    if not video_item:
+                        CustomLogger.error(
+                            "content.services.posting_service",
+                            "No video media found for this post",
+                            extra={
+                                "content_post_id": str(content_post.id),
+                            },
+                        )
+                        raise ValueError("No video media found for this post")
+                    presigned_url = R2StorageService.generate_presigned_url(
+                        video_item.r2_key, expiration=7200
+                    )
+                    if not presigned_url:
+                        raise ValueError("Failed to generate presigned URL")
+
+                if needs_bytes:
+                    video_items = ContentPostService.get_media_items(
+                        content_post, file_type=FileTypeChoice.VIDEO
+                    )
+                    video_item = video_items.first()
+                    if not video_item:
+                        raise ValueError("No video media found for this post")
+                    media_bytes = R2StorageService.download_file(video_item.r2_key)
+
+                if content_type == "photo":
+                    result = cls._dispatch_photo(
+                        platform=entry.platform,
+                        access_token=access_token,
+                        social_account=social_account,
+                        photo_urls=presigned_urls,
+                        text=entry.caption,
+                    )
+                else:
+                    result = cls._dispatch_video(
+                        platform=entry.platform,
+                        access_token=access_token,
+                        social_account=social_account,
+                        media_bytes=media_bytes,
+                        video_url=presigned_url or "",
+                        title=entry.title,
+                        description=entry.caption,
+                    )
 
             if result.get("status") == "processing":
                 entry.status = PostStatus.UPLOADING
@@ -261,3 +269,22 @@ class PostingService:
                 text=text,
             )
         raise ValueError(f"Photo publishing not supported for: {platform}")
+
+    @classmethod
+    def _dispatch_text(
+        cls, platform, access_token, social_account, text
+    ) -> dict:
+        if platform == PlatformChoices.FACEBOOK:
+            return FacebookService.publish_text(
+                page_access_token=access_token,
+                page_id=social_account.external_id,
+                text=text,
+            )
+        if platform == PlatformChoices.LINKEDIN:
+            return LinkedinService.publish_text(
+                access_token=access_token,
+                person_urn=f"urn:li:person:{social_account.external_id}",
+                text=text,
+            )
+        raise ValueError(f"Text publishing not supported for: {platform}")
+

@@ -21,3 +21,12 @@ class PhotoPlatformOptions(models.TextChoices):
     TIKTOK = "tiktok", "TikTok"
     LINKEDIN = "linkedin", "LinkedIn"
     TWITTER = "twitter", "Twitter"
+
+
+class TextPlatformOptions(models.TextChoices):
+    """Platforms that support text-only posts (YouTube, Instagram, TikTok do not support text-only)."""
+
+    FACEBOOK = "facebook", "Facebook"
+    LINKEDIN = "linkedin", "LinkedIn"
+    TWITTER = "twitter", "Twitter"
+

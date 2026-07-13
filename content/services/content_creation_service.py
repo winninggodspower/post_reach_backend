@@ -60,19 +60,20 @@ class ContentCreationService:
 
         # 3. Upload each file to R2
         uploaded_keys = []
-        try:
-            for idx, media_file in enumerate(media_files):
-                file_bytes = media_file.read()
-                r2_key = R2StorageService.generate_key(content_type=content_type)
-                R2StorageService.upload_file(
-                    file_bytes, r2_key, content_type=content_type
-                )
-                uploaded_keys.append(r2_key)
-        except Exception as e:
-            # Clean up any keys that were already uploaded
-            for key in uploaded_keys:
-                R2StorageService.delete_file(key)
-            raise ValueError(f"Failed to upload media: {str(e)}") from e
+        if content_type != "text":
+            try:
+                for idx, media_file in enumerate(media_files):
+                    file_bytes = media_file.read()
+                    r2_key = R2StorageService.generate_key(content_type=content_type)
+                    R2StorageService.upload_file(
+                        file_bytes, r2_key, content_type=content_type
+                    )
+                    uploaded_keys.append(r2_key)
+            except Exception as e:
+                # Clean up any keys that were already uploaded
+                for key in uploaded_keys:
+                    R2StorageService.delete_file(key)
+                raise ValueError(f"Failed to upload media: {str(e)}") from e
 
         # 4. Create ContentPost + ContentMedia + per-platform entries + dispatch Celery tasks
         try:
@@ -85,21 +86,22 @@ class ContentCreationService:
                 )
 
                 # Create a ContentMedia record for each uploaded file
-                ContentMedia.objects.bulk_create(
-                    [
-                        ContentMedia(
-                            content_post=content_post,
-                            r2_key=r2_key,
-                            file_type=(
-                                FileTypeChoice.IMAGE
-                                if content_type == "photo"
-                                else FileTypeChoice.VIDEO
-                            ),
-                            order=idx,
-                        )
-                        for idx, r2_key in enumerate(uploaded_keys)
-                    ]
-                )
+                if content_type != "text":
+                    ContentMedia.objects.bulk_create(
+                        [
+                            ContentMedia(
+                                content_post=content_post,
+                                r2_key=r2_key,
+                                file_type=(
+                                    FileTypeChoice.IMAGE
+                                    if content_type == "photo"
+                                    else FileTypeChoice.VIDEO
+                                ),
+                                order=idx,
+                            )
+                            for idx, r2_key in enumerate(uploaded_keys)
+                        ]
+                    )
 
                 platform_entries = []
                 for platform in platforms:

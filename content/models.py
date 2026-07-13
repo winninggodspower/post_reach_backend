@@ -27,10 +27,10 @@ class ContentPost(UUIDTimestampedModel):
 
     caption = models.TextField(blank=True, default="")
 
-    # Distinguishes whether this post is a video or photo
+    # Distinguishes whether this post is a video, photo, or text
     content_type = models.CharField(
         max_length=10,
-        choices=[("video", "Video"), ("photo", "Photo")],
+        choices=[("video", "Video"), ("photo", "Photo"), ("text", "Text")],
         default="video",
     )
 

@@ -376,3 +376,46 @@ class LinkedinService(SocialAccountService):
             raise ValueError("LinkedIn publish did not return a post ID")
 
         return {"platform_post_id": post_id}
+
+    @classmethod
+    def publish_text(cls, access_token, person_urn, text=""):
+        """
+        Publish a text-only post to LinkedIn using the UGC Posts API.
+        """
+        try:
+            response = cls().post(
+                f"{cls.API_BASE_URL}/ugcPosts",
+                json_data={
+                    "author": person_urn,
+                    "lifecycleState": "PUBLISHED",
+                    "specificContent": {
+                        "com.linkedin.ugc.ShareContent": {
+                            "shareCommentary": {
+                                "text": text or "",
+                            },
+                            "shareMediaCategory": "NONE",
+                        }
+                    },
+                    "visibility": {
+                        "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+                    },
+                },
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "LinkedIn text publish failed",
+                extra={"operation": "publish_text"},
+            )
+            raise ValueError(f"LinkedIn text publish failed: {str(e)}") from e
+
+        post_id = response.get("id", "")
+        if not post_id:
+            raise ValueError("LinkedIn publish did not return a post ID")
+
+        return {"platform_post_id": post_id}
+
