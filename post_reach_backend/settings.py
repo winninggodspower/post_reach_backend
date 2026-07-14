@@ -296,4 +296,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "social_accounts.tasks.refresh_expiring_tokens",
         "schedule": 1800,  # 30 minutes in seconds
     },
+    "publish_scheduled_posts": {
+        "task": "content.tasks.publish_scheduled_posts",
+        "schedule": 60,  # 1 minute in seconds
+    },
 }

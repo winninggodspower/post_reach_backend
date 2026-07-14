@@ -159,3 +159,36 @@ def check_instagram_container_status(self, platform_entry_id):
             raise e
         else:
             raise self.retry(exc=e)
+
+
+@shared_task
+def publish_scheduled_posts():
+    """
+    Periodic task to check for scheduled posts that are due to be published.
+    """
+    from django.utils import timezone
+    from django.db import transaction
+
+    now = timezone.now()
+    due_entries = ContentPostPlatform.objects.filter(
+        status=PostStatus.SCHEDULED,
+        content_post__scheduled_at__lte=now
+    ).select_related("content_post")
+
+    for entry in due_entries:
+        try:
+            with transaction.atomic():
+                locked_entry = ContentPostPlatform.objects.select_for_update().get(id=entry.id)
+                if locked_entry.status == PostStatus.SCHEDULED:
+                    locked_entry.status = PostStatus.PENDING
+                    locked_entry.save(update_fields=["status", "updated_at"])
+                    
+                    publish_platform_entry.delay(
+                        str(locked_entry.id),
+                        content_type=locked_entry.content_post.content_type
+                    )
+        except Exception as e:
+            CustomLogger.exception(
+                "Error processing scheduled post platform entry",
+                extra={"platform_entry_id": str(entry.id), "error": str(e)}
+            )

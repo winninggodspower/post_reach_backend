@@ -42,6 +42,14 @@ photo_post_parameters = [
         required=False,
         description="Platform-specific settings and overrides.",
     ),
+    openapi.Parameter(
+        "scheduled_at",
+        openapi.IN_FORM,
+        type=openapi.TYPE_STRING,
+        format=openapi.FORMAT_DATETIME,
+        required=False,
+        description="Optional ISO 8601 datetime for post scheduling.",
+    ),
 ]
 
 # Swagger manual parameters for the text post endpoint
@@ -68,6 +76,14 @@ text_post_parameters = [
         required=False,
         description="Platform-specific settings and overrides.",
     ),
+    openapi.Parameter(
+        "scheduled_at",
+        openapi.IN_FORM,
+        type=openapi.TYPE_STRING,
+        format=openapi.FORMAT_DATETIME,
+        required=False,
+        description="Optional ISO 8601 datetime for post scheduling.",
+    ),
 ]
 
 
@@ -75,6 +91,7 @@ text_post_parameters = [
 class ContentPostCreateSerializer(serializers.Serializer):
     video = serializers.FileField(required=True)
     caption = serializers.CharField(required=False, allow_blank=True, default="")
+    scheduled_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
     platforms = serializers.MultipleChoiceField(
         choices=PlatformChoices.choices, required=True
     )
@@ -118,6 +135,7 @@ class PhotoPostCreateSerializer(serializers.Serializer):
         child=serializers.FileField(), required=True, min_length=1
     )
     caption = serializers.CharField(required=False, allow_blank=True, default="")
+    scheduled_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
     platforms = serializers.MultipleChoiceField(
         choices=PhotoPlatformOptions.choices, required=True
     )
@@ -140,6 +158,7 @@ class PhotoPostCreateSerializer(serializers.Serializer):
 
 class TextPostCreateSerializer(serializers.Serializer):
     caption = serializers.CharField(required=True, allow_blank=False)
+    scheduled_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
     platforms = serializers.MultipleChoiceField(
         choices=TextPlatformOptions.choices, required=True
     )
@@ -175,6 +194,7 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
             "id",
             "caption",
             "content_type",
+            "scheduled_at",
             "platforms",
             "created_at",
             "updated_at",

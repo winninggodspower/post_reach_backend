@@ -57,6 +57,7 @@ class ContentPostViewSet(viewsets.ViewSet):
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
             content_type="video",
+            scheduled_at=validated.get("scheduled_at"),
         )
 
     # ── Photo ──────────────────────────────────────────────
@@ -92,6 +93,7 @@ class ContentPostViewSet(viewsets.ViewSet):
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
             content_type="photo",
+            scheduled_at=validated.get("scheduled_at"),
         )
 
     # ── Text ───────────────────────────────────────────────
@@ -127,7 +129,64 @@ class ContentPostViewSet(viewsets.ViewSet):
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
             content_type="text",
+            scheduled_at=validated.get("scheduled_at"),
         )
+
+    # ── Calendar ───────────────────────────────────────────
+
+    @swagger_auto_schema(
+        operation_summary="Get calendar posts within a date range",
+        operation_description=(
+            "Returns a list of posts for the active brand that are either scheduled or created "
+            "within the specified start_date and end_date range."
+        ),
+        manual_parameters=[
+            openapi.Parameter("start_date", openapi.IN_QUERY, type=openapi.TYPE_STRING, required=False, description="YYYY-MM-DD format"),
+            openapi.Parameter("end_date", openapi.IN_QUERY, type=openapi.TYPE_STRING, required=False, description="YYYY-MM-DD format"),
+        ],
+        responses={
+            200: ContentPostResponseSerializer(many=True),
+        }
+    )
+    @action(detail=False, methods=["get"], url_path="calendar")
+    def get_calendar_posts(self, request):
+        """
+        GET /api/content/posts/calendar/
+        """
+        from users.services.brand_service import BrandService
+        from django.db.models import Q
+        from django.utils.dateparse import parse_date
+
+        user = request.user
+        try:
+            brand = BrandService.get_default_brand(user)
+        except ValueError as e:
+            return CustomErrorResponse(str(e), status=status.HTTP_400_BAD_REQUEST)
+
+        start_date_str = request.query_params.get("start_date")
+        end_date_str = request.query_params.get("end_date")
+
+        posts = ContentPost.objects.filter(brand=brand).prefetch_related("platform_entries", "media_items")
+
+        if start_date_str:
+            start_date = parse_date(start_date_str)
+            if start_date:
+                posts = posts.filter(
+                    Q(scheduled_at__date__gte=start_date) |
+                    Q(scheduled_at__isnull=True, created_at__date__gte=start_date)
+                )
+
+        if end_date_str:
+            end_date = parse_date(end_date_str)
+            if end_date:
+                posts = posts.filter(
+                    Q(scheduled_at__date__lte=end_date) |
+                    Q(scheduled_at__isnull=True, created_at__date__lte=end_date)
+                )
+
+        posts = posts.order_by("scheduled_at", "created_at")
+        serializer = ContentPostResponseSerializer(posts, many=True)
+        return CustomSuccessResponse(serializer.data)
 
     # ── Retrieve status ────────────────────────────────────
 
@@ -172,6 +231,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         content_type,
         caption="",
         platform_settings=None,
+        scheduled_at=None,
     ):
         """
         Shared pipeline: call the service (which handles R2 + DB + Celery),
@@ -185,6 +245,7 @@ class ContentPostViewSet(viewsets.ViewSet):
                 platforms=platforms,
                 platform_settings=platform_settings,
                 content_type=content_type,
+                scheduled_at=scheduled_at,
             )
         except ValueError as e:
             CustomLogger.exception(

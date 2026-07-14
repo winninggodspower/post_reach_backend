@@ -9,7 +9,7 @@ from typing import List
 
 from django.db import transaction
 
-from content.enums import FileTypeChoice
+from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from social_accounts.services.social_account_validation_service import (
     SocialAccountValidationService,
@@ -37,6 +37,7 @@ class ContentCreationService:
         platforms: list[str],
         platform_settings: dict = None,
         content_type: str = "video",
+        scheduled_at = None,
     ) -> ContentPost:
         """
         Full creation + dispatch pipeline:
@@ -44,7 +45,7 @@ class ContentCreationService:
         2. Validate every requested platform has a connected SocialAccount
         3. Upload each media file to R2 (videos go to videos/ folder, photos to photos/)
         4. Create ContentPost + ContentMedia + ContentPostPlatform entries
-        5. Dispatch a Celery task for each platform entry
+        5. Dispatch a Celery task for each platform entry (if not scheduled)
 
         :param media_files: List of Django UploadedFile objects.
         :param content_type: "video" or "photo".
@@ -83,6 +84,7 @@ class ContentCreationService:
                     brand=brand,
                     caption=caption or "",
                     content_type=content_type,
+                    scheduled_at=scheduled_at,
                 )
 
                 # Create a ContentMedia record for each uploaded file
@@ -104,6 +106,8 @@ class ContentCreationService:
                     )
 
                 platform_entries = []
+                initial_status = PostStatus.SCHEDULED if scheduled_at else PostStatus.PENDING
+
                 for platform in platforms:
                     if platform == "youtube":
                         yt_config = platform_settings.get("youtube", {})
@@ -123,6 +127,7 @@ class ContentCreationService:
                             platform=platform,
                             title=title,
                             caption=plat_caption,
+                            status=initial_status,
                         )
                     )
 
@@ -130,12 +135,14 @@ class ContentCreationService:
 
                 content_post.refresh_from_db()
 
-                from content.tasks import publish_platform_entry
+                # Dispatch Celery tasks immediately only if not scheduled
+                if not scheduled_at:
+                    from content.tasks import publish_platform_entry
 
-                for entry in content_post.platform_entries.all():
-                    publish_platform_entry.delay(
-                        str(entry.id), content_type=content_type
-                    )
+                    for entry in content_post.platform_entries.all():
+                        publish_platform_entry.delay(
+                            str(entry.id), content_type=content_type
+                        )
         except Exception:
             CustomLogger.exception(
                 "content.services.content_creation_service",

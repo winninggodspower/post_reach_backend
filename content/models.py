@@ -26,6 +26,7 @@ class ContentPost(UUIDTimestampedModel):
     )
 
     caption = models.TextField(blank=True, default="")
+    scheduled_at = models.DateTimeField(null=True, blank=True, default=None)
 
     # Distinguishes whether this post is a video, photo, or text
     content_type = models.CharField(
@@ -39,6 +40,7 @@ class ContentPost(UUIDTimestampedModel):
         indexes = [
             models.Index(fields=["user"]),
             models.Index(fields=["brand"]),
+            models.Index(fields=["scheduled_at"]),
         ]
 
     def __str__(self):

@@ -14,6 +14,16 @@ urlpatterns = [
         name="content-post-photo",
     ),
     path(
+        "posts/text/",
+        ContentPostViewSet.as_view({"post": "create_text"}),
+        name="content-post-text",
+    ),
+    path(
+        "posts/calendar/",
+        ContentPostViewSet.as_view({"get": "get_calendar_posts"}),
+        name="content-post-calendar",
+    ),
+    path(
         "posts/<uuid:pk>/",
         ContentPostViewSet.as_view({"get": "retrieve"}),
         name="content-post-detail",
