@@ -265,7 +265,7 @@ class TestVideoEndpoint:
         )
         mocker.patch(
             "content.serializers.R2StorageService.generate_presigned_url",
-            return_value="https://r2-presigned-url.com/thumb.jpg"
+            return_value="https://r2-presigned-url.com/thumb.jpg",
         )
         mock_delay = mocker.patch(
             "content.tasks.publish_platform_entry.delay",

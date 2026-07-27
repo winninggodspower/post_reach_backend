@@ -172,7 +172,13 @@ class InstagramService(SocialAccountService):
 
     @classmethod
     def publish_video(
-        cls, access_token, instagram_account_id, video_url, caption="", cover_url=None, thumb_offset=None
+        cls,
+        access_token,
+        instagram_account_id,
+        video_url,
+        caption="",
+        cover_url=None,
+        thumb_offset=None,
     ):
         """
         Publish a video to Instagram using the Content Publishing API.

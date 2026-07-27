@@ -88,13 +88,16 @@ text_post_parameters = [
 ]
 
 
-
 class ContentPostCreateSerializer(serializers.Serializer):
     video = serializers.FileField(required=True)
     thumbnail = serializers.FileField(required=False, allow_null=True, default=None)
-    video_thumbnail_offset = serializers.IntegerField(required=False, allow_null=True, default=None)
+    video_thumbnail_offset = serializers.IntegerField(
+        required=False, allow_null=True, default=None
+    )
     caption = serializers.CharField(required=False, allow_blank=True, default="")
-    scheduled_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
+    scheduled_at = serializers.DateTimeField(
+        required=False, allow_null=True, default=None
+    )
     platforms = serializers.MultipleChoiceField(
         choices=PlatformChoices.choices, required=True
     )
@@ -138,7 +141,9 @@ class PhotoPostCreateSerializer(serializers.Serializer):
         child=serializers.FileField(), required=True, min_length=1
     )
     caption = serializers.CharField(required=False, allow_blank=True, default="")
-    scheduled_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
+    scheduled_at = serializers.DateTimeField(
+        required=False, allow_null=True, default=None
+    )
     platforms = serializers.MultipleChoiceField(
         choices=PhotoPlatformOptions.choices, required=True
     )
@@ -161,7 +166,9 @@ class PhotoPostCreateSerializer(serializers.Serializer):
 
 class TextPostCreateSerializer(serializers.Serializer):
     caption = serializers.CharField(required=True, allow_blank=False)
-    scheduled_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
+    scheduled_at = serializers.DateTimeField(
+        required=False, allow_null=True, default=None
+    )
     platforms = serializers.MultipleChoiceField(
         choices=TextPlatformOptions.choices, required=True
     )

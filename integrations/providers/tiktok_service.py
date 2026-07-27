@@ -160,7 +160,9 @@ class TiktokService(SocialAccountService):
         }
 
     @classmethod
-    def publish_video(cls, access_token, video_url, title, video_cover_timestamp_ms=None):
+    def publish_video(
+        cls, access_token, video_url, title, video_cover_timestamp_ms=None
+    ):
         """
         Publish a video to TikTok using the Direct Post API (PULL_FROM_URL).
 

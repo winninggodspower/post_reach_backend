@@ -188,7 +188,13 @@ class FacebookService(SocialAccountService):
 
     @classmethod
     def publish_video(
-        cls, page_access_token, page_id, video_url, title="", description="", thumbnail_bytes=None
+        cls,
+        page_access_token,
+        page_id,
+        video_url,
+        title="",
+        description="",
+        thumbnail_bytes=None,
     ):
         """
         Publish a video to a Facebook Page.
@@ -230,9 +236,7 @@ class FacebookService(SocialAccountService):
                         "access_token": page_access_token,
                         "is_preferred": "true",
                     },
-                    files={
-                        "source": ("thumbnail.jpg", thumbnail_bytes, "image/jpeg")
-                    },
+                    files={"source": ("thumbnail.jpg", thumbnail_bytes, "image/jpeg")},
                 )
             except Exception as thumb_err:
                 CustomLogger.warning(
@@ -358,4 +362,3 @@ class FacebookService(SocialAccountService):
         if not post_id:
             raise ValueError("Facebook text publish did not return a post ID")
         return {"platform_post_id": post_id}
-

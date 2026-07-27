@@ -30,4 +30,3 @@ class TextPlatformOptions(models.TextChoices):
     FACEBOOK = "facebook", "Facebook"
     LINKEDIN = "linkedin", "LinkedIn"
     TWITTER = "twitter", "Twitter"
-

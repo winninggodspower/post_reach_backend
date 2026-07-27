@@ -233,7 +233,13 @@ class LinkedinService(SocialAccountService):
 
     @classmethod
     def publish_video(
-        cls, access_token, person_urn, video_url, title="", description="", thumbnail_bytes=None
+        cls,
+        access_token,
+        person_urn,
+        video_url,
+        title="",
+        description="",
+        thumbnail_bytes=None,
     ):
         """
         Publish a video post to LinkedIn using the UGC Posts API.
@@ -272,7 +278,9 @@ class LinkedinService(SocialAccountService):
         if thumbnail_bytes:
             try:
                 thumb_upload_url, thumb_asset_urn = cls._register_media_upload(
-                    access_token, person_urn, "urn:li:digitalmediaRecipe:feedshare-image"
+                    access_token,
+                    person_urn,
+                    "urn:li:digitalmediaRecipe:feedshare-image",
                 )
                 cls._upload_media_to_linkedin(thumb_upload_url, thumbnail_bytes)
                 media_item["thumbnails"] = [{"image": thumb_asset_urn}]
@@ -432,4 +440,3 @@ class LinkedinService(SocialAccountService):
             raise ValueError("LinkedIn publish did not return a post ID")
 
         return {"platform_post_id": post_id}
-

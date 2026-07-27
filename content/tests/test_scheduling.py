@@ -1,8 +1,9 @@
+from datetime import timedelta
+from unittest.mock import patch
+
 import pytest
 from django.urls import reverse
 from django.utils import timezone
-from datetime import timedelta
-from unittest.mock import patch
 
 from content.enums import PostStatus
 from content.models import ContentPost, ContentPostPlatform
@@ -61,7 +62,9 @@ class TestPostScheduling:
         # Ensure task was NOT dispatched
         mock_delay.assert_not_called()
 
-    def test_celery_periodic_task_triggers_due_posts(self, user, brand, connected_accounts, mocker):
+    def test_celery_periodic_task_triggers_due_posts(
+        self, user, brand, connected_accounts, mocker
+    ):
         mock_delay = mocker.patch("content.tasks.publish_platform_entry.delay")
 
         past_time = timezone.now() - timedelta(minutes=5)
@@ -99,9 +102,11 @@ class TestPostScheduling:
         future_entry = ContentPostPlatform.objects.get(content_post=future_post)
         assert future_entry.status == PostStatus.SCHEDULED
 
-    def test_calendar_endpoint_filtering(self, authenticated_client, user, brand, connected_accounts):
+    def test_calendar_endpoint_filtering(
+        self, authenticated_client, user, brand, connected_accounts
+    ):
         now = timezone.now()
-        
+
         # Post 1: Scheduled today
         post_today = ContentCreationService.create_content_post(
             user=user,
@@ -123,12 +128,14 @@ class TestPostScheduling:
         )
 
         url = reverse("content-post-calendar")
-        
+
         # Test range covering only today
         start_date = now.strftime("%Y-%m-%d")
         end_date = (now + timedelta(days=1)).strftime("%Y-%m-%d")
-        
-        response = authenticated_client.get(url, {"start_date": start_date, "end_date": end_date})
+
+        response = authenticated_client.get(
+            url, {"start_date": start_date, "end_date": end_date}
+        )
         assert response.status_code == 200
         data = response.data
         assert data["success"] is True
@@ -137,6 +144,8 @@ class TestPostScheduling:
 
         # Test range covering both
         end_date_extended = (now + timedelta(days=10)).strftime("%Y-%m-%d")
-        response = authenticated_client.get(url, {"start_date": start_date, "end_date": end_date_extended})
+        response = authenticated_client.get(
+            url, {"start_date": start_date, "end_date": end_date_extended}
+        )
         assert response.status_code == 200
         assert len(response.data["data"]) == 2

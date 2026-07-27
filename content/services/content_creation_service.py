@@ -37,9 +37,9 @@ class ContentCreationService:
         platforms: list[str],
         platform_settings: dict = None,
         content_type: str = "video",
-        scheduled_at = None,
-        thumbnail_file = None,
-        video_thumbnail_offset = None,
+        scheduled_at=None,
+        thumbnail_file=None,
+        video_thumbnail_offset=None,
     ) -> ContentPost:
         """
         Full creation + dispatch pipeline:
@@ -125,7 +125,9 @@ class ContentCreationService:
                     )
 
                 platform_entries = []
-                initial_status = PostStatus.SCHEDULED if scheduled_at else PostStatus.PENDING
+                initial_status = (
+                    PostStatus.SCHEDULED if scheduled_at else PostStatus.PENDING
+                )
 
                 for platform in platforms:
                     if platform == "youtube":

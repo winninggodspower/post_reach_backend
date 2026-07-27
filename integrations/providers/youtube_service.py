@@ -254,7 +254,9 @@ class YoutubeService(SocialAccountService):
         return googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
 
     @classmethod
-    def publish_video(cls, access_token, video_bytes, title, description="", thumbnail_bytes=None):
+    def publish_video(
+        cls, access_token, video_bytes, title, description="", thumbnail_bytes=None
+    ):
         """
         Upload a video to YouTube.
 

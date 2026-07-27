@@ -10,8 +10,8 @@ from content.serializers import (
     ContentPostCreateSerializer,
     ContentPostResponseSerializer,
     PhotoPostCreateSerializer,
-    photo_post_parameters,
     TextPostCreateSerializer,
+    photo_post_parameters,
     text_post_parameters,
 )
 from content.services.content_creation_service import ContentCreationService
@@ -143,21 +143,34 @@ class ContentPostViewSet(viewsets.ViewSet):
             "within the specified start_date and end_date range."
         ),
         manual_parameters=[
-            openapi.Parameter("start_date", openapi.IN_QUERY, type=openapi.TYPE_STRING, required=False, description="YYYY-MM-DD format"),
-            openapi.Parameter("end_date", openapi.IN_QUERY, type=openapi.TYPE_STRING, required=False, description="YYYY-MM-DD format"),
+            openapi.Parameter(
+                "start_date",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                required=False,
+                description="YYYY-MM-DD format",
+            ),
+            openapi.Parameter(
+                "end_date",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                required=False,
+                description="YYYY-MM-DD format",
+            ),
         ],
         responses={
             200: ContentPostResponseSerializer(many=True),
-        }
+        },
     )
     @action(detail=False, methods=["get"], url_path="calendar")
     def get_calendar_posts(self, request):
         """
         GET /api/content/posts/calendar/
         """
-        from users.services.brand_service import BrandService
         from django.db.models import Q
         from django.utils.dateparse import parse_date
+
+        from users.services.brand_service import BrandService
 
         user = request.user
         try:
@@ -168,22 +181,24 @@ class ContentPostViewSet(viewsets.ViewSet):
         start_date_str = request.query_params.get("start_date")
         end_date_str = request.query_params.get("end_date")
 
-        posts = ContentPost.objects.filter(brand=brand).prefetch_related("platform_entries", "media_items")
+        posts = ContentPost.objects.filter(brand=brand).prefetch_related(
+            "platform_entries", "media_items"
+        )
 
         if start_date_str:
             start_date = parse_date(start_date_str)
             if start_date:
                 posts = posts.filter(
-                    Q(scheduled_at__date__gte=start_date) |
-                    Q(scheduled_at__isnull=True, created_at__date__gte=start_date)
+                    Q(scheduled_at__date__gte=start_date)
+                    | Q(scheduled_at__isnull=True, created_at__date__gte=start_date)
                 )
 
         if end_date_str:
             end_date = parse_date(end_date_str)
             if end_date:
                 posts = posts.filter(
-                    Q(scheduled_at__date__lte=end_date) |
-                    Q(scheduled_at__isnull=True, created_at__date__lte=end_date)
+                    Q(scheduled_at__date__lte=end_date)
+                    | Q(scheduled_at__isnull=True, created_at__date__lte=end_date)
                 )
 
         posts = posts.order_by("scheduled_at", "created_at")

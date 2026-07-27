@@ -85,7 +85,9 @@ class PostingService:
 
                 # Photo platforms need URLs for each image; video platforms vary
                 needs_url = content_type == "photo" or entry.platform in URL_PLATFORMS
-                needs_bytes = content_type == "video" and entry.platform in BYTES_PLATFORMS
+                needs_bytes = (
+                    content_type == "video" and entry.platform in BYTES_PLATFORMS
+                )
 
                 if content_type == "photo":
                     # Generate a presigned URL for each image
@@ -293,9 +295,7 @@ class PostingService:
         raise ValueError(f"Photo publishing not supported for: {platform}")
 
     @classmethod
-    def _dispatch_text(
-        cls, platform, access_token, social_account, text
-    ) -> dict:
+    def _dispatch_text(cls, platform, access_token, social_account, text) -> dict:
         if platform == PlatformChoices.FACEBOOK:
             return FacebookService.publish_text(
                 page_access_token=access_token,
@@ -309,4 +309,3 @@ class PostingService:
                 text=text,
             )
         raise ValueError(f"Text publishing not supported for: {platform}")
-
