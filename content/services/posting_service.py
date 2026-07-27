@@ -137,6 +137,16 @@ class PostingService:
                         raise ValueError("No video media found for this post")
                     media_bytes = R2StorageService.download_file(video_item.r2_key)
 
+                thumbnail_url = None
+                thumbnail_bytes = None
+                if content_type == "video" and content_post.thumbnail_r2_key:
+                    thumbnail_url = R2StorageService.generate_presigned_url(
+                        content_post.thumbnail_r2_key, expiration=7200
+                    )
+                    thumbnail_bytes = R2StorageService.download_file(
+                        content_post.thumbnail_r2_key
+                    )
+
                 if content_type == "photo":
                     result = cls._dispatch_photo(
                         platform=entry.platform,
@@ -154,6 +164,9 @@ class PostingService:
                         video_url=presigned_url or "",
                         title=entry.title,
                         description=entry.caption,
+                        thumbnail_url=thumbnail_url,
+                        thumbnail_bytes=thumbnail_bytes,
+                        video_thumbnail_offset=content_post.video_thumbnail_offset,
                     )
 
             if result.get("status") == "processing":
@@ -198,6 +211,9 @@ class PostingService:
         video_url,
         title,
         description,
+        thumbnail_url=None,
+        thumbnail_bytes=None,
+        video_thumbnail_offset=None,
     ) -> dict:
         if platform == PlatformChoices.YOUTUBE:
             return YoutubeService.publish_video(
@@ -205,12 +221,14 @@ class PostingService:
                 video_bytes=media_bytes,
                 title=title,
                 description=description,
+                thumbnail_bytes=thumbnail_bytes,
             )
         if platform == PlatformChoices.TIKTOK:
             return TiktokService.publish_video(
                 access_token=access_token,
                 video_url=video_url,
                 title=description,  # TikTok caption is passed in 'title'
+                video_cover_timestamp_ms=video_thumbnail_offset,
             )
         if platform == PlatformChoices.FACEBOOK:
             return FacebookService.publish_video(
@@ -219,6 +237,7 @@ class PostingService:
                 video_url=video_url,
                 title=title,
                 description=description,
+                thumbnail_bytes=thumbnail_bytes,
             )
         if platform == PlatformChoices.INSTAGRAM:
             return InstagramService.publish_video(
@@ -226,6 +245,8 @@ class PostingService:
                 instagram_account_id=social_account.external_id,
                 video_url=video_url,
                 caption=description,
+                cover_url=thumbnail_url,
+                thumb_offset=video_thumbnail_offset,
             )
         if platform == PlatformChoices.LINKEDIN:
             return LinkedinService.publish_video(
@@ -234,6 +255,7 @@ class PostingService:
                 video_url=video_url,
                 title=title,
                 description=description,
+                thumbnail_bytes=thumbnail_bytes,
             )
         raise ValueError(f"Video publishing not supported for: {platform}")
 

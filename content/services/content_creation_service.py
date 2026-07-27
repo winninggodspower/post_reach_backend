@@ -38,6 +38,8 @@ class ContentCreationService:
         platform_settings: dict = None,
         content_type: str = "video",
         scheduled_at = None,
+        thumbnail_file = None,
+        video_thumbnail_offset = None,
     ) -> ContentPost:
         """
         Full creation + dispatch pipeline:
@@ -76,6 +78,21 @@ class ContentCreationService:
                     R2StorageService.delete_file(key)
                 raise ValueError(f"Failed to upload media: {str(e)}") from e
 
+        # 3b. Upload custom thumbnail to R2 if provided
+        thumbnail_key = ""
+        if thumbnail_file:
+            try:
+                thumb_bytes = thumbnail_file.read()
+                thumbnail_key = R2StorageService.generate_key(content_type="photo")
+                R2StorageService.upload_file(
+                    thumb_bytes, thumbnail_key, content_type="photo"
+                )
+            except Exception as e:
+                # Clean up any keys that were already uploaded
+                for key in uploaded_keys:
+                    R2StorageService.delete_file(key)
+                raise ValueError(f"Failed to upload thumbnail: {str(e)}") from e
+
         # 4. Create ContentPost + ContentMedia + per-platform entries + dispatch Celery tasks
         try:
             with transaction.atomic():
@@ -85,6 +102,8 @@ class ContentCreationService:
                     caption=caption or "",
                     content_type=content_type,
                     scheduled_at=scheduled_at,
+                    thumbnail_r2_key=thumbnail_key,
+                    video_thumbnail_offset=video_thumbnail_offset,
                 )
 
                 # Create a ContentMedia record for each uploaded file
@@ -155,6 +174,8 @@ class ContentCreationService:
             # Clean up R2 files since the DB transaction was rolled back
             for key in uploaded_keys:
                 R2StorageService.delete_file(key)
+            if thumbnail_key:
+                R2StorageService.delete_file(thumbnail_key)
             raise ValueError(
                 "Failed to publish content, queue unavailable at the moment. Please try again later."
             )

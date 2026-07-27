@@ -4,6 +4,7 @@ from rest_framework import serializers
 from content.enums import PhotoPlatformOptions, TextPlatformOptions
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from social_accounts.enums import PlatformChoices
+from utils.r2_storage import R2StorageService
 
 # Used by the swagger_auto_schema in views.py for the platforms enum dropdown
 PLATFORM_ENUMS = [choice[0] for choice in PlatformChoices.choices]
@@ -90,6 +91,8 @@ text_post_parameters = [
 
 class ContentPostCreateSerializer(serializers.Serializer):
     video = serializers.FileField(required=True)
+    thumbnail = serializers.FileField(required=False, allow_null=True, default=None)
+    video_thumbnail_offset = serializers.IntegerField(required=False, allow_null=True, default=None)
     caption = serializers.CharField(required=False, allow_blank=True, default="")
     scheduled_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
     platforms = serializers.MultipleChoiceField(
@@ -187,6 +190,7 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
     platforms = ContentPostPlatformSerializer(
         source="platform_entries", many=True, read_only=True
     )
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ContentPost
@@ -196,7 +200,14 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
             "content_type",
             "scheduled_at",
             "platforms",
+            "thumbnail_url",
+            "video_thumbnail_offset",
             "created_at",
             "updated_at",
         ]
         read_only_fields = fields
+
+    def get_thumbnail_url(self, obj):
+        if obj.thumbnail_r2_key:
+            return R2StorageService.generate_presigned_url(obj.thumbnail_r2_key)
+        return None

@@ -254,7 +254,7 @@ class YoutubeService(SocialAccountService):
         return googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
 
     @classmethod
-    def publish_video(cls, access_token, video_bytes, title, description=""):
+    def publish_video(cls, access_token, video_bytes, title, description="", thumbnail_bytes=None):
         """
         Upload a video to YouTube.
 
@@ -262,6 +262,7 @@ class YoutubeService(SocialAccountService):
         :param video_bytes: Raw video file bytes.
         :param title: Video title (required by YouTube).
         :param description: Video description (optional).
+        :param thumbnail_bytes: Raw thumbnail image bytes (optional).
         :return: Dict with 'platform_post_id' (the YouTube video ID).
         """
         import io
@@ -293,7 +294,30 @@ class YoutubeService(SocialAccountService):
                 media_body=media,
             )
             response = request.execute()
-            return {"platform_post_id": response["id"]}
+            video_id = response["id"]
+
+            if thumbnail_bytes:
+                try:
+                    thumb_media = MediaIoBaseUpload(
+                        io.BytesIO(thumbnail_bytes),
+                        mimetype="image/jpeg",
+                        resumable=True,
+                    )
+                    youtube.thumbnails().set(
+                        videoId=video_id,
+                        media_body=thumb_media,
+                    ).execute()
+                except Exception as thumb_err:
+                    CustomLogger.warning(
+                        "YouTube video thumbnail upload failed",
+                        extra={
+                            "operation": "publish_video",
+                            "video_id": video_id,
+                            "error": str(thumb_err),
+                        },
+                    )
+
+            return {"platform_post_id": video_id}
         except Exception as e:
             CustomLogger.exception(
                 "YouTube video upload failed",

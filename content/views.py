@@ -58,6 +58,8 @@ class ContentPostViewSet(viewsets.ViewSet):
             platform_settings=validated.get("platform_settings", {}),
             content_type="video",
             scheduled_at=validated.get("scheduled_at"),
+            thumbnail=validated.get("thumbnail"),
+            video_thumbnail_offset=validated.get("video_thumbnail_offset"),
         )
 
     # ── Photo ──────────────────────────────────────────────
@@ -232,6 +234,8 @@ class ContentPostViewSet(viewsets.ViewSet):
         caption="",
         platform_settings=None,
         scheduled_at=None,
+        thumbnail=None,
+        video_thumbnail_offset=None,
     ):
         """
         Shared pipeline: call the service (which handles R2 + DB + Celery),
@@ -246,6 +250,8 @@ class ContentPostViewSet(viewsets.ViewSet):
                 platform_settings=platform_settings,
                 content_type=content_type,
                 scheduled_at=scheduled_at,
+                thumbnail_file=thumbnail,
+                video_thumbnail_offset=video_thumbnail_offset,
             )
         except ValueError as e:
             CustomLogger.exception(

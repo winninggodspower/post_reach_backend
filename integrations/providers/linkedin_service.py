@@ -233,7 +233,7 @@ class LinkedinService(SocialAccountService):
 
     @classmethod
     def publish_video(
-        cls, access_token, person_urn, video_url, title="", description=""
+        cls, access_token, person_urn, video_url, title="", description="", thumbnail_bytes=None
     ):
         """
         Publish a video post to LinkedIn using the UGC Posts API.
@@ -249,6 +249,7 @@ class LinkedinService(SocialAccountService):
         :param video_url: Public URL of the video file to download and upload.
         :param title: Post text / commentary (optional).
         :param description: Additional description (optional).
+        :param thumbnail_bytes: Raw thumbnail image bytes (optional).
         :return: Dict with 'platform_post_id' (the LinkedIn activity/share URN).
         """
         # Step 1: Register the video upload with LinkedIn
@@ -263,6 +264,24 @@ class LinkedinService(SocialAccountService):
         cls._upload_media_to_linkedin(upload_url, video_binary)
 
         # Step 4: Create the share post with the media asset URN
+        media_item = {
+            "status": "READY",
+            "media": asset_urn,
+        }
+
+        if thumbnail_bytes:
+            try:
+                thumb_upload_url, thumb_asset_urn = cls._register_media_upload(
+                    access_token, person_urn, "urn:li:digitalmediaRecipe:feedshare-image"
+                )
+                cls._upload_media_to_linkedin(thumb_upload_url, thumbnail_bytes)
+                media_item["thumbnails"] = [{"image": thumb_asset_urn}]
+            except Exception as thumb_err:
+                CustomLogger.warning(
+                    "LinkedIn video thumbnail upload failed",
+                    extra={"operation": "publish_video", "error": str(thumb_err)},
+                )
+
         try:
             response = cls().post(
                 f"{cls.API_BASE_URL}/ugcPosts",
@@ -277,12 +296,7 @@ class LinkedinService(SocialAccountService):
                                 ),
                             },
                             "shareMediaCategory": "VIDEO",
-                            "media": [
-                                {
-                                    "status": "READY",
-                                    "media": asset_urn,
-                                }
-                            ],
+                            "media": [media_item],
                         }
                     },
                     "visibility": {

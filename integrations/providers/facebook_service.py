@@ -188,7 +188,7 @@ class FacebookService(SocialAccountService):
 
     @classmethod
     def publish_video(
-        cls, page_access_token, page_id, video_url, title="", description=""
+        cls, page_access_token, page_id, video_url, title="", description="", thumbnail_bytes=None
     ):
         """
         Publish a video to a Facebook Page.
@@ -198,6 +198,7 @@ class FacebookService(SocialAccountService):
         :param video_url: Public/presigned URL of the video file.
         :param title: Video title (optional).
         :param description: Video description (optional).
+        :param thumbnail_bytes: Raw thumbnail image bytes (optional).
         :return: Dict with 'platform_post_id' (the Facebook post/video ID).
         """
         try:
@@ -220,6 +221,28 @@ class FacebookService(SocialAccountService):
         post_id = data.get("id", "")
         if not post_id:
             raise ValueError("Facebook video publish did not return a post ID")
+
+        if thumbnail_bytes:
+            try:
+                cls().post(
+                    f"/{post_id}/thumbnails",
+                    params={
+                        "access_token": page_access_token,
+                        "is_preferred": "true",
+                    },
+                    files={
+                        "source": ("thumbnail.jpg", thumbnail_bytes, "image/jpeg")
+                    },
+                )
+            except Exception as thumb_err:
+                CustomLogger.warning(
+                    "Facebook video thumbnail upload failed",
+                    extra={
+                        "operation": "publish_video",
+                        "video_id": post_id,
+                        "error": str(thumb_err),
+                    },
+                )
 
         return {"platform_post_id": post_id}
 

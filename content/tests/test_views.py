@@ -253,6 +253,70 @@ class TestVideoEndpoint:
         assert response.status_code == 400
         assert "No default brand" in response.data.get("message", "")
 
+    def test_success_with_thumbnail(
+        self, db, authenticated_client, user, brand, mocker
+    ):
+        mock_upload = mocker.patch(
+            "content.services.content_creation_service.R2StorageService.upload_file",
+        )
+        mocker.patch(
+            "content.services.content_creation_service.R2StorageService.generate_key",
+            side_effect=["videos/abc.mp4", "photos/thumb.jpg"],
+        )
+        mocker.patch(
+            "content.serializers.R2StorageService.generate_presigned_url",
+            return_value="https://r2-presigned-url.com/thumb.jpg"
+        )
+        mock_delay = mocker.patch(
+            "content.tasks.publish_platform_entry.delay",
+        )
+
+        expires = timezone.now() + timezone.timedelta(days=30)
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.YOUTUBE,
+            account_name="ch",
+            external_id="ext",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
+        )
+
+        video = io.BytesIO(b"fake-video")
+        video.name = "v.mp4"
+        thumbnail = io.BytesIO(b"fake-thumbnail")
+        thumbnail.name = "t.jpg"
+
+        import json
+
+        response = authenticated_client.post(
+            reverse(self.URL),
+            {
+                "video": video,
+                "thumbnail": thumbnail,
+                "video_thumbnail_offset": 5000,
+                "caption": "Test Video",
+                "platforms": [PlatformChoices.YOUTUBE],
+                "platform_settings": json.dumps(
+                    {"youtube": {"title": "YouTube Title"}}
+                ),
+            },
+            format="multipart",
+        )
+
+        assert response.status_code == 201
+        data = response.data
+        assert data["success"] is True
+        assert data["data"]["thumbnail_url"] == "https://r2-presigned-url.com/thumb.jpg"
+        assert data["data"]["video_thumbnail_offset"] == 5000
+
+        # Verify a ContentPost record was created with the correct properties
+        post = ContentPost.objects.get(id=data["data"]["id"])
+        assert post.thumbnail_r2_key == "photos/thumb.jpg"
+        assert post.video_thumbnail_offset == 5000
+        assert mock_upload.call_count == 2
+        mock_delay.assert_called_once()
+
     def test_unauthenticated(self, db):
         from rest_framework.test import APIClient
 

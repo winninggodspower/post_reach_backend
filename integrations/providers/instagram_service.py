@@ -171,7 +171,9 @@ class InstagramService(SocialAccountService):
         }
 
     @classmethod
-    def publish_video(cls, access_token, instagram_account_id, video_url, caption=""):
+    def publish_video(
+        cls, access_token, instagram_account_id, video_url, caption="", cover_url=None, thumb_offset=None
+    ):
         """
         Publish a video to Instagram using the Content Publishing API.
         Step 1: Create a media container. The publishing is handled asynchronously.
@@ -180,17 +182,25 @@ class InstagramService(SocialAccountService):
         :param instagram_account_id: Instagram Business/Creator account ID.
         :param video_url: Public URL of the video file.
         :param caption: Video caption (optional).
+        :param cover_url: Public URL of the custom cover image (optional).
+        :param thumb_offset: The frame offset in milliseconds (optional).
         :return: Dict with 'platform_post_id' (container ID) and 'status'.
         """
+        data = {
+            "media_type": "REELS",
+            "video_url": video_url,
+            "caption": caption or "",
+            "access_token": access_token,
+        }
+        if cover_url:
+            data["cover_url"] = cover_url
+        elif thumb_offset is not None:
+            data["thumb_offset"] = thumb_offset
+
         try:
             container_response = cls().post(
                 f"/{instagram_account_id}/media",
-                data={
-                    "media_type": "REELS",
-                    "video_url": video_url,
-                    "caption": caption or "",
-                    "access_token": access_token,
-                },
+                data=data,
             )
         except APIError as e:
             CustomLogger.exception(

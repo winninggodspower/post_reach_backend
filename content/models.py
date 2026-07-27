@@ -35,6 +35,19 @@ class ContentPost(UUIDTimestampedModel):
         default="video",
     )
 
+    thumbnail_r2_key = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        help_text="The Cloudflare R2 key for the custom video thumbnail image.",
+    )
+    video_thumbnail_offset = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="The selected frame offset in milliseconds from the start of the video.",
+    )
+
     class Meta:
         ordering = ["-created_at"]
         indexes = [

@@ -160,7 +160,7 @@ class TiktokService(SocialAccountService):
         }
 
     @classmethod
-    def publish_video(cls, access_token, video_url, title):
+    def publish_video(cls, access_token, video_url, title, video_cover_timestamp_ms=None):
         """
         Publish a video to TikTok using the Direct Post API (PULL_FROM_URL).
 
@@ -170,16 +170,21 @@ class TiktokService(SocialAccountService):
         :param access_token: Valid TikTok access token.
         :param video_url: Public/presigned URL of the video file.
         :param title: Video caption/title.
+        :param video_cover_timestamp_ms: Cover frame timestamp in milliseconds (optional).
         :return: Dict with 'platform_post_id' (the publish_id).
         """
+        post_info = {
+            "title": title or "",
+            "privacy_level": "SELF_ONLY",
+        }
+        if video_cover_timestamp_ms is not None:
+            post_info["video_cover_timestamp_ms"] = video_cover_timestamp_ms
+
         try:
             publish_response = cls().post(
                 "/v2/post/publish/video/init/",
                 json_data={
-                    "post_info": {
-                        "title": title or "",
-                        "privacy_level": "SELF_ONLY",
-                    },
+                    "post_info": post_info,
                     "source_info": {
                         "source": "PULL_FROM_URL",
                         "video_url": video_url,
