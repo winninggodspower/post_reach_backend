@@ -26,6 +26,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Configure environment variables from env.sample
+        run: |
+          cp env.sample .env
+          # Fernet key must be a valid 32 url-safe base64-encoded bytes string
+          sed -i 's/replace-with-fernet-secret-key/djdYSI1V2gxi2k7XWVbfS9Q0puPxGWJndhIoF1cBtzE=/g' .env
+
       - name: Run tests
         env:
           SECRET_KEY: "test-secret-key-not-for-production"
