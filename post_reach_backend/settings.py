@@ -34,6 +34,8 @@ ALLOWED_HOSTS = env.list(
         "10.88.0.11",
         "localhost",
         "127.0.0.1",
+        "post-reach-pi.vercel.app",
+        "winningtech.xyz",
     ],
 )
 
