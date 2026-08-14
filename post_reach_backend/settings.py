@@ -279,6 +279,7 @@ CLOUDFLARE_R2_PUBLIC_DOMAIN = "https://postreach.media.winningtech.xyz"
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_EXTENDED = True
+CELERY_TIMEZONE = TIME_ZONE
 
 # 1. Disable worker-to-worker chatter and heartbeat broadcasts
 CELERY_WORKER_ENABLE_REMOTE_CONTROL = False
@@ -301,5 +302,9 @@ CELERY_BEAT_SCHEDULE = {
     "publish_scheduled_posts": {
         "task": "content.tasks.publish_scheduled_posts",
         "schedule": 60,  # 1 minute in seconds
+    },
+    "sweep_stuck_platform_entries": {
+        "task": "content.tasks.sweep_stuck_platform_entries",
+        "schedule": 3600,  # 1 hour in seconds
     },
 }

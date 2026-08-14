@@ -1,4 +1,8 @@
+from datetime import timedelta
+
 from celery import shared_task
+from django.db import transaction
+from django.utils import timezone
 
 from content.enums import PostStatus
 from content.models import ContentPostPlatform
@@ -11,7 +15,7 @@ from social_accounts.services.social_account_validation_service import (
 from utils.custom_logger import CustomLogger
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, acks_late=True)
 def publish_platform_entry(self, platform_entry_id, content_type="video"):
     """
     Celery task that publishes a single ContentPostPlatform entry.
@@ -80,7 +84,7 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
     }
 
 
-@shared_task(bind=True, max_retries=30, default_retry_delay=10)
+@shared_task(bind=True, max_retries=30, default_retry_delay=10, acks_late=True)
 def check_instagram_container_status(self, platform_entry_id):
     """
     Celery task that polls the Instagram container status in a non-blocking way.
@@ -166,9 +170,6 @@ def publish_scheduled_posts():
     """
     Periodic task to check for scheduled posts that are due to be published.
     """
-    from django.db import transaction
-    from django.utils import timezone
-
     now = timezone.now()
     due_entries = ContentPostPlatform.objects.filter(
         status=PostStatus.SCHEDULED, content_post__scheduled_at__lte=now
@@ -191,5 +192,41 @@ def publish_scheduled_posts():
         except Exception as e:
             CustomLogger.exception(
                 "Error processing scheduled post platform entry",
+                extra={"platform_entry_id": str(entry.id), "error": str(e)},
+            )
+
+
+@shared_task
+def sweep_stuck_platform_entries():
+    """
+    Periodic task to sweep for posts that have been stuck in PENDING or UPLOADING
+    status for more than 2 hours. Marks them as FAILED to prevent indefinite hanging
+    and accidental double-posting later.
+    """
+    now = timezone.now()
+    two_hours_ago = now - timedelta(hours=2)
+
+    stuck_entries = ContentPostPlatform.objects.filter(
+        status__in=[PostStatus.PENDING, PostStatus.UPLOADING],
+        updated_at__lte=two_hours_ago,
+        content_post__scheduled_at__isnull=False,
+    )
+
+    for entry in stuck_entries:
+        try:
+            with transaction.atomic():
+                locked_entry = ContentPostPlatform.objects.select_for_update().get(id=entry.id)
+                # Double check they are still stuck
+                if locked_entry.status in [PostStatus.PENDING, PostStatus.UPLOADING]:
+                    locked_entry.status = PostStatus.FAILED
+                    locked_entry.error_message = "System interrupted during posting. Please try again."
+                    locked_entry.save(update_fields=["status", "error_message", "updated_at"])
+                    CustomLogger.warning(
+                        "Swept stuck platform entry and marked as FAILED.",
+                        extra={"platform_entry_id": str(locked_entry.id), "status_was": locked_entry.status}
+                    )
+        except Exception as e:
+            CustomLogger.exception(
+                "Error sweeping stuck platform entry",
                 extra={"platform_entry_id": str(entry.id), "error": str(e)},
             )

@@ -233,7 +233,7 @@ class TiktokService(SocialAccountService):
                     "post_info": {
                         "title": text or "",
                         "description": text or "",
-                        "privacy_level": "SELF_ONLY",
+                        "privacy_level": "PUBLIC_TO_EVERYONE",
                     },
                     "source_info": {
                         "source": "PULL_FROM_URL",
