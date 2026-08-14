@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import secrets
 import string
@@ -9,7 +10,7 @@ from django.core.cache import cache
 from integrations.providers.base import SocialAccountService
 from utils.cache_keys import CacheKeys
 from utils.custom_logger import CustomLogger
-from utils.http import APIError
+from utils.http import APIError, BaseHTTPClient
 
 # TikTok OAuth flow can take a while (user needs to log in, authorize, then get redirected back).
 # Use a generous TTL to avoid the code_verifier expiring before the callback completes.
@@ -153,10 +154,12 @@ class TiktokService(SocialAccountService):
             "account_name": user_data.get("display_name", "")
             or user_data.get("username", ""),
             "external_id": user_data.get("open_id", ""),
-            "profile_picture_url": user_data.get("avatar_url_large")
-            or user_data.get("avatar_url")
-            or user_data.get("avatar_large")
-            or user_data.get("avatar_url_100"),
+            "profile_picture_url": (
+                user_data.get("avatar_url_large")
+                or user_data.get("avatar_url")
+                or user_data.get("avatar_large")
+                or user_data.get("avatar_url_100")
+            ),
         }
 
     @classmethod
@@ -177,7 +180,7 @@ class TiktokService(SocialAccountService):
         """
         post_info = {
             "title": title or "",
-            "privacy_level": "SELF_ONLY",
+            "privacy_level": "PUBLIC_TO_EVERYONE",
         }
         if video_cover_timestamp_ms is not None:
             post_info["video_cover_timestamp_ms"] = video_cover_timestamp_ms

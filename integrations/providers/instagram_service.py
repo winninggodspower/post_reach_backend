@@ -10,7 +10,6 @@ from utils.http import APIError
 
 OAUTH_STATE_TTL = 600  # 10 minutes
 
-
 class InstagramService(SocialAccountService):
     APP_ID = settings.INSTAGRAM_APP_ID
     APP_SECRET = settings.INSTAGRAM_APP_SECRET

@@ -156,6 +156,26 @@ class R2StorageService:
             return False
 
     @classmethod
+    def delete_from_url(cls, url: str) -> bool:
+        """
+        Extract the key from a public R2 URL and delete the object.
+        Returns True if deleted or skipped (not our URL), False on failure.
+        """
+        if not url:
+            return True
+            
+        public_domain = getattr(settings, "CLOUDFLARE_R2_PUBLIC_DOMAIN", None)
+        if not public_domain:
+            return True
+
+        base_url = public_domain.rstrip("/")
+        if url.startswith(f"{base_url}/"):
+            key = url[len(f"{base_url}/"):]
+            return cls.delete_file(key)
+        
+        return True
+
+    @classmethod
     def generate_presigned_url(cls, key: str, expiration: int = 3600) -> str | None:
         """
         Generate a public URL for an R2 object.
