@@ -142,7 +142,7 @@ class BrandSerializer(serializers.ModelSerializer):
             "team_size",
             "connected_accounts",
         ]
-        read_only_fields = fields
+        read_only_fields = ["id", "connected_accounts"]
 
     def get_connected_accounts(self, brand):
         accounts = brand.social_accounts.all()
@@ -184,3 +184,6 @@ class VerifyOTPResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     message = serializers.CharField()
     data = VerifyOTPResponseDataSerializer()
+
+class SetActiveBrandSerializer(serializers.Serializer):
+    brand_id = serializers.UUIDField(required=True)

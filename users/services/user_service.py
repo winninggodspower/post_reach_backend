@@ -91,3 +91,13 @@ class UserService:
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         }
+
+    @staticmethod
+    @log_exceptions()
+    def set_active_brand(user, brand_id):
+        from users.services.brand_service import BrandService
+        brand = BrandService.get_brand_by_id(user, brand_id)
+        
+        user.active_brand = brand
+        user.save(update_fields=['active_brand'])
+        return brand

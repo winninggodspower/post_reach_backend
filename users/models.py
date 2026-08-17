@@ -31,6 +31,13 @@ class User(AbstractUser, UUIDModel):
         null=True,
         blank=True,
     )
+    active_brand = models.ForeignKey(
+        "users.Brand",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
@@ -72,7 +79,8 @@ class Brand(UUIDTimestampedModel):
                 name="unique_user_brand_name",
             ),
             UniqueConstraint(
-                fields=["user", "is_default"],
+                fields=["user"],
+                condition=Q(is_default=True),
                 name="unique_user_default_brand",
             ),
         ]

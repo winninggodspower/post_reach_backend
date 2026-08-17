@@ -26,10 +26,13 @@ class SocialAccountService(BaseHTTPClient, ABC):
                 )
             return brand_from_request
 
+        if user.active_brand_id is not None:
+            return user.active_brand
+
         default_brand = Brand.objects.filter(user=user, is_default=True).first()
         if default_brand is None:
             raise ValueError(
-                "No default brand found. Please create a brand or specify one."
+                "No active or default brand found. Please create a brand or specify one."
             )
         return default_brand
 

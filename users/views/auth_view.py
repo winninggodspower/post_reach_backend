@@ -1,53 +1,23 @@
-from django.db.models import Prefetch
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from integrations.services.google_auth_service import GoogleAuthService
-from users.models import Brand, User
-from users.services import OnboardingService, PasswordResetService, UserService
+from users.services import PasswordResetService, UserService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
+from users.views.utils import get_auth_response_data
 
-from .serializers import (
+from users.serializers import (
     AuthResponseSerializer,
     GoogleAuthSerializer,
-    OnboardingResponseSerializer,
-    OnboardingSerializer,
     RegisterUserSerializer,
     RequestResetOTPSerializer,
     ResetPasswordSerializer,
     SignInSerializer,
-    UserResponseSerializer,
-    UserSerializer,
-    UserUpdateSerializer,
     VerifyOTPResponseSerializer,
     VerifyResetOTPSerializer,
 )
-
-
-# Create your views here.
-def _prefetch_user_for_serialization(user):
-    """Prefetch brands and their social_accounts to avoid N+1 queries."""
-    return User.objects.prefetch_related(
-        Prefetch("brands", queryset=Brand.objects.prefetch_related("social_accounts"))
-    ).get(pk=user.pk)
-
-
-def get_auth_response_data(user):
-    return {
-        "user": UserSerializer(_prefetch_user_for_serialization(user)).data,
-        "tokens": UserService.get_auth_tokens(user),
-    }
-
-
-def get_onboarding_response_data(user, brand):
-    # UserSerializer now includes `brand` nested inside, so we only need the user.
-    return {
-        "user": UserSerializer(_prefetch_user_for_serialization(user)).data,
-    }
-
 
 class RegisterUserView(APIView):
     serializer_class = RegisterUserSerializer
@@ -86,7 +56,6 @@ class RegisterUserView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
-
 class SignInView(APIView):
     serializer_class = SignInSerializer
 
@@ -124,7 +93,6 @@ class SignInView(APIView):
             message="Sign in successful.",
         )
 
-
 class GoogleSignInView(APIView):
     serializer_class = GoogleAuthSerializer
 
@@ -146,11 +114,9 @@ class GoogleSignInView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-
             google_helper = GoogleAuthService(
                 redirect_uri=serializer.validated_data["redirect_uri"]
             )
-
             user_info = google_helper.verify_and_get_user_info(
                 serializer.validated_data["auth_code"]
             )
@@ -168,120 +134,25 @@ class GoogleSignInView(APIView):
                 data=get_auth_response_data(user),
                 message="Google sign in successful.",
             )
-
         except ValueError as e:
             return CustomErrorResponse(
                 message="Google sign in failed.",
                 errors={"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         except Exception as e:
-            # Catch any other unexpected errors
-            print(f"Authentication error: {e}")  # Log the full exception for debugging
+            print(f"Authentication error: {e}")
             return CustomErrorResponse(
                 message="An unexpected error occurred during authentication.",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-
-class OnboardingView(APIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = OnboardingSerializer
-
-    @swagger_auto_schema(
-        operation_summary="Complete onboarding",
-        operation_description=(
-            "Save the user's role on the user record and the remaining onboarding "
-            "fields on the user's default brand."
-        ),
-        request_body=OnboardingSerializer,
-        responses={
-            200: OnboardingResponseSerializer,
-            400: "Validation error",
-            401: "Authentication credentials were not provided or are invalid.",
-        },
-    )
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        user, brand = OnboardingService.complete_onboarding(
-            user=request.user,
-            role=serializer.validated_data["role"],
-            industry=serializer.validated_data["industry"],
-            posting_frequency=serializer.validated_data["posting_frequency"],
-            primary_platform=serializer.validated_data["primary_platform"],
-            team_size=serializer.validated_data["team_size"],
-        )
-
-        return CustomSuccessResponse(
-            data=get_onboarding_response_data(user, brand),
-            message="Onboarding completed successfully.",
-        )
-
-
-class CurrentUserView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @swagger_auto_schema(
-        operation_summary="Get current user",
-        operation_description="Return the authenticated user's profile data.",
-        responses={
-            200: UserResponseSerializer,
-            401: "Authentication credentials were not provided or are invalid.",
-        },
-    )
-    def get(self, request):
-        user = _prefetch_user_for_serialization(request.user)
-        return CustomSuccessResponse(
-            data=UserSerializer(user).data,
-            message="User data retrieved successfully.",
-        )
-
-    @swagger_auto_schema(
-        operation_summary="Update current user",
-        operation_description=(
-            "Update editable profile fields for the authenticated user."
-        ),
-        request_body=UserUpdateSerializer,
-        responses={
-            200: UserResponseSerializer,
-            400: "Validation error",
-            401: "Authentication credentials were not provided or are invalid.",
-        },
-    )
-    def patch(self, request):
-        serializer = UserUpdateSerializer(
-            request.user,
-            data=request.data,
-            partial=True,
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        user = _prefetch_user_for_serialization(request.user)
-        return CustomSuccessResponse(
-            data=UserSerializer(user).data,
-            message="User data updated successfully.",
-        )
-
-
 class PasswordResetViewSet(viewsets.ViewSet):
-    """ViewSet for the password reset flow with OTP verification.
-
-    Provides three actions:
-    - `request_otp`: Send a 6-digit OTP to the user's email
-    - `verify_otp`: Verify the OTP and get a reset token
-    - `reset`: Reset the password using the reset token
-    """
-
     @swagger_auto_schema(
         operation_summary="Request password reset OTP",
         operation_description=(
             "Send a 6-digit OTP to the user's email to initiate password reset. "
-            "Always returns 200 for security (does not reveal if email exists). "
-            "Rate-limited to 1 request per 60 seconds per email."
+            "Always returns 200 for security."
         ),
         request_body=RequestResetOTPSerializer,
         responses={
@@ -317,10 +188,7 @@ class PasswordResetViewSet(viewsets.ViewSet):
     @swagger_auto_schema(
         operation_summary="Verify password reset OTP",
         operation_description=(
-            "Verify the 6-digit OTP sent to the user's email. "
-            "On success, returns a short-lived reset token that must be used "
-            "within 5 minutes to reset the password. "
-            "Max 5 incorrect attempts before the OTP is invalidated."
+            "Verify the 6-digit OTP sent to the user's email."
         ),
         request_body=VerifyResetOTPSerializer,
         responses={
@@ -355,9 +223,7 @@ class PasswordResetViewSet(viewsets.ViewSet):
     @swagger_auto_schema(
         operation_summary="Reset password",
         operation_description=(
-            "Reset the user's password using the reset token obtained "
-            "from OTP verification. The new password must meet Django's "
-            "password validation requirements."
+            "Reset the user's password using the reset token."
         ),
         request_body=ResetPasswordSerializer,
         responses={

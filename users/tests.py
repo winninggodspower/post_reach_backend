@@ -90,7 +90,7 @@ def test_sign_in_rejects_invalid_credentials(api_client, user):
 
 
 def test_google_sign_in_mocks_google_service(api_client, mocker):
-    google_service = mocker.patch("users.views.GoogleAuthService")
+    google_service = mocker.patch("users.views.auth_view.GoogleAuthService")
     google_service.return_value.verify_and_get_user_info.return_value = {
         "email": "google@example.com",
         "first_name": "Google",
@@ -329,3 +329,29 @@ def test_complete_onboarding_updates_records(user):
     assert brand.posting_frequency == "weekly"
     assert brand.primary_platform == "instagram"
     assert brand.team_size == "just_me"
+
+
+def test_get_user_brands_returns_brands(authenticated_client, brand):
+    response = authenticated_client.get(reverse("brand-list"))
+    
+    assert response.status_code == 200
+    assert response.data["success"] is True
+    assert len(response.data["data"]) >= 1
+    assert response.data["data"][0]["id"] == str(brand.id)
+
+
+def test_set_active_brand_updates_user(authenticated_client, user, brand):
+    # First, verify user has no active brand
+    assert user.active_brand_id is None
+    
+    response = authenticated_client.post(
+        reverse("set-active-brand"),
+        {"brand_id": str(brand.id)},
+        format="json",
+    )
+    
+    user.refresh_from_db()
+    
+    assert response.status_code == 200
+    assert response.data["success"] is True
+    assert user.active_brand_id == brand.id
