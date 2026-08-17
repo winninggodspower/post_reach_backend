@@ -175,6 +175,11 @@ def publish_scheduled_posts():
         status=PostStatus.SCHEDULED, content_post__scheduled_at__lte=now
     ).select_related("content_post")
 
+    count = due_entries.count()
+    if count > 0:
+        CustomLogger.info(f"Found {count} scheduled posts due to be published.")
+
+    processed_count = 0
     for entry in due_entries:
         try:
             with transaction.atomic():
@@ -189,11 +194,14 @@ def publish_scheduled_posts():
                         str(locked_entry.id),
                         content_type=locked_entry.content_post.content_type,
                     )
+                    processed_count += 1
         except Exception as e:
             CustomLogger.exception(
                 "Error processing scheduled post platform entry",
                 extra={"platform_entry_id": str(entry.id), "error": str(e)},
             )
+            
+    return f"Processed {processed_count} posts"
 
 
 @shared_task

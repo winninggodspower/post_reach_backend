@@ -26,6 +26,8 @@ from social_accounts.services.social_account_connection_service import (
 )
 from utils.custom_logger import CustomLogger
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
+from django.core.cache import cache
+from utils.cache_keys import CacheKeys
 
 # Create your views here.
 
@@ -189,9 +191,14 @@ class FacebookAuthViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
 
         try:
-            long_lived_token, _ = FacebookService.exchange_code_for_token(
+            long_lived_token, expires_in = FacebookService.exchange_code_for_token(
                 serializer.validated_data["code"],
                 serializer.validated_data["redirect_uri"],
+            )
+            cache.set(
+                CacheKeys.facebook_access_token(serializer.validated_data["code"]),
+                (long_lived_token, expires_in),
+                timeout=300
             )
             pages = FacebookService.get_facebook_pages(long_lived_token)
         except ValueError as e:

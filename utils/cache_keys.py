@@ -41,6 +41,11 @@ class CacheKeys:
         return f"facebook_oauth_state:{user_id}"
 
     @classmethod
+    def facebook_access_token(cls, code: str) -> str:
+        """Cache key for temporarily storing a Facebook access token during the connect flow."""
+        return f"fb_token:{code}"
+
+    @classmethod
     def instagram_oauth_state(cls, user_id: int) -> str:
         """Cache key for storing Instagram OAuth state for a user."""
         return f"instagram_oauth_state:{user_id}"

@@ -12,6 +12,8 @@ from social_accounts.models import SocialAccount
 from utils.custom_logger import CustomLogger, log_exceptions
 from utils.r2_storage import R2StorageService
 import httpx
+from django.core.cache import cache
+from utils.cache_keys import CacheKeys
 
 
 class SocialAccountConnectionService:
@@ -110,9 +112,16 @@ class SocialAccountConnectionService:
     def connect_facebook(cls, *, user, brand, code, redirect_uri, page_id=""):
         resolved_brand = SocialAccountService._resolve_brand(user, brand)
 
-        long_lived_token, expires_in = FacebookService.exchange_code_for_token(
-            code, redirect_uri
-        )
+        cache_key = CacheKeys.facebook_access_token(code)
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            long_lived_token, expires_in = cached_data
+            cache.delete(cache_key)
+        else:
+            long_lived_token, expires_in = FacebookService.exchange_code_for_token(
+                code, redirect_uri
+            )
 
         # Fetch Facebook pages and select the target page
         pages = FacebookService.get_facebook_pages(long_lived_token)

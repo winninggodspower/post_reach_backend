@@ -174,7 +174,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Africa/Lagos"
 
 USE_I18N = True
 
@@ -279,7 +279,7 @@ CLOUDFLARE_R2_PUBLIC_DOMAIN = "https://postreach.media.winningtech.xyz"
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_EXTENDED = True
-CELERY_TIMEZONE = TIME_ZONE
+CELERY_TIMEZONE = "Africa/Lagos"
 
 # 1. Disable worker-to-worker chatter and heartbeat broadcasts
 CELERY_WORKER_ENABLE_REMOTE_CONTROL = False
