@@ -153,6 +153,16 @@ def check_instagram_container_status(self, platform_entry_id):
                 "platform_post_id": entry.platform_post_id,
             }
 
+        elif status_code == "PUBLISHED":
+            # The container was already published (perhaps a previous attempt succeeded but timed out locally)
+            entry.status = PostStatus.POSTED
+            entry.save(update_fields=["status", "updated_at"])
+            PostingService.cleanup_r2_media(entry.content_post)
+            return {
+                "status": "posted",
+                "platform_post_id": entry.platform_post_id,
+            }
+
         elif status_code == "IN_PROGRESS":
             # Queue a retry of this task
             raise self.retry()
