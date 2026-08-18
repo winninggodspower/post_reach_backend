@@ -5,8 +5,6 @@ including brand resolution, platform validation, R2 upload, and Celery dispatch.
 Delegates cross-domain queries to BrandService and SocialAccountValidationService.
 """
 
-from typing import List
-
 from django.db import transaction
 
 from content.enums import FileTypeChoice, PostStatus
@@ -17,6 +15,7 @@ from social_accounts.services.social_account_validation_service import (
 from users.services.brand_service import BrandService
 from utils.custom_logger import CustomLogger, log_exceptions
 from utils.r2_storage import R2StorageService
+from utils.custom_logger import CustomLogger
 
 
 class ContentCreationService:
@@ -130,17 +129,15 @@ class ContentCreationService:
                 )
 
                 for platform in platforms:
+                    plat_settings = platform_settings.get(platform, {})
                     if platform == "youtube":
-                        yt_config = platform_settings.get("youtube", {})
-                        title = yt_config.get("title", "")
-                        plat_caption = yt_config.get(
-                            "description", yt_config.get("caption", caption)
+                        title = plat_settings.get("title", "")
+                        plat_caption = plat_settings.get(
+                            "description", plat_settings.get("caption", caption)
                         )
                     else:
                         title = ""
-                        plat_caption = platform_settings.get(platform, {}).get(
-                            "caption", caption
-                        )
+                        plat_caption = plat_settings.get("caption", caption)
 
                     platform_entries.append(
                         ContentPostPlatform(
@@ -149,6 +146,7 @@ class ContentCreationService:
                             title=title,
                             caption=plat_caption,
                             status=initial_status,
+                            settings=plat_settings,
                         )
                     )
 
@@ -158,7 +156,6 @@ class ContentCreationService:
 
                 if not scheduled_at:
                     from content.tasks import publish_platform_entry
-                    from utils.custom_logger import CustomLogger
 
                     for entry in content_post.platform_entries.all():
 

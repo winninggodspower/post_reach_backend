@@ -164,7 +164,7 @@ class TiktokService(SocialAccountService):
 
     @classmethod
     def publish_video(
-        cls, access_token, video_url, title, video_cover_timestamp_ms=None
+        cls, access_token, video_url, title, video_cover_timestamp_ms=None, settings=None
     ):
         """
         Publish a video to TikTok using the Direct Post API (PULL_FROM_URL).
@@ -178,10 +178,15 @@ class TiktokService(SocialAccountService):
         :param video_cover_timestamp_ms: Cover frame timestamp in milliseconds (optional).
         :return: Dict with 'platform_post_id' (the publish_id).
         """
+        settings = settings or {}
         post_info = {
             "title": title or "",
-            "privacy_level": "PUBLIC_TO_EVERYONE",
+            "privacy_level": settings.get("privacy_level", "PUBLIC_TO_EVERYONE"),
         }
+        for key in ["disable_comment", "disable_duet", "disable_stitch", "brand_content_toggle", "brand_organic_toggle"]:
+            if key in settings:
+                post_info[key] = settings[key]
+
         if video_cover_timestamp_ms is not None:
             post_info["video_cover_timestamp_ms"] = video_cover_timestamp_ms
 
@@ -214,7 +219,7 @@ class TiktokService(SocialAccountService):
         return {"platform_post_id": publish_id or "unknown"}
 
     @classmethod
-    def publish_photo(cls, access_token, photo_urls, text=""):
+    def publish_photo(cls, access_token, photo_urls, text="", settings=None):
         """
         Publish a photo (or multiple photos) to TikTok using the Content Posting API.
 
@@ -226,15 +231,21 @@ class TiktokService(SocialAccountService):
         :param text: Caption text.
         :return: Dict with 'platform_post_id'.
         """
+        settings = settings or {}
+        post_info = {
+            "title": text or "",
+            "description": text or "",
+            "privacy_level": settings.get("privacy_level", "PUBLIC_TO_EVERYONE"),
+        }
+        for key in ["disable_comment", "disable_duet", "disable_stitch", "brand_content_toggle", "brand_organic_toggle"]:
+            if key in settings:
+                post_info[key] = settings[key]
+
         try:
             publish_response = cls().post(
                 "/v2/post/publish/content/init/",
                 json_data={
-                    "post_info": {
-                        "title": text or "",
-                        "description": text or "",
-                        "privacy_level": "PUBLIC_TO_EVERYONE",
-                    },
+                    "post_info": post_info,
                     "source_info": {
                         "source": "PULL_FROM_URL",
                         "photo_cover_index": 0,

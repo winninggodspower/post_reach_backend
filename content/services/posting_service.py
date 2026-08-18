@@ -156,6 +156,7 @@ class PostingService:
                         social_account=social_account,
                         photo_urls=presigned_urls,
                         text=entry.caption,
+                        settings=entry.settings,
                     )
                 else:
                     result = cls._dispatch_video(
@@ -169,6 +170,7 @@ class PostingService:
                         thumbnail_url=thumbnail_url,
                         thumbnail_bytes=thumbnail_bytes,
                         video_thumbnail_offset=content_post.video_thumbnail_offset,
+                        settings=entry.settings,
                     )
 
             if result.get("status") == "processing":
@@ -216,6 +218,7 @@ class PostingService:
         thumbnail_url=None,
         thumbnail_bytes=None,
         video_thumbnail_offset=None,
+        settings=None,
     ) -> dict:
         if platform == PlatformChoices.YOUTUBE:
             return YoutubeService.publish_video(
@@ -231,6 +234,7 @@ class PostingService:
                 video_url=video_url,
                 title=description,  # TikTok caption is passed in 'title'
                 video_cover_timestamp_ms=video_thumbnail_offset,
+                settings=settings,
             )
         if platform == PlatformChoices.FACEBOOK:
             return FacebookService.publish_video(
@@ -263,7 +267,7 @@ class PostingService:
 
     @classmethod
     def _dispatch_photo(
-        cls, platform, access_token, social_account, photo_urls, text
+        cls, platform, access_token, social_account, photo_urls, text, settings=None
     ) -> dict:
         if platform == PlatformChoices.FACEBOOK:
             return FacebookService.publish_photo(
@@ -284,6 +288,7 @@ class PostingService:
                 access_token=access_token,
                 photo_urls=photo_urls,
                 text=text,
+                settings=settings,
             )
         if platform == PlatformChoices.LINKEDIN:
             return LinkedinService.publish_photo(

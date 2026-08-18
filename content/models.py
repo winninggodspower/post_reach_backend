@@ -127,6 +127,18 @@ class ContentPostPlatform(UUIDTimestampedModel):
         default="",
         help_text="The resolved caption/description for this specific platform.",
     )
+    
+    # Platform-specific settings. Examples:
+    # Tiktok:
+    # {
+    #     "privacy_level": "PUBLIC_TO_EVERYONE", # MUTUAL_FRIENDS, SELF_ONLY
+    #     "disable_comment": False,
+    #     "disable_duet": False,
+    #     "disable_stitch": False,
+    #     "brand_content_toggle": False,
+    #     "brand_organic_toggle": False
+    # }
+    settings = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = [
