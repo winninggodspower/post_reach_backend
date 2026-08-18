@@ -111,6 +111,12 @@ class ContentPostPlatform(UUIDTimestampedModel):
         default="",
         help_text="The post/media ID returned by the platform API.",
     )
+    post_url = models.URLField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="The public, clickable URL of the published post.",
+    )
     error_message = models.TextField(
         blank=True,
         default="",

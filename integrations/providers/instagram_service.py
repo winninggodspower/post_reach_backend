@@ -373,3 +373,28 @@ class InstagramService(SocialAccountService):
 
         media_id = publish_response.get("id", container_id)
         return {"platform_post_id": media_id}
+
+    @classmethod
+    def get_permalink(cls, access_token: str, media_id: str) -> str:
+        """
+        Fetches the permalink (URL) for a published media object.
+        """
+        try:
+            response_data = cls().get(
+                f"/{media_id}",
+                params={
+                    "fields": "permalink",
+                    "access_token": access_token,
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "Failed to fetch Instagram permalink",
+                extra={
+                    "operation": "get_permalink",
+                    "media_id": media_id,
+                },
+            )
+            return ""
+
+        return response_data.get("permalink", "")

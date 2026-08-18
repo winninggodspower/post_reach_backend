@@ -127,6 +127,7 @@ class ContentPostPlatformSerializer(serializers.ModelSerializer):
             "platform",
             "status",
             "platform_post_id",
+            "post_url",
             "error_message",
             "title",
             "caption",

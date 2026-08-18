@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from content.enums import PostStatus
 from content.models import ContentPostPlatform
-from content.services.posting_service import PHOTO_PLATFORMS, PostingService
+from content.services.posting_service import PostingService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.tiktok_service import TiktokService
 from social_accounts.enums import PlatformChoices
@@ -143,7 +143,13 @@ def check_instagram_container_status(self, platform_entry_id):
             entry.platform_post_id = publish_result.get(
                 "platform_post_id", entry.platform_post_id
             )
-            entry.save(update_fields=["status", "platform_post_id", "updated_at"])
+            
+            # Fetch the permalink
+            entry.post_url = InstagramService.get_permalink(
+                access_token=access_token, media_id=entry.platform_post_id
+            )
+            
+            entry.save(update_fields=["status", "platform_post_id", "post_url", "updated_at"])
 
             # Clean up R2 media if everything is posted
             PostingService.cleanup_r2_media(entry.content_post)
@@ -156,7 +162,13 @@ def check_instagram_container_status(self, platform_entry_id):
         elif status_code == "PUBLISHED":
             # The container was already published (perhaps a previous attempt succeeded but timed out locally)
             entry.status = PostStatus.POSTED
-            entry.save(update_fields=["status", "updated_at"])
+            
+            # Fetch the permalink
+            entry.post_url = InstagramService.get_permalink(
+                access_token=access_token, media_id=entry.platform_post_id
+            )
+            
+            entry.save(update_fields=["status", "post_url", "updated_at"])
             PostingService.cleanup_r2_media(entry.content_post)
             return {
                 "status": "posted",
@@ -226,19 +238,23 @@ def check_tiktok_publish_status(self, platform_entry_id):
 
         if status_val == "PUBLISH_COMPLETE":
             public_post_ids = status_data.get("publicaly_available_post_id", [])
-            final_item_id = (
+            final_post_id = (
                 public_post_ids[0] if public_post_ids else entry.platform_post_id
             )
 
             entry.status = PostStatus.POSTED
-            entry.platform_post_id = final_item_id
-            entry.save(update_fields=["status", "platform_post_id", "updated_at"])
+            entry.platform_post_id = final_post_id
+            
+            username = social_account.account_name or social_account.external_id
+            entry.post_url = f"https://www.tiktok.com/@{username}/video/{final_post_id}"
+            
+            entry.save(update_fields=["status", "platform_post_id", "post_url", "updated_at"])
 
             PostingService.cleanup_r2_media(entry.content_post)
 
             return {
                 "status": "posted",
-                "platform_post_id": final_item_id,
+                "platform_post_id": final_post_id,
             }
 
         elif status_val == "FAILED":

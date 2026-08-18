@@ -178,7 +178,15 @@ class PostingService:
             else:
                 entry.status = PostStatus.POSTED
             entry.platform_post_id = result.get("platform_post_id", "")
-            entry.save(update_fields=["status", "platform_post_id", "updated_at"])
+            
+            post_url = result.get("post_url", "")
+            if not post_url and entry.status == PostStatus.POSTED:
+                post_url = cls._generate_post_url(
+                    entry.platform, entry.platform_post_id, social_account
+                )
+
+            entry.post_url = post_url
+            entry.save(update_fields=["status", "platform_post_id", "post_url", "updated_at"])
 
         except Exception as e:
             CustomLogger.exception(
@@ -314,3 +322,20 @@ class PostingService:
                 text=text,
             )
         raise ValueError(f"Text publishing not supported for: {platform}")
+
+    @classmethod
+    def _generate_post_url(cls, platform: str, platform_post_id: str, social_account) -> str:
+        """
+        Generates the public post URL for synchronous platforms based on the returned ID.
+        """
+        if platform == PlatformChoices.YOUTUBE:
+            return f"https://www.youtube.com/watch?v={platform_post_id}"
+        elif platform == PlatformChoices.FACEBOOK:
+            return f"https://www.facebook.com/{social_account.external_id}/posts/{platform_post_id}"
+        elif platform == PlatformChoices.LINKEDIN:
+            return f"https://www.linkedin.com/feed/update/{platform_post_id}"
+        elif platform == PlatformChoices.TWITTER:
+            username = social_account.account_name or social_account.external_id
+            return f"https://twitter.com/{username}/status/{platform_post_id}"
+        
+        return ""
