@@ -3,10 +3,6 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
-from users.services import OnboardingService
-from utils.responses import CustomErrorResponse, CustomSuccessResponse
-from users.views.utils import get_onboarding_response_data, _prefetch_user_for_serialization
-
 from users.serializers import (
     OnboardingResponseSerializer,
     OnboardingSerializer,
@@ -14,6 +10,13 @@ from users.serializers import (
     UserSerializer,
     UserUpdateSerializer,
 )
+from users.services import OnboardingService
+from users.views.utils import (
+    _prefetch_user_for_serialization,
+    get_onboarding_response_data,
+)
+from utils.responses import CustomErrorResponse, CustomSuccessResponse
+
 
 class OnboardingView(APIView):
     permission_classes = [IsAuthenticated]
@@ -49,6 +52,7 @@ class OnboardingView(APIView):
             data=get_onboarding_response_data(user, brand),
             message="Onboarding completed successfully.",
         )
+
 
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]

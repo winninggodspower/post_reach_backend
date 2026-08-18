@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+import httpx
+from django.core.cache import cache
 from django.utils import timezone
 
 from integrations.providers.base import SocialAccountService
@@ -9,11 +11,9 @@ from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.models import SocialAccount
+from utils.cache_keys import CacheKeys
 from utils.custom_logger import CustomLogger, log_exceptions
 from utils.r2_storage import R2StorageService
-import httpx
-from django.core.cache import cache
-from utils.cache_keys import CacheKeys
 
 
 class SocialAccountConnectionService:
@@ -21,7 +21,10 @@ class SocialAccountConnectionService:
     @log_exceptions()
     def _save_account(cls, *, brand, platform, defaults):
         synced_r2_url = cls._sync_profile_picture_if_needed(
-            brand, platform, defaults.get("profile_picture_url"), defaults.get("external_id", "unknown")
+            brand,
+            platform,
+            defaults.get("profile_picture_url"),
+            defaults.get("external_id", "unknown"),
         )
         defaults["profile_picture_url"] = synced_r2_url
         if "metadata" in defaults and "picture_url" in defaults["metadata"]:
@@ -34,9 +37,15 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
-    def _sync_profile_picture_if_needed(cls, brand, platform, fetched_raw_url, external_id):
-        existing_account = SocialAccount.objects.filter(brand=brand, platform=platform).first()
-        existing_r2_url = existing_account.profile_picture_url if existing_account else None
+    def _sync_profile_picture_if_needed(
+        cls, brand, platform, fetched_raw_url, external_id
+    ):
+        existing_account = SocialAccount.objects.filter(
+            brand=brand, platform=platform
+        ).first()
+        existing_r2_url = (
+            existing_account.profile_picture_url if existing_account else None
+        )
 
         if existing_r2_url == fetched_raw_url:
             return fetched_raw_url
@@ -45,22 +54,28 @@ class SocialAccountConnectionService:
             with httpx.Client(timeout=10.0, follow_redirects=True) as client:
                 resp = client.get(fetched_raw_url)
                 resp.raise_for_status()
-                key = R2StorageService.generate_key(content_type="photo", extension="jpg")
+                key = R2StorageService.generate_key(
+                    content_type="photo", extension="jpg"
+                )
                 R2StorageService.upload_file(resp.content, key, content_type="photo")
                 synced_r2_url = R2StorageService.generate_presigned_url(key)
-                
+
                 if not synced_r2_url:
                     raise ValueError("Failed to generate presigned URL")
 
                 # Delete the old image ONLY after successfully uploading the new one
                 if existing_r2_url:
                     R2StorageService.delete_from_url(existing_r2_url)
-                    
+
                 return synced_r2_url
         except Exception as e:
             CustomLogger.warning(
                 "Failed to sync profile picture to R2",
-                extra={"identifier": external_id, "url": fetched_raw_url, "error": str(e)},
+                extra={
+                    "identifier": external_id,
+                    "url": fetched_raw_url,
+                    "error": str(e),
+                },
             )
             return fetched_raw_url
 

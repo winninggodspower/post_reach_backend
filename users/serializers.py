@@ -185,5 +185,6 @@ class VerifyOTPResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     data = VerifyOTPResponseDataSerializer()
 
+
 class SetActiveBrandSerializer(serializers.Serializer):
     brand_id = serializers.UUIDField(required=True)

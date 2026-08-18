@@ -25,7 +25,10 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
     """
     CustomLogger.info(
         "publish_platform_entry task triggered",
-        extra={"platform_entry_id": str(platform_entry_id), "content_type": content_type},
+        extra={
+            "platform_entry_id": str(platform_entry_id),
+            "content_type": content_type,
+        },
     )
     try:
         entry = ContentPostPlatform.objects.select_related(
@@ -82,7 +85,7 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
     ):
         CustomLogger.info(
             "Triggering check_instagram_container_status",
-            extra={"platform_entry_id": str(result_entry.id)}
+            extra={"platform_entry_id": str(result_entry.id)},
         )
         check_instagram_container_status.delay(str(result_entry.id))
 
@@ -208,7 +211,7 @@ def publish_scheduled_posts():
                 "Error processing scheduled post platform entry",
                 extra={"platform_entry_id": str(entry.id), "error": str(e)},
             )
-            
+
     return f"Processed {processed_count} posts"
 
 
@@ -231,15 +234,24 @@ def sweep_stuck_platform_entries():
     for entry in stuck_entries:
         try:
             with transaction.atomic():
-                locked_entry = ContentPostPlatform.objects.select_for_update().get(id=entry.id)
+                locked_entry = ContentPostPlatform.objects.select_for_update().get(
+                    id=entry.id
+                )
                 # Double check they are still stuck
                 if locked_entry.status in [PostStatus.PENDING, PostStatus.UPLOADING]:
                     locked_entry.status = PostStatus.FAILED
-                    locked_entry.error_message = "System interrupted during posting. Please try again."
-                    locked_entry.save(update_fields=["status", "error_message", "updated_at"])
+                    locked_entry.error_message = (
+                        "System interrupted during posting. Please try again."
+                    )
+                    locked_entry.save(
+                        update_fields=["status", "error_message", "updated_at"]
+                    )
                     CustomLogger.warning(
                         "Swept stuck platform entry and marked as FAILED.",
-                        extra={"platform_entry_id": str(locked_entry.id), "status_was": locked_entry.status}
+                        extra={
+                            "platform_entry_id": str(locked_entry.id),
+                            "status_was": locked_entry.status,
+                        },
                     )
         except Exception as e:
             CustomLogger.exception(

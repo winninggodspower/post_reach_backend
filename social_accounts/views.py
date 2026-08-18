@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -24,10 +25,9 @@ from social_accounts.serializers import (
 from social_accounts.services.social_account_connection_service import (
     SocialAccountConnectionService,
 )
+from utils.cache_keys import CacheKeys
 from utils.custom_logger import CustomLogger
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
-from django.core.cache import cache
-from utils.cache_keys import CacheKeys
 
 # Create your views here.
 
@@ -198,7 +198,7 @@ class FacebookAuthViewSet(viewsets.ViewSet):
             cache.set(
                 CacheKeys.facebook_access_token(serializer.validated_data["code"]),
                 (long_lived_token, expires_in),
-                timeout=300
+                timeout=300,
             )
             pages = FacebookService.get_facebook_pages(long_lived_token)
         except ValueError as e:

@@ -8,8 +8,8 @@ from .views.auth_view import (
     RegisterUserView,
     SignInView,
 )
-from .views.user_view import CurrentUserView, OnboardingView
 from .views.brand_view import BrandViewSet, SetActiveBrandView
+from .views.user_view import CurrentUserView, OnboardingView
 
 router = DefaultRouter()
 router.register(r"password-reset", PasswordResetViewSet, basename="password-reset")

@@ -161,10 +161,14 @@ class ContentCreationService:
                     from utils.custom_logger import CustomLogger
 
                     for entry in content_post.platform_entries.all():
+
                         def dispatch_task(e_id=str(entry.id), c_type=content_type):
                             CustomLogger.info(
-                                "Django app dispatching publish_platform_entry to Celery", 
-                                extra={"platform_entry_id": e_id, "content_type": c_type}
+                                "Django app dispatching publish_platform_entry to Celery",
+                                extra={
+                                    "platform_entry_id": e_id,
+                                    "content_type": c_type,
+                                },
                             )
                             publish_platform_entry.delay(e_id, content_type=c_type)
 

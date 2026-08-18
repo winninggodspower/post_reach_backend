@@ -333,7 +333,7 @@ def test_complete_onboarding_updates_records(user):
 
 def test_get_user_brands_returns_brands(authenticated_client, brand):
     response = authenticated_client.get(reverse("brand-list"))
-    
+
     assert response.status_code == 200
     assert response.data["success"] is True
     assert len(response.data["data"]) >= 1
@@ -343,15 +343,15 @@ def test_get_user_brands_returns_brands(authenticated_client, brand):
 def test_set_active_brand_updates_user(authenticated_client, user, brand):
     # First, verify user has no active brand
     assert user.active_brand_id is None
-    
+
     response = authenticated_client.post(
         reverse("set-active-brand"),
         {"brand_id": str(brand.id)},
         format="json",
     )
-    
+
     user.refresh_from_db()
-    
+
     assert response.status_code == 200
     assert response.data["success"] is True
     assert user.active_brand_id == brand.id

@@ -4,10 +4,6 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 
 from integrations.services.google_auth_service import GoogleAuthService
-from users.services import PasswordResetService, UserService
-from utils.responses import CustomErrorResponse, CustomSuccessResponse
-from users.views.utils import get_auth_response_data
-
 from users.serializers import (
     AuthResponseSerializer,
     GoogleAuthSerializer,
@@ -18,6 +14,10 @@ from users.serializers import (
     VerifyOTPResponseSerializer,
     VerifyResetOTPSerializer,
 )
+from users.services import PasswordResetService, UserService
+from users.views.utils import get_auth_response_data
+from utils.responses import CustomErrorResponse, CustomSuccessResponse
+
 
 class RegisterUserView(APIView):
     serializer_class = RegisterUserSerializer
@@ -56,6 +56,7 @@ class RegisterUserView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
+
 class SignInView(APIView):
     serializer_class = SignInSerializer
 
@@ -92,6 +93,7 @@ class SignInView(APIView):
             data=get_auth_response_data(user),
             message="Sign in successful.",
         )
+
 
 class GoogleSignInView(APIView):
     serializer_class = GoogleAuthSerializer
@@ -147,6 +149,7 @@ class GoogleSignInView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+
 class PasswordResetViewSet(viewsets.ViewSet):
     @swagger_auto_schema(
         operation_summary="Request password reset OTP",
@@ -187,9 +190,7 @@ class PasswordResetViewSet(viewsets.ViewSet):
 
     @swagger_auto_schema(
         operation_summary="Verify password reset OTP",
-        operation_description=(
-            "Verify the 6-digit OTP sent to the user's email."
-        ),
+        operation_description=("Verify the 6-digit OTP sent to the user's email."),
         request_body=VerifyResetOTPSerializer,
         responses={
             200: VerifyOTPResponseSerializer,
@@ -222,9 +223,7 @@ class PasswordResetViewSet(viewsets.ViewSet):
 
     @swagger_auto_schema(
         operation_summary="Reset password",
-        operation_description=(
-            "Reset the user's password using the reset token."
-        ),
+        operation_description=("Reset the user's password using the reset token."),
         request_body=ResetPasswordSerializer,
         responses={
             200: "Password reset successful",

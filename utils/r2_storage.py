@@ -163,16 +163,16 @@ class R2StorageService:
         """
         if not url:
             return True
-            
+
         public_domain = getattr(settings, "CLOUDFLARE_R2_PUBLIC_DOMAIN", None)
         if not public_domain:
             return True
 
         base_url = public_domain.rstrip("/")
         if url.startswith(f"{base_url}/"):
-            key = url[len(f"{base_url}/"):]
+            key = url[len(f"{base_url}/") :]
             return cls.delete_file(key)
-        
+
         return True
 
     @classmethod
