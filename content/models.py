@@ -127,7 +127,7 @@ class ContentPostPlatform(UUIDTimestampedModel):
         default="",
         help_text="The resolved caption/description for this specific platform.",
     )
-    
+
     # Platform-specific settings. Examples:
     # Tiktok:
     # {

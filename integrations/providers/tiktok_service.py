@@ -164,7 +164,12 @@ class TiktokService(SocialAccountService):
 
     @classmethod
     def publish_video(
-        cls, access_token, video_url, title, video_cover_timestamp_ms=None, settings=None
+        cls,
+        access_token,
+        video_url,
+        title,
+        video_cover_timestamp_ms=None,
+        settings=None,
     ):
         """
         Publish a video to TikTok using the Direct Post API (PULL_FROM_URL).
@@ -183,7 +188,13 @@ class TiktokService(SocialAccountService):
             "title": title or "",
             "privacy_level": settings.get("privacy_level", "PUBLIC_TO_EVERYONE"),
         }
-        for key in ["disable_comment", "disable_duet", "disable_stitch", "brand_content_toggle", "brand_organic_toggle"]:
+        for key in [
+            "disable_comment",
+            "disable_duet",
+            "disable_stitch",
+            "brand_content_toggle",
+            "brand_organic_toggle",
+        ]:
             if key in settings:
                 post_info[key] = settings[key]
 
@@ -237,7 +248,13 @@ class TiktokService(SocialAccountService):
             "description": text or "",
             "privacy_level": settings.get("privacy_level", "PUBLIC_TO_EVERYONE"),
         }
-        for key in ["disable_comment", "disable_duet", "disable_stitch", "brand_content_toggle", "brand_organic_toggle"]:
+        for key in [
+            "disable_comment",
+            "disable_duet",
+            "disable_stitch",
+            "brand_content_toggle",
+            "brand_organic_toggle",
+        ]:
             if key in settings:
                 post_info[key] = settings[key]
 

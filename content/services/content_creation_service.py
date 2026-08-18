@@ -15,7 +15,6 @@ from social_accounts.services.social_account_validation_service import (
 from users.services.brand_service import BrandService
 from utils.custom_logger import CustomLogger, log_exceptions
 from utils.r2_storage import R2StorageService
-from utils.custom_logger import CustomLogger
 
 
 class ContentCreationService:
