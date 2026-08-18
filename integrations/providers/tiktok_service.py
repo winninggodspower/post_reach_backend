@@ -227,7 +227,7 @@ class TiktokService(SocialAccountService):
             raise ValueError("TikTok video publish init returned unexpected response")
 
         publish_id = publish_response.get("data", {}).get("publish_id", "")
-        return {"platform_post_id": publish_id or "unknown"}
+        return {"status": "processing", "platform_post_id": publish_id or "unknown"}
 
     @classmethod
     def publish_photo(cls, access_token, photo_urls, text="", settings=None):
@@ -284,7 +284,34 @@ class TiktokService(SocialAccountService):
             raise ValueError(f"TikTok photo publish failed: {str(e)}") from e
 
         publish_id = publish_response.get("data", {}).get("publish_id", "")
-        return {"platform_post_id": publish_id or "unknown"}
+        return {"status": "processing", "platform_post_id": publish_id or "unknown"}
+
+    @classmethod
+    def check_publish_status(cls, access_token, publish_id):
+        """
+        Check the status of a TikTok post using the publish_id.
+        See: https://developers.tiktok.com/doc/content-posting-api-reference-status-fetch/
+        """
+        try:
+            response = cls().post(
+                "/v2/post/publish/status/fetch/",
+                json_data={"publish_id": publish_id},
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json; charset=UTF-8",
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "TikTok status check failed",
+                extra={"operation": "check_publish_status", "publish_id": publish_id},
+            )
+            raise ValueError(f"TikTok status check failed: {str(e)}") from e
+
+        if not response or "data" not in response:
+            raise ValueError("TikTok status check returned unexpected response")
+
+        return response["data"]
 
     @classmethod
     def refresh_access_token(cls, refresh_token):

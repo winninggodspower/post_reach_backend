@@ -8,6 +8,7 @@ from content.enums import PostStatus
 from content.models import ContentPostPlatform
 from content.services.posting_service import PHOTO_PLATFORMS, PostingService
 from integrations.providers.instagram_service import InstagramService
+from integrations.providers.tiktok_service import TiktokService
 from social_accounts.enums import PlatformChoices
 from social_accounts.services.social_account_validation_service import (
     SocialAccountValidationService,
@@ -79,15 +80,19 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
 
     if result_entry.status == PostStatus.POSTED:
         PostingService.cleanup_r2_media(result_entry.content_post)
-    elif (
-        result_entry.status == PostStatus.UPLOADING
-        and result_entry.platform == PlatformChoices.INSTAGRAM
-    ):
-        CustomLogger.info(
-            "Triggering check_instagram_container_status",
-            extra={"platform_entry_id": str(result_entry.id)},
-        )
-        check_instagram_container_status.delay(str(result_entry.id))
+    elif result_entry.status == PostStatus.PROCESSING:
+        if result_entry.platform == PlatformChoices.INSTAGRAM:
+            CustomLogger.info(
+                "Triggering check_instagram_container_status",
+                extra={"platform_entry_id": str(result_entry.id)},
+            )
+            check_instagram_container_status.delay(str(result_entry.id))
+        elif result_entry.platform == PlatformChoices.TIKTOK:
+            CustomLogger.info(
+                "Triggering check_tiktok_publish_status",
+                extra={"platform_entry_id": str(result_entry.id)},
+            )
+            check_tiktok_publish_status.delay(str(result_entry.id))
 
     return {
         "status": result_entry.status,
@@ -176,6 +181,84 @@ def check_instagram_container_status(self, platform_entry_id):
             raise self.retry(exc=e)
 
 
+@shared_task(bind=True, max_retries=30, default_retry_delay=10, acks_late=True)
+def check_tiktok_publish_status(self, platform_entry_id):
+    """
+    Celery task that polls the TikTok publish status in a non-blocking way.
+    Retries itself if processing is still in progress.
+    """
+    try:
+        entry = ContentPostPlatform.objects.select_related(
+            "content_post", "content_post__brand"
+        ).get(id=platform_entry_id)
+    except ContentPostPlatform.DoesNotExist:
+        CustomLogger.error(
+            "ContentPostPlatform not found for status check",
+            extra={"platform_entry_id": str(platform_entry_id)},
+        )
+        return {"status": "error", "message": "ContentPostPlatform not found"}
+
+    try:
+        social_account = SocialAccountValidationService.get_account(
+            brand=entry.content_post.brand,
+            platform=entry.platform,
+        )
+        access_token = social_account.get_access_token()
+        if not access_token:
+            raise ValueError("Unable to obtain a valid access token.")
+
+        status_data = TiktokService.check_publish_status(
+            access_token=access_token,
+            publish_id=entry.platform_post_id,
+        )
+
+        status_val = status_data.get("status")
+        
+        if status_val == "PUBLISH_COMPLETE":
+            public_post_ids = status_data.get("publicaly_available_post_id", [])
+            final_item_id = public_post_ids[0] if public_post_ids else entry.platform_post_id
+            
+            entry.status = PostStatus.POSTED
+            entry.platform_post_id = final_item_id
+            entry.save(update_fields=["status", "platform_post_id", "updated_at"])
+
+            PostingService.cleanup_r2_media(entry.content_post)
+
+            return {
+                "status": "posted",
+                "platform_post_id": final_item_id,
+            }
+
+        elif status_val == "FAILED":
+            raise ValueError(status_data.get("fail_reason", "Unknown TikTok error"))
+            
+        else:
+            # e.g., PROCESSING_DOWNLOAD, PROCESSING
+            raise self.retry()
+
+    except Exception as e:
+        from celery.exceptions import Retry
+
+        if isinstance(e, Retry):
+            raise e
+
+        CustomLogger.exception(
+            "TikTok status check failed",
+            extra={"platform_entry_id": str(platform_entry_id)},
+        )
+
+        if self.request.retries >= self.max_retries or (isinstance(e, ValueError) and "TikTok status check failed" not in str(e)):
+            # If it's a direct FAILED status from TikTok, we don't retry, or if we exhaust retries
+            entry.status = PostStatus.FAILED
+            entry.error_message = f"TikTok processing failed: {str(e)}"
+            entry.save(update_fields=["status", "error_message", "updated_at"])
+            PostingService.cleanup_r2_media(entry.content_post)
+            # Do not raise the exception so we don't retry
+            return {"status": "failed", "message": str(e)}
+        else:
+            raise self.retry(exc=e)
+
+
 @shared_task
 def publish_scheduled_posts():
     """
@@ -226,7 +309,7 @@ def sweep_stuck_platform_entries():
     two_hours_ago = now - timedelta(hours=2)
 
     stuck_entries = ContentPostPlatform.objects.filter(
-        status__in=[PostStatus.PENDING, PostStatus.UPLOADING],
+        status__in=[PostStatus.PENDING, PostStatus.UPLOADING, PostStatus.PROCESSING],
         updated_at__lte=two_hours_ago,
         content_post__scheduled_at__isnull=False,
     )
@@ -238,7 +321,7 @@ def sweep_stuck_platform_entries():
                     id=entry.id
                 )
                 # Double check they are still stuck
-                if locked_entry.status in [PostStatus.PENDING, PostStatus.UPLOADING]:
+                if locked_entry.status in [PostStatus.PENDING, PostStatus.UPLOADING, PostStatus.PROCESSING]:
                     locked_entry.status = PostStatus.FAILED
                     locked_entry.error_message = (
                         "System interrupted during posting. Please try again."

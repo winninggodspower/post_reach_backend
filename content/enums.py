@@ -5,6 +5,7 @@ class PostStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     SCHEDULED = "scheduled", "Scheduled"
     UPLOADING = "uploading", "Uploading to Platform"
+    PROCESSING = "processing", "Processing on Platform"
     POSTED = "posted", "Posted Successfully"
     FAILED = "failed", "Posting Failed"
 

@@ -232,6 +232,7 @@ class TestFetchUserInfo:
         assert result == {
             "account_name": "My TikTok Account",
             "external_id": "test_open_id_123",
+            "profile_picture_url": None,
         }
         # Verify it used the correct base URL
         assert mock_get.call_args[0][0] == "/oauth/userinfo/"
@@ -257,6 +258,7 @@ class TestFetchUserInfo:
         assert result == {
             "account_name": "fallback_user",
             "external_id": "test_open_id_456",
+            "profile_picture_url": None,
         }
 
     def test_fetch_user_info_no_data_key(self, mocker):

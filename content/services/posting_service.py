@@ -174,7 +174,7 @@ class PostingService:
                     )
 
             if result.get("status") == "processing":
-                entry.status = PostStatus.UPLOADING
+                entry.status = PostStatus.PROCESSING
             else:
                 entry.status = PostStatus.POSTED
             entry.platform_post_id = result.get("platform_post_id", "")
