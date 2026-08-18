@@ -156,14 +156,19 @@ class ContentCreationService:
 
                 content_post.refresh_from_db()
 
-                # Dispatch Celery tasks immediately only if not scheduled
                 if not scheduled_at:
                     from content.tasks import publish_platform_entry
+                    from utils.custom_logger import CustomLogger
 
                     for entry in content_post.platform_entries.all():
-                        publish_platform_entry.delay(
-                            str(entry.id), content_type=content_type
-                        )
+                        def dispatch_task(e_id=str(entry.id), c_type=content_type):
+                            CustomLogger.info(
+                                "Django app dispatching publish_platform_entry to Celery", 
+                                extra={"platform_entry_id": e_id, "content_type": c_type}
+                            )
+                            publish_platform_entry.delay(e_id, content_type=c_type)
+
+                        transaction.on_commit(dispatch_task)
         except Exception:
             CustomLogger.exception(
                 "content.services.content_creation_service",

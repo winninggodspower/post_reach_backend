@@ -23,6 +23,10 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
     After publishing, checks if all entries for the parent ContentPost
     are done and cleans up the R2 media if so.
     """
+    CustomLogger.info(
+        "publish_platform_entry task triggered",
+        extra={"platform_entry_id": str(platform_entry_id), "content_type": content_type},
+    )
     try:
         entry = ContentPostPlatform.objects.select_related(
             "content_post", "content_post__brand"
@@ -76,7 +80,11 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
         result_entry.status == PostStatus.UPLOADING
         and result_entry.platform == PlatformChoices.INSTAGRAM
     ):
-        check_instagram_container_status.delay(result_entry.id)
+        CustomLogger.info(
+            "Triggering check_instagram_container_status",
+            extra={"platform_entry_id": str(result_entry.id)}
+        )
+        check_instagram_container_status.delay(str(result_entry.id))
 
     return {
         "status": result_entry.status,
