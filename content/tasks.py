@@ -213,11 +213,13 @@ def check_tiktok_publish_status(self, platform_entry_id):
         )
 
         status_val = status_data.get("status")
-        
+
         if status_val == "PUBLISH_COMPLETE":
             public_post_ids = status_data.get("publicaly_available_post_id", [])
-            final_item_id = public_post_ids[0] if public_post_ids else entry.platform_post_id
-            
+            final_item_id = (
+                public_post_ids[0] if public_post_ids else entry.platform_post_id
+            )
+
             entry.status = PostStatus.POSTED
             entry.platform_post_id = final_item_id
             entry.save(update_fields=["status", "platform_post_id", "updated_at"])
@@ -231,7 +233,7 @@ def check_tiktok_publish_status(self, platform_entry_id):
 
         elif status_val == "FAILED":
             raise ValueError(status_data.get("fail_reason", "Unknown TikTok error"))
-            
+
         else:
             # e.g., PROCESSING_DOWNLOAD, PROCESSING
             raise self.retry()
@@ -247,7 +249,9 @@ def check_tiktok_publish_status(self, platform_entry_id):
             extra={"platform_entry_id": str(platform_entry_id)},
         )
 
-        if self.request.retries >= self.max_retries or (isinstance(e, ValueError) and "TikTok status check failed" not in str(e)):
+        if self.request.retries >= self.max_retries or (
+            isinstance(e, ValueError) and "TikTok status check failed" not in str(e)
+        ):
             # If it's a direct FAILED status from TikTok, we don't retry, or if we exhaust retries
             entry.status = PostStatus.FAILED
             entry.error_message = f"TikTok processing failed: {str(e)}"
@@ -321,7 +325,11 @@ def sweep_stuck_platform_entries():
                     id=entry.id
                 )
                 # Double check they are still stuck
-                if locked_entry.status in [PostStatus.PENDING, PostStatus.UPLOADING, PostStatus.PROCESSING]:
+                if locked_entry.status in [
+                    PostStatus.PENDING,
+                    PostStatus.UPLOADING,
+                    PostStatus.PROCESSING,
+                ]:
                     locked_entry.status = PostStatus.FAILED
                     locked_entry.error_message = (
                         "System interrupted during posting. Please try again."
