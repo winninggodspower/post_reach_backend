@@ -178,7 +178,7 @@ class PostingService:
             else:
                 entry.status = PostStatus.POSTED
             entry.platform_post_id = result.get("platform_post_id", "")
-            
+
             post_url = result.get("post_url", "")
             if not post_url and entry.status == PostStatus.POSTED:
                 post_url = cls._generate_post_url(
@@ -186,7 +186,9 @@ class PostingService:
                 )
 
             entry.post_url = post_url
-            entry.save(update_fields=["status", "platform_post_id", "post_url", "updated_at"])
+            entry.save(
+                update_fields=["status", "platform_post_id", "post_url", "updated_at"]
+            )
 
         except Exception as e:
             CustomLogger.exception(
@@ -324,7 +326,9 @@ class PostingService:
         raise ValueError(f"Text publishing not supported for: {platform}")
 
     @classmethod
-    def _generate_post_url(cls, platform: str, platform_post_id: str, social_account) -> str:
+    def _generate_post_url(
+        cls, platform: str, platform_post_id: str, social_account
+    ) -> str:
         """
         Generates the public post URL for synchronous platforms based on the returned ID.
         """
@@ -337,5 +341,5 @@ class PostingService:
         elif platform == PlatformChoices.TWITTER:
             username = social_account.account_name or social_account.external_id
             return f"https://twitter.com/{username}/status/{platform_post_id}"
-        
+
         return ""
