@@ -42,7 +42,7 @@ class TestPublishPlatformEntryTask:
             "content.services.posting_service.PostingService.publish_platform_entry",
             return_value=mocker.Mock(
                 id=entry.id,
-                status=PostStatus.UPLOADING,
+                status=PostStatus.PROCESSING,
                 platform=PlatformChoices.INSTAGRAM,
                 content_post=cp,
                 platform_post_id="container_123",
@@ -55,8 +55,8 @@ class TestPublishPlatformEntryTask:
 
         result = publish_platform_entry(entry.id, content_type="video")
 
-        assert result["status"] == PostStatus.UPLOADING
-        mock_delay.assert_called_once_with(entry.id)
+        assert result["status"] == PostStatus.PROCESSING
+        mock_delay.assert_called_once_with(str(entry.id))
 
 
 class TestCheckInstagramContainerStatusTask:
@@ -139,6 +139,12 @@ class TestCheckInstagramContainerStatusTask:
 
         mock_cleanup = mocker.patch(
             "content.services.posting_service.PostingService.cleanup_r2_media"
+        )
+        
+        mock_permalink = mocker.patch.object(
+            InstagramService,
+            "get_permalink",
+            return_value="https://instagram.com/p/123/",
         )
 
         result = check_instagram_container_status(entry.id)

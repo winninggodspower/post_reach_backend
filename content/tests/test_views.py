@@ -120,6 +120,10 @@ class TestVideoEndpoint:
     def test_success_single_platform(
         self, db, authenticated_client, user, brand, mocker
     ):
+        mocker.patch(
+            "content.services.content_creation_service.transaction.on_commit",
+            side_effect=lambda f: f()
+        )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
         )
@@ -175,6 +179,10 @@ class TestVideoEndpoint:
     def test_success_multiple_platforms(
         self, db, authenticated_client, user, brand, mocker
     ):
+        mocker.patch(
+            "content.services.content_creation_service.transaction.on_commit",
+            side_effect=lambda f: f()
+        )
         mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file"
         )
@@ -256,6 +264,10 @@ class TestVideoEndpoint:
     def test_success_with_thumbnail(
         self, db, authenticated_client, user, brand, mocker
     ):
+        mocker.patch(
+            "content.services.content_creation_service.transaction.on_commit",
+            side_effect=lambda f: f()
+        )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
         )
@@ -331,6 +343,10 @@ class TestPhotoEndpoint:
     URL = "content-post-photo"
 
     def test_success_single_photo(self, db, authenticated_client, user, brand, mocker):
+        mocker.patch(
+            "content.services.content_creation_service.transaction.on_commit",
+            side_effect=lambda f: f()
+        )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
         )
@@ -381,6 +397,10 @@ class TestPhotoEndpoint:
     def test_success_multiple_photos(
         self, db, authenticated_client, user, brand, mocker
     ):
+        mocker.patch(
+            "content.services.content_creation_service.transaction.on_commit",
+            side_effect=lambda f: f()
+        )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
         )

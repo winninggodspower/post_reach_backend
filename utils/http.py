@@ -5,7 +5,7 @@ HTTP client utilities for shared service code.
 import asyncio
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
 import httpx
@@ -164,7 +164,7 @@ class BaseHTTPClient:
         log_data: dict[str, Any] = {
             "method": method.upper(),
             "url": str(url),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         if params:
             log_data["params"] = params
@@ -183,7 +183,7 @@ class BaseHTTPClient:
             "url": str(response.url),
             "status_code": response.status_code,
             "duration_seconds": round(duration, 3),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         max_length = 1000
         response_text = response.text

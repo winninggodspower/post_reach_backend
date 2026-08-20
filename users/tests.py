@@ -145,15 +145,18 @@ def test_me_includes_connected_accounts(authenticated_client, brand):
 
     assert response.status_code == 200
     connected_accounts = response.data["data"]["brand"]["connected_accounts"]
+    from rest_framework.fields import DateTimeField
+    dt_field = DateTimeField()
+
     assert connected_accounts == [
         {
             "platform": "instagram",
             "external_id": "ig_123456789",
             "account_name": "brand_insta",
             "profile_picture_url": "https://example.com/profile.jpg",
-            "connected_at": account.created_at.isoformat().replace("+00:00", "Z"),
+            "connected_at": dt_field.to_representation(account.created_at),
             "is_expired": account.is_token_expired(),
-            "expired_at": account.token_expires_at.isoformat().replace("+00:00", "Z"),
+            "expired_at": dt_field.to_representation(account.token_expires_at),
         }
     ]
 
