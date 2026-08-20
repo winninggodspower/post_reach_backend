@@ -140,7 +140,7 @@ class TestCheckInstagramContainerStatusTask:
         mock_cleanup = mocker.patch(
             "content.services.posting_service.PostingService.cleanup_r2_media"
         )
-        
+
         mock_permalink = mocker.patch.object(
             InstagramService,
             "get_permalink",

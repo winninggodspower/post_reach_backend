@@ -122,7 +122,7 @@ class TestVideoEndpoint:
     ):
         mocker.patch(
             "content.services.content_creation_service.transaction.on_commit",
-            side_effect=lambda f: f()
+            side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
@@ -181,7 +181,7 @@ class TestVideoEndpoint:
     ):
         mocker.patch(
             "content.services.content_creation_service.transaction.on_commit",
-            side_effect=lambda f: f()
+            side_effect=lambda f: f(),
         )
         mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file"
@@ -266,7 +266,7 @@ class TestVideoEndpoint:
     ):
         mocker.patch(
             "content.services.content_creation_service.transaction.on_commit",
-            side_effect=lambda f: f()
+            side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
@@ -345,7 +345,7 @@ class TestPhotoEndpoint:
     def test_success_single_photo(self, db, authenticated_client, user, brand, mocker):
         mocker.patch(
             "content.services.content_creation_service.transaction.on_commit",
-            side_effect=lambda f: f()
+            side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
@@ -399,7 +399,7 @@ class TestPhotoEndpoint:
     ):
         mocker.patch(
             "content.services.content_creation_service.transaction.on_commit",
-            side_effect=lambda f: f()
+            side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",

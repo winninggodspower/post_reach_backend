@@ -146,6 +146,7 @@ def test_me_includes_connected_accounts(authenticated_client, brand):
     assert response.status_code == 200
     connected_accounts = response.data["data"]["brand"]["connected_accounts"]
     from rest_framework.fields import DateTimeField
+
     dt_field = DateTimeField()
 
     assert connected_accounts == [

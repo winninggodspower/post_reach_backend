@@ -114,7 +114,7 @@ class TestContentCreationService:
     def test_create_with_single_platform(self, db, user, brand, mocker):
         mocker.patch(
             "content.services.content_creation_service.transaction.on_commit",
-            side_effect=lambda f: f()
+            side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
@@ -147,7 +147,7 @@ class TestContentCreationService:
     def test_create_with_multiple_photos(self, db, user, brand, mocker):
         mocker.patch(
             "content.services.content_creation_service.transaction.on_commit",
-            side_effect=lambda f: f()
+            side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
@@ -194,7 +194,7 @@ class TestContentCreationService:
     ):
         mocker.patch(
             "content.services.content_creation_service.transaction.on_commit",
-            side_effect=lambda f: f()
+            side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
             "content.services.content_creation_service.R2StorageService.upload_file",
