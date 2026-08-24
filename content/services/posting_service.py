@@ -212,6 +212,9 @@ class PostingService:
 
         for media_item in content_post.media_items.all():
             R2StorageService.delete_file(media_item.r2_key)
+            
+        if content_post.thumbnail_r2_key:
+            R2StorageService.delete_file(content_post.thumbnail_r2_key)
 
     # ── private helpers ────────────────────────────────────
 

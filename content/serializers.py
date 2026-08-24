@@ -1,7 +1,7 @@
 from drf_yasg import openapi
 from rest_framework import serializers
 
-from content.enums import PhotoPlatformOptions, TextPlatformOptions
+from content.enums import PhotoPlatformOptions, PostStatus, TextPlatformOptions
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from social_accounts.enums import PlatformChoices
 from utils.r2_storage import R2StorageService
@@ -199,6 +199,7 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
         source="platform_entries", many=True, read_only=True
     )
     thumbnail_url = serializers.SerializerMethodField()
+    media_urls = serializers.SerializerMethodField()
 
     class Meta:
         model = ContentPost
@@ -210,12 +211,32 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
             "platforms",
             "thumbnail_url",
             "video_thumbnail_offset",
+            "media_urls",
             "created_at",
             "updated_at",
         ]
         read_only_fields = fields
 
+    def _is_media_deleted(self, obj):
+        # Since platform_entries are prefetched, we iterate in memory to avoid N+1 queries
+        for entry in obj.platform_entries.all():
+            if entry.status not in [PostStatus.POSTED, PostStatus.FAILED]:
+                return False
+        return True
+
     def get_thumbnail_url(self, obj):
+        if self._is_media_deleted(obj):
+            return None
         if obj.thumbnail_r2_key:
             return R2StorageService.generate_presigned_url(obj.thumbnail_r2_key)
         return None
+
+    def get_media_urls(self, obj):
+        if self._is_media_deleted(obj):
+            return []
+        urls = []
+        for media in obj.media_items.all():
+            url = R2StorageService.generate_presigned_url(media.r2_key)
+            if url:
+                urls.append(url)
+        return urls

@@ -5,6 +5,9 @@ from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
+from django.db.models import Q
+from django.utils.dateparse import parse_date
+
 from content.models import ContentPost
 from content.serializers import (
     ContentPostCreateSerializer,
@@ -16,6 +19,7 @@ from content.serializers import (
 )
 from content.services.content_creation_service import ContentCreationService
 from content.services.content_post_service import ContentPostService
+from users.services.brand_service import BrandService
 from utils.custom_logger import CustomLogger
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
@@ -167,11 +171,6 @@ class ContentPostViewSet(viewsets.ViewSet):
         """
         GET /api/content/posts/calendar/
         """
-        from django.db.models import Q
-        from django.utils.dateparse import parse_date
-
-        from users.services.brand_service import BrandService
-
         user = request.user
         try:
             brand = BrandService.get_default_brand(user)
@@ -208,11 +207,11 @@ class ContentPostViewSet(viewsets.ViewSet):
     # ── Retrieve status ────────────────────────────────────
 
     @swagger_auto_schema(
-        operation_summary="Get the status of a content post",
+        operation_summary="Get a content post by ID",
         operation_description=(
-            "Returns a ContentPost by ID with per-platform status details "
-            "(pending, uploading, posted, or failed) including platform_post_id "
-            "and error_message for each platform."
+            "Returns the full details of a ContentPost by ID, including its media, "
+            "caption, and per-platform status details (pending, uploading, posted, "
+            "or failed) with platform_post_id and error_message for each platform."
         ),
         responses={
             200: ContentPostResponseSerializer,

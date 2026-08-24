@@ -21,6 +21,9 @@ class BrandViewSet(viewsets.ModelViewSet):
     serializer_class = BrandSerializer
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Brand.objects.none()
+
         return Brand.objects.filter(user=self.request.user).prefetch_related(
             "social_accounts"
         )
