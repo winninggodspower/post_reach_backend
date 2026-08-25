@@ -58,6 +58,7 @@ class Brand(UUIDTimestampedModel):
         blank=True,
         null=True,
     )
+    logo_url = models.URLField(max_length=1000, null=True, blank=True)
     posting_frequency = models.CharField(max_length=100, blank=True, null=True)
     primary_platform = models.CharField(
         max_length=100,

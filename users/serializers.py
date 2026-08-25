@@ -136,13 +136,14 @@ class BrandSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "logo_url",
             "industry",
             "posting_frequency",
             "primary_platform",
             "team_size",
             "connected_accounts",
         ]
-        read_only_fields = ["id", "connected_accounts"]
+        read_only_fields = ["id", "logo_url", "connected_accounts"]
 
     def get_connected_accounts(self, brand):
         accounts = brand.social_accounts.all()
