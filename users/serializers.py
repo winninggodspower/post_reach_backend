@@ -27,6 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "handle",
+            "profile_picture_url",
             "role",
             "has_completed_onboarding",
             "brand",

@@ -31,6 +31,7 @@ class User(AbstractUser, UUIDModel):
         null=True,
         blank=True,
     )
+    profile_picture_url = models.URLField(max_length=1000, null=True, blank=True)
     active_brand = models.ForeignKey(
         "users.Brand",
         on_delete=models.SET_NULL,
