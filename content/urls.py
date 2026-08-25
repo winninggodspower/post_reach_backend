@@ -25,7 +25,7 @@ urlpatterns = [
     ),
     path(
         "posts/<uuid:pk>/",
-        ContentPostViewSet.as_view({"get": "retrieve"}),
+        ContentPostViewSet.as_view({"get": "retrieve", "patch": "partial_update"}),
         name="content-post-detail",
     ),
 ]

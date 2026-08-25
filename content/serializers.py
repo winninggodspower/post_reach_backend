@@ -1,3 +1,5 @@
+import json
+
 from drf_yasg import openapi
 from rest_framework import serializers
 
@@ -177,6 +179,29 @@ class TextPostCreateSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         # Validation is handled by TextPlatformOptions choices in platforms MultipleChoiceField
+        return attrs
+
+
+class ContentPostUpdateSerializer(serializers.Serializer):
+    caption = serializers.CharField(required=False, allow_blank=True)
+    scheduled_at = serializers.DateTimeField(required=False, allow_null=True)
+    platform_settings = serializers.JSONField(required=False)
+    platforms = serializers.MultipleChoiceField(
+        choices=PlatformChoices.choices, required=False
+    )
+
+    def validate_platform_settings(self, value):
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError("Must be a valid JSON object.")
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Must be a dictionary/JSON object.")
+        return value
+
+    def validate(self, attrs):
+        # We can add platform-specific validation here if needed
         return attrs
 
 

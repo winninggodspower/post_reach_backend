@@ -2,7 +2,7 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
 from django.db.models import Q
@@ -12,6 +12,7 @@ from content.models import ContentPost
 from content.serializers import (
     ContentPostCreateSerializer,
     ContentPostResponseSerializer,
+    ContentPostUpdateSerializer,
     PhotoPostCreateSerializer,
     TextPostCreateSerializer,
     photo_post_parameters,
@@ -26,7 +27,7 @@ from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 class ContentPostViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     # ── Video ──────────────────────────────────────────────
 
@@ -231,6 +232,50 @@ class ContentPostViewSet(viewsets.ViewSet):
             return CustomErrorResponse(
                 "Content post not found.",
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        response_data = ContentPostResponseSerializer(content_post).data
+        return CustomSuccessResponse(response_data)
+
+    @swagger_auto_schema(
+        operation_summary="Update a scheduled content post",
+        operation_description=(
+            "Updates the caption, scheduled_at, or platform_settings of a ContentPost. "
+            "Only allowed if the post has not started processing yet (all platforms are PENDING or SCHEDULED)."
+        ),
+        request_body=ContentPostUpdateSerializer,
+        responses={
+            200: ContentPostResponseSerializer,
+            400: openapi.Response("Bad Request"),
+            404: openapi.Response("Not Found"),
+        },
+    )
+    def partial_update(self, request, pk=None):
+        """
+        PATCH /api/content/posts/{id}/
+        """
+        try:
+            content_post = ContentPostService.get_content_post(
+                post_id=pk, user=request.user
+            )
+        except ContentPost.DoesNotExist:
+            return CustomErrorResponse(
+                "Content post not found.",
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ContentPostUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            content_post = ContentPostService.update_content_post(
+                content_post=content_post,
+                validated_data=serializer.validated_data,
+            )
+        except ValueError as e:
+            return CustomErrorResponse(
+                str(e),
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         response_data = ContentPostResponseSerializer(content_post).data
