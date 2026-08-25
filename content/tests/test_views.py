@@ -121,14 +121,14 @@ class TestVideoEndpoint:
         self, db, authenticated_client, user, brand, mocker
     ):
         mocker.patch(
-            "content.services.content_creation_service.transaction.on_commit",
+            "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
-            "content.services.content_creation_service.R2StorageService.upload_file",
+            "content.services.content_post_service.R2StorageService.upload_file",
         )
         mocker.patch(
-            "content.services.content_creation_service.R2StorageService.generate_key",
+            "content.services.content_post_service.R2StorageService.generate_key",
             return_value="videos/2026-06-15/abc.mp4",
         )
         mock_delay = mocker.patch(
@@ -180,14 +180,14 @@ class TestVideoEndpoint:
         self, db, authenticated_client, user, brand, mocker
     ):
         mocker.patch(
-            "content.services.content_creation_service.transaction.on_commit",
+            "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
         )
         mocker.patch(
-            "content.services.content_creation_service.R2StorageService.upload_file"
+            "content.services.content_post_service.R2StorageService.upload_file"
         )
         mocker.patch(
-            "content.services.content_creation_service.R2StorageService.generate_key",
+            "content.services.content_post_service.R2StorageService.generate_key",
             return_value="videos/2026-06-15/m.mp4",
         )
         mock_delay = mocker.patch(
@@ -265,14 +265,14 @@ class TestVideoEndpoint:
         self, db, authenticated_client, user, brand, mocker
     ):
         mocker.patch(
-            "content.services.content_creation_service.transaction.on_commit",
+            "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
-            "content.services.content_creation_service.R2StorageService.upload_file",
+            "content.services.content_post_service.R2StorageService.upload_file",
         )
         mocker.patch(
-            "content.services.content_creation_service.R2StorageService.generate_key",
+            "content.services.content_post_service.R2StorageService.generate_key",
             side_effect=["videos/abc.mp4", "photos/thumb.jpg"],
         )
         mocker.patch(
@@ -344,14 +344,14 @@ class TestPhotoEndpoint:
 
     def test_success_single_photo(self, db, authenticated_client, user, brand, mocker):
         mocker.patch(
-            "content.services.content_creation_service.transaction.on_commit",
+            "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
-            "content.services.content_creation_service.R2StorageService.upload_file",
+            "content.services.content_post_service.R2StorageService.upload_file",
         )
         mocker.patch(
-            "content.services.content_creation_service.R2StorageService.generate_key",
+            "content.services.content_post_service.R2StorageService.generate_key",
             return_value="photos/2026-06-15/p.jpg",
         )
         mock_delay = mocker.patch(
@@ -398,14 +398,14 @@ class TestPhotoEndpoint:
         self, db, authenticated_client, user, brand, mocker
     ):
         mocker.patch(
-            "content.services.content_creation_service.transaction.on_commit",
+            "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
         )
         mock_upload = mocker.patch(
-            "content.services.content_creation_service.R2StorageService.upload_file",
+            "content.services.content_post_service.R2StorageService.upload_file",
         )
         mocker.patch(
-            "content.services.content_creation_service.R2StorageService.generate_key",
+            "content.services.content_post_service.R2StorageService.generate_key",
             side_effect=[
                 "photos/2026-06-15/a.jpg",
                 "photos/2026-06-15/b.jpg",

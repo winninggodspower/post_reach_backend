@@ -18,7 +18,6 @@ from content.serializers import (
     photo_post_parameters,
     text_post_parameters,
 )
-from content.services.content_creation_service import ContentCreationService
 from content.services.content_post_service import ContentPostService
 from users.services.brand_service import BrandService
 from utils.custom_logger import CustomLogger
@@ -281,6 +280,45 @@ class ContentPostViewSet(viewsets.ViewSet):
         response_data = ContentPostResponseSerializer(content_post).data
         return CustomSuccessResponse(response_data)
 
+    @swagger_auto_schema(
+        operation_summary="Delete a scheduled content post",
+        operation_description=(
+            "Deletes a scheduled ContentPost and its associated media. "
+            "Only allowed if the post has not started processing yet (all platforms are PENDING or SCHEDULED)."
+        ),
+        responses={
+            204: openapi.Response("No Content"),
+            400: openapi.Response("Bad Request"),
+            404: openapi.Response("Not Found"),
+        },
+    )
+    def destroy(self, request, pk=None):
+        """
+        DELETE /api/content/posts/{id}/
+        """
+        try:
+            content_post = ContentPostService.get_content_post(
+                post_id=pk, user=request.user
+            )
+        except ContentPost.DoesNotExist:
+            return CustomErrorResponse(
+                "Content post not found.",
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            ContentPostService.delete_content_post(content_post)
+        except ValueError as e:
+            return CustomErrorResponse(
+                str(e),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return CustomSuccessResponse(
+            "Post deleted successfully.",
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
     # ── shared helper ──────────────────────────────────────
 
     def _create_and_dispatch(
@@ -301,7 +339,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         return the serialized response.
         """
         try:
-            content_post = ContentCreationService.create_content_post(
+            content_post = ContentPostService.create_content_post(
                 user=request.user,
                 media_files=media_files,
                 caption=caption,

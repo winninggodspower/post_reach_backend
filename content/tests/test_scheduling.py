@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from content.enums import PostStatus
 from content.models import ContentPost, ContentPostPlatform
-from content.services.content_creation_service import ContentCreationService
+from content.services.content_post_service import ContentPostService
 from content.tasks import publish_scheduled_posts
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
@@ -41,7 +41,7 @@ class TestPostScheduling:
         mock_delay = mocker.patch("content.tasks.publish_platform_entry.delay")
 
         future_time = timezone.now() + timedelta(hours=2)
-        post = ContentCreationService.create_content_post(
+        post = ContentPostService.create_content_post(
             user=user,
             media_files=[],
             caption="Scheduled Post",
@@ -71,7 +71,7 @@ class TestPostScheduling:
         future_time = timezone.now() + timedelta(hours=1)
 
         # 1. Post due to be published
-        due_post = ContentCreationService.create_content_post(
+        due_post = ContentPostService.create_content_post(
             user=user,
             media_files=[],
             caption="Due Post",
@@ -81,7 +81,7 @@ class TestPostScheduling:
         )
 
         # 2. Post not yet due
-        future_post = ContentCreationService.create_content_post(
+        future_post = ContentPostService.create_content_post(
             user=user,
             media_files=[],
             caption="Future Post",
@@ -108,7 +108,7 @@ class TestPostScheduling:
         now = timezone.now()
 
         # Post 1: Scheduled today
-        post_today = ContentCreationService.create_content_post(
+        post_today = ContentPostService.create_content_post(
             user=user,
             media_files=[],
             caption="Today",
@@ -118,7 +118,7 @@ class TestPostScheduling:
         )
 
         # Post 2: Scheduled next week
-        post_next_week = ContentCreationService.create_content_post(
+        post_next_week = ContentPostService.create_content_post(
             user=user,
             media_files=[],
             caption="Next Week",
