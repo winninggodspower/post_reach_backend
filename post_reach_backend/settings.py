@@ -142,6 +142,10 @@ if DEBUG:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
+            "OPTIONS": {
+                # wait for the lock to release instead of failing immediately
+                "timeout": 20, 
+            }
         }
     }
 else:

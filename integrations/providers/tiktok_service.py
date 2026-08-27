@@ -76,6 +76,7 @@ class TiktokService(SocialAccountService):
             "state": state,
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
+            "disable_auto_auth": "1",
         }
 
         query_string = "&".join(f"{k}={v}" for k, v in params.items())
@@ -155,7 +156,9 @@ class TiktokService(SocialAccountService):
             or user_data.get("username", ""),
             "external_id": user_data.get("open_id", ""),
             "profile_picture_url": (
-                user_data.get("avatar_url_large")
+                user_data.get("avatar_larger")
+                or user_data.get("avatar")
+                or user_data.get("avatar_url_large")
                 or user_data.get("avatar_url")
                 or user_data.get("avatar_large")
                 or user_data.get("avatar_url_100")

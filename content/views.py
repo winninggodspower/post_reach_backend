@@ -26,7 +26,7 @@ from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 class ContentPostViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser]
 
     # ── Video ──────────────────────────────────────────────
 

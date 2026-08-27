@@ -145,9 +145,15 @@ def check_instagram_container_status(self, platform_entry_id):
             )
 
             # Fetch the permalink
-            entry.post_url = InstagramService.get_permalink(
-                access_token=access_token, media_id=entry.platform_post_id
-            )
+            try:
+                entry.post_url = InstagramService.get_permalink(
+                    access_token=access_token, media_id=entry.platform_post_id
+                )
+            except Exception as e:
+                CustomLogger.warning(
+                    "Failed to fetch permalink for newly published media",
+                    extra={"media_id": entry.platform_post_id, "error": str(e)}
+                )
 
             entry.save(
                 update_fields=["status", "platform_post_id", "post_url", "updated_at"]
@@ -165,12 +171,7 @@ def check_instagram_container_status(self, platform_entry_id):
             # The container was already published (perhaps a previous attempt succeeded but timed out locally)
             entry.status = PostStatus.POSTED
 
-            # Fetch the permalink
-            entry.post_url = InstagramService.get_permalink(
-                access_token=access_token, media_id=entry.platform_post_id
-            )
-
-            entry.save(update_fields=["status", "post_url", "updated_at"])
+            entry.save(update_fields=["status", "updated_at"])
             PostingService.cleanup_r2_media(entry.content_post)
             return {
                 "status": "posted",
