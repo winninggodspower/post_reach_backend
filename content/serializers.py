@@ -90,9 +90,14 @@ text_post_parameters = [
 ]
 
 
+class PresignedUrlRequestSerializer(serializers.Serializer):
+    content_type = serializers.ChoiceField(choices=["video", "photo"], required=True)
+    extension = serializers.CharField(required=False, allow_blank=True, default=None)
+
+
 class ContentPostCreateSerializer(serializers.Serializer):
-    video = serializers.FileField(required=True)
-    thumbnail = serializers.FileField(required=False, allow_null=True, default=None)
+    video_key = serializers.CharField(required=True)
+    thumbnail_key = serializers.CharField(required=False, allow_blank=True, allow_null=True, default=None)
     video_thumbnail_offset = serializers.IntegerField(
         required=False, allow_null=True, default=None
     )
@@ -140,8 +145,8 @@ class ContentPostPlatformSerializer(serializers.ModelSerializer):
 
 
 class PhotoPostCreateSerializer(serializers.Serializer):
-    photos = serializers.ListField(
-        child=serializers.FileField(), required=True, min_length=1
+    photo_keys = serializers.ListField(
+        child=serializers.CharField(), required=True, min_length=1
     )
     caption = serializers.CharField(required=False, allow_blank=True, default="")
     scheduled_at = serializers.DateTimeField(

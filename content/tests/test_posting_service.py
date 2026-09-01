@@ -22,7 +22,7 @@ class TestContentPostCreateSerializer:
 
     def test_valid_single_platform(self):
         data = {
-            "video": MagicMock(),
+            "video_key": "videos/test.mp4",
             "caption": "My Test Video",
             "platforms": [PlatformChoices.YOUTUBE],
             "platform_settings": {"youtube": {"title": "YouTube Title"}},
@@ -32,7 +32,7 @@ class TestContentPostCreateSerializer:
 
     def test_valid_multiple_platforms(self):
         data = {
-            "video": MagicMock(),
+            "video_key": "videos/test.mp4",
             "caption": "My Test Video",
             "platforms": [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
             "platform_settings": {"youtube": {"title": "YouTube Title"}},
@@ -42,7 +42,7 @@ class TestContentPostCreateSerializer:
 
     def test_missing_youtube_title(self):
         data = {
-            "video": MagicMock(),
+            "video_key": "videos/test.mp4",
             "platforms": [PlatformChoices.YOUTUBE],
         }
         serializer = ContentPostCreateSerializer(data=data)
@@ -55,7 +55,7 @@ class TestPhotoPostCreateSerializer:
 
     def test_valid(self):
         data = {
-            "photos": [MagicMock()],
+            "photo_keys": ["photos/test1.jpg"],
             "caption": "A beautiful photo",
             "platforms": [PlatformChoices.INSTAGRAM],
         }
@@ -64,7 +64,7 @@ class TestPhotoPostCreateSerializer:
 
     def test_valid_multiple_photos(self):
         data = {
-            "photos": [MagicMock(), MagicMock()],
+            "photo_keys": ["photos/test1.jpg", "photos/test2.jpg"],
             "caption": "Multi photo post",
             "platforms": [PlatformChoices.FACEBOOK],
         }
@@ -73,7 +73,7 @@ class TestPhotoPostCreateSerializer:
 
     def test_caption_optional(self):
         data = {
-            "photos": [MagicMock()],
+            "photo_keys": ["photos/test1.jpg"],
             "platforms": [PlatformChoices.FACEBOOK],
         }
         serializer = PhotoPostCreateSerializer(data=data)
@@ -130,7 +130,7 @@ class TestContentPostService:
 
         content_post = ContentPostService.create_content_post(
             user=user,
-            media_files=[self._mock_file()],
+            media_keys=["videos/test.mp4"],
             caption="Hello world",
             platforms=[PlatformChoices.YOUTUBE],
             platform_settings={"youtube": {"title": "YouTube Title"}},
@@ -169,10 +169,10 @@ class TestContentPostService:
 
         content_post = ContentPostService.create_content_post(
             user=user,
-            media_files=[
-                self._mock_file(name="a.jpg", content=b"photo-a"),
-                self._mock_file(name="b.jpg", content=b"photo-b"),
-                self._mock_file(name="c.jpg", content=b"photo-c"),
+            media_keys=[
+                "photos/a.jpg",
+                "photos/b.jpg",
+                "photos/c.jpg",
             ],
             caption="Multi photo",
             platforms=[PlatformChoices.FACEBOOK, PlatformChoices.INSTAGRAM],
@@ -210,7 +210,7 @@ class TestContentPostService:
 
         content_post = ContentPostService.create_content_post(
             user=user,
-            media_files=[self._mock_file()],
+            media_keys=["videos/test.mp4"],
             caption="Multi",
             platforms=[PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
             platform_settings={"youtube": {"title": "YouTube Title"}},
@@ -226,7 +226,7 @@ class TestContentPostService:
         with pytest.raises(ValueError, match="No default brand"):
             ContentPostService.create_content_post(
                 user=user,
-                media_files=[self._mock_file()],
+                media_keys=["videos/test.mp4"],
                 caption="Test",
                 platforms=[PlatformChoices.YOUTUBE],
                 platform_settings={"youtube": {"title": "YouTube Title"}},
@@ -236,7 +236,7 @@ class TestContentPostService:
         with pytest.raises(ValueError, match="No connected account"):
             ContentPostService.create_content_post(
                 user=user,
-                media_files=[self._mock_file()],
+                media_keys=["videos/test.mp4"],
                 caption="Test",
                 platforms=[PlatformChoices.YOUTUBE],
                 platform_settings={"youtube": {"title": "YouTube Title"}},

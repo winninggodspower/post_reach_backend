@@ -32,13 +32,13 @@ class ContentPostService:
         cls,
         *,
         user,
-        media_files: list,
+        media_keys: list[str] = None,
         caption: str = "",
         platforms: list[str],
         platform_settings: dict = None,
         content_type: str = "video",
         scheduled_at=None,
-        thumbnail_file=None,
+        thumbnail_key: str = None,
         video_thumbnail_offset=None,
     ) -> ContentPost:
         """
@@ -61,37 +61,8 @@ class ContentPostService:
         # 2. Validate platform connections via domain service
         SocialAccountValidationService.ensure_platforms_connected(brand, platforms)
 
-        # 3. Upload each file to R2
-        uploaded_keys = []
-        if content_type != "text":
-            try:
-                for idx, media_file in enumerate(media_files):
-                    file_bytes = media_file.read()
-                    r2_key = R2StorageService.generate_key(content_type=content_type)
-                    R2StorageService.upload_file(
-                        file_bytes, r2_key, content_type=content_type
-                    )
-                    uploaded_keys.append(r2_key)
-            except Exception as e:
-                # Clean up any keys that were already uploaded
-                for key in uploaded_keys:
-                    R2StorageService.delete_file(key)
-                raise ValueError(f"Failed to upload media: {str(e)}") from e
-
-        # 3b. Upload custom thumbnail to R2 if provided
-        thumbnail_key = ""
-        if thumbnail_file:
-            try:
-                thumb_bytes = thumbnail_file.read()
-                thumbnail_key = R2StorageService.generate_key(content_type="photo")
-                R2StorageService.upload_file(
-                    thumb_bytes, thumbnail_key, content_type="photo"
-                )
-            except Exception as e:
-                # Clean up any keys that were already uploaded
-                for key in uploaded_keys:
-                    R2StorageService.delete_file(key)
-                raise ValueError(f"Failed to upload thumbnail: {str(e)}") from e
+        media_keys = media_keys or []
+        thumbnail_key = thumbnail_key or ""
 
         # 4. Create ContentPost + ContentMedia + per-platform entries + dispatch Celery tasks
         try:
@@ -120,7 +91,7 @@ class ContentPostService:
                                 ),
                                 order=idx,
                             )
-                            for idx, r2_key in enumerate(uploaded_keys)
+                            for idx, r2_key in enumerate(media_keys)
                         ]
                     )
 
@@ -176,15 +147,10 @@ class ContentPostService:
                 "content.services.content_post_service",
                 "Failed to dispatch Celery tasks — Redis may be unavailable",
                 extra={
-                    "r2_keys": uploaded_keys,
+                    "r2_keys": media_keys,
                     "platforms": platforms,
                 },
             )
-            # Clean up R2 files since the DB transaction was rolled back
-            for key in uploaded_keys:
-                R2StorageService.delete_file(key)
-            if thumbnail_key:
-                R2StorageService.delete_file(thumbnail_key)
             raise ValueError(
                 "Failed to publish content, queue unavailable at the moment. Please try again later."
             )

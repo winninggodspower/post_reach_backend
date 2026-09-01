@@ -14,6 +14,7 @@ from content.serializers import (
     ContentPostResponseSerializer,
     ContentPostUpdateSerializer,
     PhotoPostCreateSerializer,
+    PresignedUrlRequestSerializer,
     TextPostCreateSerializer,
     photo_post_parameters,
     text_post_parameters,
@@ -21,12 +22,55 @@ from content.serializers import (
 from content.services.content_post_service import ContentPostService
 from users.services.brand_service import BrandService
 from utils.custom_logger import CustomLogger
+from utils.r2_storage import R2StorageService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 
 class ContentPostViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    @swagger_auto_schema(
+        operation_summary="Generate a presigned URL for media upload",
+        operation_description=(
+            "Returns a presigned URL that the frontend can use to upload media (video or photo) "
+            "directly to R2. Also returns the 'key' which must be passed when creating the post."
+        ),
+        request_body=PresignedUrlRequestSerializer,
+        responses={
+            200: openapi.Response(
+                "Success",
+                openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "key": openapi.Schema(type=openapi.TYPE_STRING),
+                        "url": openapi.Schema(type=openapi.TYPE_STRING),
+                    },
+                ),
+            ),
+            400: openapi.Response("Bad Request"),
+        },
+    )
+    @action(detail=False, methods=["post"], url_path="presigned-url")
+    def get_presigned_url(self, request):
+        """
+        POST /api/content/posts/presigned-url/
+        """
+        serializer = PresignedUrlRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        result = R2StorageService.generate_presigned_upload_url(
+            content_type=validated["content_type"],
+            extension=validated.get("extension"),
+        )
+        if not result:
+            return CustomErrorResponse(
+                "Failed to generate presigned URL.",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return CustomSuccessResponse(result)
 
     # ── Video ──────────────────────────────────────────────
 
@@ -56,13 +100,13 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         return self._create_and_dispatch(
             request=request,
-            media_files=[validated["video"]],
+            media_keys=[validated["video_key"]],
             caption=validated.get("caption", ""),
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
             content_type="video",
             scheduled_at=validated.get("scheduled_at"),
-            thumbnail=validated.get("thumbnail"),
+            thumbnail_key=validated.get("thumbnail_key"),
             video_thumbnail_offset=validated.get("video_thumbnail_offset"),
         )
 
@@ -94,7 +138,7 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         return self._create_and_dispatch(
             request=request,
-            media_files=validated["photos"],
+            media_keys=validated["photo_keys"],
             caption=validated.get("caption", ""),
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
@@ -130,7 +174,7 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         return self._create_and_dispatch(
             request=request,
-            media_files=[],
+            media_keys=[],
             caption=validated["caption"],
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
@@ -325,13 +369,13 @@ class ContentPostViewSet(viewsets.ViewSet):
         self,
         *,
         request,
-        media_files,
+        media_keys,
         platforms,
         content_type,
         caption="",
         platform_settings=None,
         scheduled_at=None,
-        thumbnail=None,
+        thumbnail_key=None,
         video_thumbnail_offset=None,
     ):
         """
@@ -341,13 +385,13 @@ class ContentPostViewSet(viewsets.ViewSet):
         try:
             content_post = ContentPostService.create_content_post(
                 user=request.user,
-                media_files=media_files,
+                media_keys=media_keys,
                 caption=caption,
                 platforms=platforms,
                 platform_settings=platform_settings,
                 content_type=content_type,
                 scheduled_at=scheduled_at,
-                thumbnail_file=thumbnail,
+                thumbnail_key=thumbnail_key,
                 video_thumbnail_offset=video_thumbnail_offset,
             )
         except ValueError as e:

@@ -211,3 +211,35 @@ class R2StorageService:
                 extra={"bucket": settings.CLOUDFLARE_R2_BUCKET, "key": key},
             )
             return None
+
+    @classmethod
+    def generate_presigned_upload_url(
+        cls, content_type: str = "video", extension: str = None, expiration: int = 3600
+    ) -> dict | None:
+        """
+        Generate a presigned URL for uploading a new object to R2.
+
+        Returns a dict containing 'key' and 'url', or None on failure.
+        """
+        key = cls.generate_key(content_type, extension)
+        info = CONTENT_TYPE_MAP.get(content_type, CONTENT_TYPE_MAP["video"])
+        client = cls._get_client()
+
+        try:
+            url = client.generate_presigned_url(
+                "put_object",
+                Params={
+                    "Bucket": settings.CLOUDFLARE_R2_BUCKET,
+                    "Key": key,
+                    "ContentType": info["mime"],
+                },
+                ExpiresIn=expiration,
+            )
+            return {"key": key, "url": url}
+        except Exception:
+            CustomLogger.exception(
+                "R2 presigned upload URL generation failed",
+                extra={"bucket": settings.CLOUDFLARE_R2_BUCKET, "key": key},
+            )
+            return None
+

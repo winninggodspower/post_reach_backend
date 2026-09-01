@@ -4,6 +4,7 @@ Integration tests for ContentPostViewSet endpoints:
   POST /api/content/posts/photo/
 """
 
+import json
 import io
 
 import pytest
@@ -124,9 +125,6 @@ class TestVideoEndpoint:
             "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
         )
-        mock_upload = mocker.patch(
-            "content.services.content_post_service.R2StorageService.upload_file",
-        )
         mocker.patch(
             "content.services.content_post_service.R2StorageService.generate_key",
             return_value="videos/2026-06-15/abc.mp4",
@@ -146,15 +144,10 @@ class TestVideoEndpoint:
             token_expires_at=expires,
         )
 
-        video = io.BytesIO(b"fake-video")
-        video.name = "v.mp4"
-
-        import json
-
         response = authenticated_client.post(
             reverse(self.URL),
             {
-                "video": video,
+                "video_key": "videos/2026-06-15/abc.mp4",
                 "caption": "Test Video",
                 "platforms": [PlatformChoices.YOUTUBE],
                 "platform_settings": json.dumps(
@@ -173,7 +166,6 @@ class TestVideoEndpoint:
         post = ContentPost.objects.get(id=data["data"]["id"])
         assert post.media_items.count() == 1
         assert post.media_items.first().file_type == "video"
-        mock_upload.assert_called_once()
         mock_delay.assert_called_once()
 
     def test_success_multiple_platforms(
@@ -182,9 +174,6 @@ class TestVideoEndpoint:
         mocker.patch(
             "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
-        )
-        mocker.patch(
-            "content.services.content_post_service.R2StorageService.upload_file"
         )
         mocker.patch(
             "content.services.content_post_service.R2StorageService.generate_key",
@@ -206,15 +195,10 @@ class TestVideoEndpoint:
                 token_expires_at=expires,
             )
 
-        video = io.BytesIO(b"v")
-        video.name = "v.mp4"
-
-        import json
-
         response = authenticated_client.post(
             reverse(self.URL),
             {
-                "video": video,
+                "video_key": "videos/2026-06-15/m.mp4",
                 "caption": "Multi",
                 "platforms": [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
                 "platform_settings": json.dumps(
@@ -241,15 +225,10 @@ class TestVideoEndpoint:
         Brand.objects.filter(user=user).delete()
         api_client.force_authenticate(user=user)
 
-        video = io.BytesIO(b"v")
-        video.name = "v.mp4"
-
-        import json
-
         response = api_client.post(
             reverse(self.URL),
             {
-                "video": video,
+                "video_key": "videos/2026-06-15/m.mp4",
                 "caption": "Test",
                 "platforms": [PlatformChoices.YOUTUBE],
                 "platform_settings": json.dumps(
@@ -267,9 +246,6 @@ class TestVideoEndpoint:
         mocker.patch(
             "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
-        )
-        mock_upload = mocker.patch(
-            "content.services.content_post_service.R2StorageService.upload_file",
         )
         mocker.patch(
             "content.services.content_post_service.R2StorageService.generate_key",
@@ -294,18 +270,11 @@ class TestVideoEndpoint:
             token_expires_at=expires,
         )
 
-        video = io.BytesIO(b"fake-video")
-        video.name = "v.mp4"
-        thumbnail = io.BytesIO(b"fake-thumbnail")
-        thumbnail.name = "t.jpg"
-
-        import json
-
         response = authenticated_client.post(
             reverse(self.URL),
             {
-                "video": video,
-                "thumbnail": thumbnail,
+                "video_key": "videos/abc.mp4",
+                "thumbnail_key": "photos/thumb.jpg",
                 "video_thumbnail_offset": 5000,
                 "caption": "Test Video",
                 "platforms": [PlatformChoices.YOUTUBE],
@@ -326,7 +295,6 @@ class TestVideoEndpoint:
         post = ContentPost.objects.get(id=data["data"]["id"])
         assert post.thumbnail_r2_key == "photos/thumb.jpg"
         assert post.video_thumbnail_offset == 5000
-        assert mock_upload.call_count == 2
         mock_delay.assert_called_once()
 
     def test_unauthenticated(self, db):
@@ -347,9 +315,6 @@ class TestPhotoEndpoint:
             "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
         )
-        mock_upload = mocker.patch(
-            "content.services.content_post_service.R2StorageService.upload_file",
-        )
         mocker.patch(
             "content.services.content_post_service.R2StorageService.generate_key",
             return_value="photos/2026-06-15/p.jpg",
@@ -369,13 +334,10 @@ class TestPhotoEndpoint:
             token_expires_at=expires,
         )
 
-        photo = io.BytesIO(b"fake-photo")
-        photo.name = "p.jpg"
-
         response = authenticated_client.post(
             reverse(self.URL),
             {
-                "photos": [photo],
+                "photo_keys": ["photos/2026-06-15/p.jpg"],
                 "caption": "Nice shot",
                 "platforms": [PlatformChoices.INSTAGRAM],
             },
@@ -391,7 +353,6 @@ class TestPhotoEndpoint:
         post = ContentPost.objects.get(id=data["data"]["id"])
         assert post.media_items.count() == 1
         assert post.media_items.first().file_type == "image"
-        mock_upload.assert_called_once()
         mock_delay.assert_called_once()
 
     def test_success_multiple_photos(
@@ -400,9 +361,6 @@ class TestPhotoEndpoint:
         mocker.patch(
             "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
-        )
-        mock_upload = mocker.patch(
-            "content.services.content_post_service.R2StorageService.upload_file",
         )
         mocker.patch(
             "content.services.content_post_service.R2StorageService.generate_key",
@@ -426,15 +384,10 @@ class TestPhotoEndpoint:
             token_expires_at=expires,
         )
 
-        photo1 = io.BytesIO(b"fake-photo-1")
-        photo1.name = "a.jpg"
-        photo2 = io.BytesIO(b"fake-photo-2")
-        photo2.name = "b.jpg"
-
         response = authenticated_client.post(
             reverse(self.URL),
             {
-                "photos": [photo1, photo2],
+                "photo_keys": ["photos/2026-06-15/a.jpg", "photos/2026-06-15/b.jpg"],
                 "caption": "Multi photo",
                 "platforms": [PlatformChoices.FACEBOOK],
             },
@@ -450,17 +403,13 @@ class TestPhotoEndpoint:
         items = list(post.media_items.order_by("order"))
         assert items[0].order == 0
         assert items[1].order == 1
-        assert mock_upload.call_count == 2
         mock_delay.assert_called_once()
 
     def test_no_connected_account(self, db, authenticated_client, user, brand, mocker):
-        photo = io.BytesIO(b"p")
-        photo.name = "p.jpg"
-
         response = authenticated_client.post(
             reverse(self.URL),
             {
-                "photos": [photo],
+                "photo_keys": ["photos/2026-06-15/p.jpg"],
                 "caption": "Test",
                 "platforms": [PlatformChoices.INSTAGRAM],
             },
@@ -489,13 +438,10 @@ class TestPhotoEndpoint:
             token_expires_at=timezone.now() - timezone.timedelta(days=1),
         )
 
-        photo = io.BytesIO(b"p")
-        photo.name = "p.jpg"
-
         response = authenticated_client.post(
             reverse(self.URL),
             {
-                "photos": [photo],
+                "photo_keys": ["photos/2026-06-15/p.jpg"],
                 "caption": "Test",
                 "platforms": [PlatformChoices.INSTAGRAM],
             },
