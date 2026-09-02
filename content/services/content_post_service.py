@@ -139,7 +139,9 @@ class ContentPostService:
                                     "content_type": c_type,
                                 },
                             )
-                            wait_for_media_and_publish_platform_entry.delay(e_id, content_type=c_type)
+                            wait_for_media_and_publish_platform_entry.delay(
+                                e_id, content_type=c_type
+                            )
 
                         transaction.on_commit(dispatch_task)
         except Exception:
@@ -206,7 +208,9 @@ class ContentPostService:
         ).exists()
 
     @classmethod
-    def update_content_post(cls, content_post: ContentPost, validated_data: dict) -> ContentPost:
+    def update_content_post(
+        cls, content_post: ContentPost, validated_data: dict
+    ) -> ContentPost:
         """
         Update caption, scheduled_at, platform settings, and platforms list for a content post.
         Only allowed if ALL platform entries are still PENDING or SCHEDULED.
@@ -223,34 +227,42 @@ class ContentPostService:
         if "caption" in validated_data:
             content_post.caption = validated_data["caption"]
             save_post = True
-        
+
         if "scheduled_at" in validated_data:
             new_scheduled_at = validated_data["scheduled_at"]
             if content_post.scheduled_at != new_scheduled_at:
                 old_scheduled_at = content_post.scheduled_at
                 content_post.scheduled_at = new_scheduled_at
                 save_post = True
-                
+
                 # Update status of all existing entries to reflect the new schedule
-                new_status = PostStatus.SCHEDULED if new_scheduled_at else PostStatus.PENDING
-                
+                new_status = (
+                    PostStatus.SCHEDULED if new_scheduled_at else PostStatus.PENDING
+                )
+
                 # Bulk update to avoid multiple DB hits
                 ContentPostPlatform.objects.filter(
                     content_post=content_post,
-                    status__in=[PostStatus.PENDING, PostStatus.SCHEDULED]
+                    status__in=[PostStatus.PENDING, PostStatus.SCHEDULED],
                 ).update(status=new_status)
 
                 # If they just changed it from Scheduled to Immediate (None), we need to dispatch tasks
                 if not new_scheduled_at and old_scheduled_at:
                     from content.tasks import wait_for_media_and_publish_platform_entry
+
                     # Re-fetch the entries we just updated to pending
                     immediate_entries = ContentPostPlatform.objects.filter(
-                        content_post=content_post, 
-                        status=PostStatus.PENDING
+                        content_post=content_post, status=PostStatus.PENDING
                     )
                     for entry in immediate_entries:
-                        def dispatch_task(e_id=str(entry.id), c_type=content_post.content_type):
-                            wait_for_media_and_publish_platform_entry.delay(e_id, content_type=c_type)
+
+                        def dispatch_task(
+                            e_id=str(entry.id), c_type=content_post.content_type
+                        ):
+                            wait_for_media_and_publish_platform_entry.delay(
+                                e_id, content_type=c_type
+                            )
+
                         transaction.on_commit(dispatch_task)
 
         if save_post:
@@ -259,26 +271,39 @@ class ContentPostService:
         with transaction.atomic():
             if "platforms" in validated_data:
                 new_platform_set = set(validated_data["platforms"])
-                existing_platform_set = {entry.platform for entry in content_post.platform_entries.all()}
-                
+                existing_platform_set = {
+                    entry.platform for entry in content_post.platform_entries.all()
+                }
+
                 platforms_to_add = new_platform_set - existing_platform_set
                 platforms_to_remove = existing_platform_set - new_platform_set
 
                 if platforms_to_add:
-                    SocialAccountValidationService.ensure_platforms_connected(content_post.brand, list(platforms_to_add))
-                    
-                    initial_status = PostStatus.SCHEDULED if content_post.scheduled_at else PostStatus.PENDING
+                    SocialAccountValidationService.ensure_platforms_connected(
+                        content_post.brand, list(platforms_to_add)
+                    )
+
+                    initial_status = (
+                        PostStatus.SCHEDULED
+                        if content_post.scheduled_at
+                        else PostStatus.PENDING
+                    )
                     platform_settings = validated_data.get("platform_settings", {})
                     new_entries = []
-                    
+
                     for platform in platforms_to_add:
                         plat_settings = platform_settings.get(platform, {})
                         if platform == "youtube":
                             title = plat_settings.get("title", "")
-                            plat_caption = plat_settings.get("description", plat_settings.get("caption", content_post.caption))
+                            plat_caption = plat_settings.get(
+                                "description",
+                                plat_settings.get("caption", content_post.caption),
+                            )
                         else:
                             title = ""
-                            plat_caption = plat_settings.get("caption", content_post.caption)
+                            plat_caption = plat_settings.get(
+                                "caption", content_post.caption
+                            )
 
                         new_entries.append(
                             ContentPostPlatform(
@@ -294,21 +319,36 @@ class ContentPostService:
 
                     # If this post is supposed to go out immediately (not scheduled), we need to dispatch Celery tasks
                     if not content_post.scheduled_at:
-                        from content.tasks import wait_for_media_and_publish_platform_entry
-                        newly_created = ContentPostPlatform.objects.filter(content_post=content_post, platform__in=platforms_to_add)
+                        from content.tasks import (
+                            wait_for_media_and_publish_platform_entry,
+                        )
+
+                        newly_created = ContentPostPlatform.objects.filter(
+                            content_post=content_post, platform__in=platforms_to_add
+                        )
                         for entry in newly_created:
-                            def dispatch_task(e_id=str(entry.id), c_type=content_post.content_type):
-                                wait_for_media_and_publish_platform_entry.delay(e_id, content_type=c_type)
+
+                            def dispatch_task(
+                                e_id=str(entry.id), c_type=content_post.content_type
+                            ):
+                                wait_for_media_and_publish_platform_entry.delay(
+                                    e_id, content_type=c_type
+                                )
+
                             transaction.on_commit(dispatch_task)
 
                 if platforms_to_remove:
-                    content_post.platform_entries.filter(platform__in=platforms_to_remove).delete()
+                    content_post.platform_entries.filter(
+                        platform__in=platforms_to_remove
+                    ).delete()
 
             # Refresh the platforms so we can update settings safely
             platform_settings = validated_data.get("platform_settings")
             if platform_settings:
                 # We need to query again to ensure we have the latest entries if they were modified
-                current_entries = ContentPostPlatform.objects.filter(content_post=content_post)
+                current_entries = ContentPostPlatform.objects.filter(
+                    content_post=content_post
+                )
                 for entry in current_entries:
                     if entry.platform in platform_settings:
                         current_settings = entry.settings or {}

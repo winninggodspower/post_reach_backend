@@ -4,8 +4,8 @@ Integration tests for ContentPostViewSet endpoints:
   POST /api/content/posts/photo/
 """
 
-import json
 import io
+import json
 
 import pytest
 from django.urls import reverse
@@ -127,11 +127,7 @@ class TestPresignedUrlEndpoint:
 
         response = authenticated_client.post(
             reverse(self.URL),
-            {
-                "files": [
-                    {"content_type": "video", "extension": "mp4"}
-                ]
-            },
+            {"files": [{"content_type": "video", "extension": "mp4"}]},
             format="json",
         )
 
@@ -174,11 +170,7 @@ class TestPresignedUrlEndpoint:
 
         response = authenticated_client.post(
             reverse(self.URL),
-            {
-                "files": [
-                    {"content_type": "document"}
-                ]
-            },
+            {"files": [{"content_type": "document"}]},
             format="json",
         )
         assert response.status_code == 400

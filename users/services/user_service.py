@@ -13,7 +13,9 @@ User = get_user_model()
 class UserService:
     @staticmethod
     @log_exceptions()
-    def get_or_create_social_user(email, first_name="", last_name="", profile_picture_url=None):
+    def get_or_create_social_user(
+        email, first_name="", last_name="", profile_picture_url=None
+    ):
         email = User.objects.normalize_email(email)
         user, created = User.objects.get_or_create(
             email=email,

@@ -19,7 +19,9 @@ from utils.r2_storage import R2StorageService
 
 
 @shared_task(bind=True, max_retries=5, default_retry_delay=1, acks_late=True)
-def wait_for_media_and_publish_platform_entry(self, platform_entry_id, content_type="video"):
+def wait_for_media_and_publish_platform_entry(
+    self, platform_entry_id, content_type="video"
+):
     """
     Waits for R2 media to become accessible (with its own retry budget),
     then hands off to publish_platform_entry.
@@ -56,7 +58,7 @@ def wait_for_media_and_publish_platform_entry(self, platform_entry_id, content_t
     for r2_key in files_to_check:
         if not R2StorageService.is_file_accessible(r2_key):
             # retry count as 1sec, 2sec etc
-            countdown = self.request.retries + 1 
+            countdown = self.request.retries + 1
             CustomLogger.info(
                 "Media file not yet accessible, retrying availability check",
                 extra={
@@ -218,7 +220,7 @@ def check_instagram_container_status(self, platform_entry_id):
             except Exception as e:
                 CustomLogger.warning(
                     "Failed to fetch permalink for newly published media",
-                    extra={"media_id": entry.platform_post_id, "error": str(e)}
+                    extra={"media_id": entry.platform_post_id, "error": str(e)},
                 )
 
             entry.save(

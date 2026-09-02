@@ -254,15 +254,15 @@ class R2StorageService:
     def is_file_accessible(cls, key: str) -> bool:
         """
         Check if a file is accessible via HEAD request to its public presigned URL.
-        
+
         Useful for verifying that media uploaded via presigned URL is immediately
         available for social platform fetching.
-        
+
         :param key: Object key in the bucket.
         :return: True if accessible (HTTP 200/206), False otherwise.
         """
         import requests
-        
+
         try:
             url = cls.generate_presigned_url(key, expiration=3600)
             if not url:
@@ -271,10 +271,10 @@ class R2StorageService:
                     extra={"bucket": settings.CLOUDFLARE_R2_BUCKET, "key": key},
                 )
                 return False
-            
+
             response = requests.head(url, timeout=10, allow_redirects=True)
             is_ready = response.status_code in (200, 206)
-            
+
             if is_ready:
                 CustomLogger.info(
                     "R2 file accessibility check passed",
@@ -293,7 +293,7 @@ class R2StorageService:
                         "status_code": response.status_code,
                     },
                 )
-            
+
             return is_ready
         except requests.RequestException as e:
             CustomLogger.warning(
@@ -311,4 +311,3 @@ class R2StorageService:
                 extra={"bucket": settings.CLOUDFLARE_R2_BUCKET, "key": key},
             )
             return False
-

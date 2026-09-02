@@ -13,8 +13,19 @@ PLATFORM_ENUMS = [choice[0] for choice in PlatformChoices.choices]
 PHOTO_PLATFORM_ENUMS = [choice[0] for choice in PhotoPlatformOptions.choices]
 TEXT_PLATFORM_ENUMS = [choice[0] for choice in TextPlatformOptions.choices]
 
-ALLOWED_PHOTO_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "heic", "tiff", "bmp", "svg"]
+ALLOWED_PHOTO_EXTENSIONS = [
+    "jpg",
+    "jpeg",
+    "png",
+    "webp",
+    "gif",
+    "heic",
+    "tiff",
+    "bmp",
+    "svg",
+]
 ALLOWED_VIDEO_EXTENSIONS = ["mp4", "mov", "webm", "avi", "mkv", "wmv", "flv", "m4v"]
+
 
 class PresignedUrlFileSerializer(serializers.Serializer):
     content_type = serializers.ChoiceField(choices=["video", "photo"], required=True)
@@ -26,11 +37,19 @@ class PresignedUrlFileSerializer(serializers.Serializer):
         if ext:
             ext = ext.lower().strip(".")
             data["extension"] = ext
-            
+
             if content_type == "photo" and ext not in ALLOWED_PHOTO_EXTENSIONS:
-                raise serializers.ValidationError({"extension": f"Invalid photo extension: {ext}. Allowed: {', '.join(ALLOWED_PHOTO_EXTENSIONS)}."})
+                raise serializers.ValidationError(
+                    {
+                        "extension": f"Invalid photo extension: {ext}. Allowed: {', '.join(ALLOWED_PHOTO_EXTENSIONS)}."
+                    }
+                )
             if content_type == "video" and ext not in ALLOWED_VIDEO_EXTENSIONS:
-                raise serializers.ValidationError({"extension": f"Invalid video extension: {ext}. Allowed: {', '.join(ALLOWED_VIDEO_EXTENSIONS)}."})
+                raise serializers.ValidationError(
+                    {
+                        "extension": f"Invalid video extension: {ext}. Allowed: {', '.join(ALLOWED_VIDEO_EXTENSIONS)}."
+                    }
+                )
         return data
 
 
@@ -42,7 +61,9 @@ class PresignedUrlRequestSerializer(serializers.Serializer):
 
 class ContentPostCreateSerializer(serializers.Serializer):
     video_key = serializers.CharField(required=True)
-    thumbnail_key = serializers.CharField(required=False, allow_blank=True, allow_null=True, default=None)
+    thumbnail_key = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, default=None
+    )
     video_thumbnail_offset = serializers.IntegerField(
         required=False, allow_null=True, default=None
     )
