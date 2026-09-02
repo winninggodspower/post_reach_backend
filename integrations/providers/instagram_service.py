@@ -329,7 +329,7 @@ class InstagramService(SocialAccountService):
             response_data = cls().get(
                 f"/{container_id}",
                 params={
-                    "fields": "status_code,status",
+                    "fields": "status_code,status,error_message",
                     "access_token": access_token,
                 },
             )

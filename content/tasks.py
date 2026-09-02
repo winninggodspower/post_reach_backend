@@ -4,8 +4,9 @@ from celery import shared_task
 from django.db import transaction
 from django.utils import timezone
 
-from content.enums import PostStatus
+from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentPostPlatform
+from content.services.content_post_service import ContentPostService
 from content.services.posting_service import PostingService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.tiktok_service import TiktokService
@@ -14,9 +15,68 @@ from social_accounts.services.social_account_validation_service import (
     SocialAccountValidationService,
 )
 from utils.custom_logger import CustomLogger
+from utils.r2_storage import R2StorageService
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60, acks_late=True)
+@shared_task(bind=True, max_retries=5, default_retry_delay=1, acks_late=True)
+def wait_for_media_and_publish_platform_entry(self, platform_entry_id, content_type="video"):
+    """
+    Waits for R2 media to become accessible (with its own retry budget),
+    then hands off to publish_platform_entry.
+    """
+    try:
+        entry = ContentPostPlatform.objects.select_related(
+            "content_post", "content_post__brand"
+        ).get(id=platform_entry_id)
+    except ContentPostPlatform.DoesNotExist:
+        CustomLogger.error(
+            "ContentPostPlatform not found for media availability check",
+            extra={"platform_entry_id": str(platform_entry_id)},
+        )
+        return
+
+    content_post = entry.content_post
+    files_to_check = []
+
+    if content_type == "photo":
+        photos = ContentPostService.get_media_items(
+            content_post, file_type=FileTypeChoice.IMAGE
+        )
+        files_to_check = [item.r2_key for item in photos]
+    else:
+        videos = ContentPostService.get_media_items(
+            content_post, file_type=FileTypeChoice.VIDEO
+        )
+        video_item = videos.first()
+        if video_item:
+            files_to_check.append(video_item.r2_key)
+        if content_post.thumbnail_r2_key:
+            files_to_check.append(content_post.thumbnail_r2_key)
+
+    for r2_key in files_to_check:
+        if not R2StorageService.is_file_accessible(r2_key):
+            # retry count as 1sec, 2sec etc
+            countdown = self.request.retries + 1 
+            CustomLogger.info(
+                "Media file not yet accessible, retrying availability check",
+                extra={
+                    "platform_entry_id": str(entry.id),
+                    "r2_key": r2_key,
+                    "attempt": self.request.retries + 1,
+                    "max_retries": self.max_retries,
+                    "retry_in_seconds": countdown,
+                },
+            )
+            raise self.retry(countdown=countdown)
+
+    CustomLogger.info(
+        "Media confirmed accessible, triggering publish",
+        extra={"platform_entry_id": str(entry.id)},
+    )
+    publish_platform_entry.delay(str(entry.id), content_type=content_type)
+
+
+@shared_task(bind=True, max_retries=5, default_retry_delay=1, acks_late=True)
 def publish_platform_entry(self, platform_entry_id, content_type="video"):
     """
     Celery task that publishes a single ContentPostPlatform entry.
@@ -29,6 +89,7 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
         extra={
             "platform_entry_id": str(platform_entry_id),
             "content_type": content_type,
+            "attempt": self.request.retries + 1,
         },
     )
     try:
@@ -63,6 +124,11 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
             "502",
             "503",
             "504",
+            "bad gateway",
+            "unable to fetch",
+            "temporarily unavailable",
+            "please try again",
+            "internal server error",
         ]
         if any(kw in result_entry.error_message.lower() for kw in transient_keywords):
             CustomLogger.warning(
@@ -319,7 +385,7 @@ def publish_scheduled_posts():
                     locked_entry.status = PostStatus.PENDING
                     locked_entry.save(update_fields=["status", "updated_at"])
 
-                    publish_platform_entry.delay(
+                    wait_for_media_and_publish_platform_entry.delay(
                         str(locked_entry.id),
                         content_type=locked_entry.content_post.content_type,
                     )

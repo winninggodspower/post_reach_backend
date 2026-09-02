@@ -16,8 +16,6 @@ from content.serializers import (
     PhotoPostCreateSerializer,
     PresignedUrlRequestSerializer,
     TextPostCreateSerializer,
-    photo_post_parameters,
-    text_post_parameters,
 )
 from content.services.content_post_service import ContentPostService
 from users.services.brand_service import BrandService
@@ -28,7 +26,7 @@ from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 class ContentPostViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    parser_classes = [JSONParser]
 
     @swagger_auto_schema(
         operation_summary="Generate a presigned URL for media upload",
@@ -41,11 +39,14 @@ class ContentPostViewSet(viewsets.ViewSet):
             200: openapi.Response(
                 "Success",
                 openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "key": openapi.Schema(type=openapi.TYPE_STRING),
-                        "url": openapi.Schema(type=openapi.TYPE_STRING),
-                    },
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            "key": openapi.Schema(type=openapi.TYPE_STRING),
+                            "url": openapi.Schema(type=openapi.TYPE_STRING),
+                        },
+                    ),
                 ),
             ),
             400: openapi.Response("Bad Request"),
@@ -58,19 +59,22 @@ class ContentPostViewSet(viewsets.ViewSet):
         """
         serializer = PresignedUrlRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        validated = serializer.validated_data
+        files = serializer.validated_data["files"]
 
-        result = R2StorageService.generate_presigned_upload_url(
-            content_type=validated["content_type"],
-            extension=validated.get("extension"),
-        )
-        if not result:
-            return CustomErrorResponse(
-                "Failed to generate presigned URL.",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        results = []
+        for file_req in files:
+            result = R2StorageService.generate_presigned_upload_url(
+                content_type=file_req["content_type"],
+                extension=file_req.get("extension"),
             )
+            if not result:
+                return CustomErrorResponse(
+                    "Failed to generate presigned URL.",
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            results.append(result)
 
-        return CustomSuccessResponse(result)
+        return CustomSuccessResponse(results)
 
     # ── Video ──────────────────────────────────────────────
 
@@ -87,7 +91,6 @@ class ContentPostViewSet(viewsets.ViewSet):
             201: ContentPostResponseSerializer,
             400: openapi.Response("Bad Request"),
         },
-        consumes=["multipart/form-data"],
     )
     @action(detail=False, methods=["post"], url_path="video")
     def create_video(self, request):
@@ -120,12 +123,11 @@ class ContentPostViewSet(viewsets.ViewSet):
             "tasks to publish the photos to each selected platform. Each platform must "
             "already be connected to the user's active brand."
         ),
-        manual_parameters=photo_post_parameters,
+        request_body=PhotoPostCreateSerializer,
         responses={
             201: ContentPostResponseSerializer,
             400: openapi.Response("Bad Request"),
         },
-        consumes=["multipart/form-data"],
     )
     @action(detail=False, methods=["post"], url_path="photo")
     def create_photo(self, request):
@@ -156,12 +158,11 @@ class ContentPostViewSet(viewsets.ViewSet):
             "to each selected platform (e.g. Facebook, LinkedIn). "
             "Each platform must already be connected to the user's active brand."
         ),
-        manual_parameters=text_post_parameters,
+        request_body=TextPostCreateSerializer,
         responses={
             201: ContentPostResponseSerializer,
             400: openapi.Response("Bad Request"),
         },
-        consumes=["application/x-www-form-urlencoded", "multipart/form-data"],
     )
     @action(detail=False, methods=["post"], url_path="text")
     def create_text(self, request):

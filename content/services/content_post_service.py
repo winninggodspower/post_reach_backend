@@ -127,19 +127,19 @@ class ContentPostService:
                 content_post.refresh_from_db()
 
                 if not scheduled_at:
-                    from content.tasks import publish_platform_entry
+                    from content.tasks import wait_for_media_and_publish_platform_entry
 
                     for entry in content_post.platform_entries.all():
 
                         def dispatch_task(e_id=str(entry.id), c_type=content_type):
                             CustomLogger.info(
-                                "Django app dispatching publish_platform_entry to Celery",
+                                "Django app dispatching wait_for_media_and_publish_platform_entry to Celery",
                                 extra={
                                     "platform_entry_id": e_id,
                                     "content_type": c_type,
                                 },
                             )
-                            publish_platform_entry.delay(e_id, content_type=c_type)
+                            wait_for_media_and_publish_platform_entry.delay(e_id, content_type=c_type)
 
                         transaction.on_commit(dispatch_task)
         except Exception:
@@ -197,7 +197,12 @@ class ContentPostService:
         """
 
         return content_post.platform_entries.filter(
-            status__in=[PostStatus.PENDING, PostStatus.UPLOADING]
+            status__in=[
+                PostStatus.PENDING,
+                PostStatus.SCHEDULED,
+                PostStatus.UPLOADING,
+                PostStatus.PROCESSING,
+            ]
         ).exists()
 
     @classmethod
@@ -237,7 +242,7 @@ class ContentPostService:
 
                 # If they just changed it from Scheduled to Immediate (None), we need to dispatch tasks
                 if not new_scheduled_at and old_scheduled_at:
-                    from content.tasks import publish_platform_entry
+                    from content.tasks import wait_for_media_and_publish_platform_entry
                     # Re-fetch the entries we just updated to pending
                     immediate_entries = ContentPostPlatform.objects.filter(
                         content_post=content_post, 
@@ -245,7 +250,7 @@ class ContentPostService:
                     )
                     for entry in immediate_entries:
                         def dispatch_task(e_id=str(entry.id), c_type=content_post.content_type):
-                            publish_platform_entry.delay(e_id, content_type=c_type)
+                            wait_for_media_and_publish_platform_entry.delay(e_id, content_type=c_type)
                         transaction.on_commit(dispatch_task)
 
         if save_post:
@@ -289,11 +294,11 @@ class ContentPostService:
 
                     # If this post is supposed to go out immediately (not scheduled), we need to dispatch Celery tasks
                     if not content_post.scheduled_at:
-                        from content.tasks import publish_platform_entry
+                        from content.tasks import wait_for_media_and_publish_platform_entry
                         newly_created = ContentPostPlatform.objects.filter(content_post=content_post, platform__in=platforms_to_add)
                         for entry in newly_created:
                             def dispatch_task(e_id=str(entry.id), c_type=content_post.content_type):
-                                publish_platform_entry.delay(e_id, content_type=c_type)
+                                wait_for_media_and_publish_platform_entry.delay(e_id, content_type=c_type)
                             transaction.on_commit(dispatch_task)
 
                 if platforms_to_remove:

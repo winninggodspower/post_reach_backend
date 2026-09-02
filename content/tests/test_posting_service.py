@@ -124,7 +124,7 @@ class TestContentPostService:
             return_value="videos/2026-01-01/abc.mp4",
         )
         mock_delay = mocker.patch(
-            "content.tasks.publish_platform_entry.delay",
+            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
         )
         self._setup_accounts(brand, [PlatformChoices.YOUTUBE])
 
@@ -161,7 +161,7 @@ class TestContentPostService:
             ],
         )
         mock_delay = mocker.patch(
-            "content.tasks.publish_platform_entry.delay",
+            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
         )
         self._setup_accounts(
             brand, [PlatformChoices.FACEBOOK, PlatformChoices.INSTAGRAM]
@@ -204,7 +204,7 @@ class TestContentPostService:
             return_value="videos/2026-01-01/abc.mp4",
         )
         mock_delay = mocker.patch(
-            "content.tasks.publish_platform_entry.delay",
+            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
         )
         self._setup_accounts(brand, [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK])
 

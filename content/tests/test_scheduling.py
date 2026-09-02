@@ -38,7 +38,7 @@ def connected_accounts(brand):
 class TestPostScheduling:
     def test_create_scheduled_post(self, user, brand, connected_accounts, mocker):
         # Mock Celery delay method to make sure it is not called
-        mock_delay = mocker.patch("content.tasks.publish_platform_entry.delay")
+        mock_delay = mocker.patch("content.tasks.wait_for_media_and_publish_platform_entry.delay")
 
         future_time = timezone.now() + timedelta(hours=2)
         post = ContentPostService.create_content_post(
@@ -65,7 +65,7 @@ class TestPostScheduling:
     def test_celery_periodic_task_triggers_due_posts(
         self, user, brand, connected_accounts, mocker
     ):
-        mock_delay = mocker.patch("content.tasks.publish_platform_entry.delay")
+        mock_delay = mocker.patch("content.tasks.wait_for_media_and_publish_platform_entry.delay")
 
         past_time = timezone.now() - timedelta(minutes=5)
         future_time = timezone.now() + timedelta(hours=1)

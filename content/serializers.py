@@ -13,86 +13,31 @@ PLATFORM_ENUMS = [choice[0] for choice in PlatformChoices.choices]
 PHOTO_PLATFORM_ENUMS = [choice[0] for choice in PhotoPlatformOptions.choices]
 TEXT_PLATFORM_ENUMS = [choice[0] for choice in TextPlatformOptions.choices]
 
-# Swagger manual parameters for the photo post endpoint
-photo_post_parameters = [
-    openapi.Parameter(
-        "photos",
-        openapi.IN_FORM,
-        type=openapi.TYPE_ARRAY,
-        items=openapi.Items(type=openapi.TYPE_FILE),
-        required=True,
-        description="One or more photo files to upload.",
-    ),
-    openapi.Parameter(
-        "caption",
-        openapi.IN_FORM,
-        type=openapi.TYPE_STRING,
-        required=False,
-        description="Caption text for the photo post.",
-    ),
-    openapi.Parameter(
-        "platforms",
-        openapi.IN_FORM,
-        type=openapi.TYPE_ARRAY,
-        items=openapi.Items(type=openapi.TYPE_STRING, enum=PHOTO_PLATFORM_ENUMS),
-        required=True,
-        description="Target platforms to publish to (YouTube does not support photos).",
-    ),
-    openapi.Parameter(
-        "platform_settings",
-        openapi.IN_FORM,
-        type=openapi.TYPE_OBJECT,
-        required=False,
-        description="Platform-specific settings and overrides.",
-    ),
-    openapi.Parameter(
-        "scheduled_at",
-        openapi.IN_FORM,
-        type=openapi.TYPE_STRING,
-        format=openapi.FORMAT_DATETIME,
-        required=False,
-        description="Optional ISO 8601 datetime for post scheduling.",
-    ),
-]
+ALLOWED_PHOTO_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "heic", "tiff", "bmp", "svg"]
+ALLOWED_VIDEO_EXTENSIONS = ["mp4", "mov", "webm", "avi", "mkv", "wmv", "flv", "m4v"]
 
-# Swagger manual parameters for the text post endpoint
-text_post_parameters = [
-    openapi.Parameter(
-        "caption",
-        openapi.IN_FORM,
-        type=openapi.TYPE_STRING,
-        required=True,
-        description="Caption text for the text post.",
-    ),
-    openapi.Parameter(
-        "platforms",
-        openapi.IN_FORM,
-        type=openapi.TYPE_ARRAY,
-        items=openapi.Items(type=openapi.TYPE_STRING, enum=TEXT_PLATFORM_ENUMS),
-        required=True,
-        description="Target platforms to publish to (must support text-only posts).",
-    ),
-    openapi.Parameter(
-        "platform_settings",
-        openapi.IN_FORM,
-        type=openapi.TYPE_OBJECT,
-        required=False,
-        description="Platform-specific settings and overrides.",
-    ),
-    openapi.Parameter(
-        "scheduled_at",
-        openapi.IN_FORM,
-        type=openapi.TYPE_STRING,
-        format=openapi.FORMAT_DATETIME,
-        required=False,
-        description="Optional ISO 8601 datetime for post scheduling.",
-    ),
-]
+class PresignedUrlFileSerializer(serializers.Serializer):
+    content_type = serializers.ChoiceField(choices=["video", "photo"], required=True)
+    extension = serializers.CharField(required=False, allow_blank=True, default=None)
+
+    def validate(self, data):
+        ext = data.get("extension")
+        content_type = data.get("content_type")
+        if ext:
+            ext = ext.lower().strip(".")
+            data["extension"] = ext
+            
+            if content_type == "photo" and ext not in ALLOWED_PHOTO_EXTENSIONS:
+                raise serializers.ValidationError({"extension": f"Invalid photo extension: {ext}. Allowed: {', '.join(ALLOWED_PHOTO_EXTENSIONS)}."})
+            if content_type == "video" and ext not in ALLOWED_VIDEO_EXTENSIONS:
+                raise serializers.ValidationError({"extension": f"Invalid video extension: {ext}. Allowed: {', '.join(ALLOWED_VIDEO_EXTENSIONS)}."})
+        return data
 
 
 class PresignedUrlRequestSerializer(serializers.Serializer):
-    content_type = serializers.ChoiceField(choices=["video", "photo"], required=True)
-    extension = serializers.CharField(required=False, allow_blank=True, default=None)
+    files = serializers.ListField(
+        child=PresignedUrlFileSerializer(), required=True, min_length=1, max_length=10
+    )
 
 
 class ContentPostCreateSerializer(serializers.Serializer):

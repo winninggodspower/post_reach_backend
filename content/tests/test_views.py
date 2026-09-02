@@ -113,6 +113,77 @@ class TestRetrieveEndpoint:
         assert response.status_code == 404
 
 
+class TestPresignedUrlEndpoint:
+    """Integration tests for POST /api/content/posts/presigned-url/"""
+
+    URL = "content-post-presigned-url"
+
+    def test_success_single_file(self, db, authenticated_client, mocker):
+        mocker.patch(
+            "content.views.R2StorageService.generate_presigned_upload_url",
+            return_value={"key": "videos/test.mp4", "url": "https://fake-url.com/"},
+        )
+        from django.urls import reverse
+
+        response = authenticated_client.post(
+            reverse(self.URL),
+            {
+                "files": [
+                    {"content_type": "video", "extension": "mp4"}
+                ]
+            },
+            format="json",
+        )
+
+        assert response.status_code == 200
+        data = response.data
+        assert data["success"] is True
+        assert len(data["data"]) == 1
+        assert data["data"][0]["key"] == "videos/test.mp4"
+        assert data["data"][0]["url"] == "https://fake-url.com/"
+
+    def test_success_multiple_files(self, db, authenticated_client, mocker):
+        mocker.patch(
+            "content.views.R2StorageService.generate_presigned_upload_url",
+            side_effect=[
+                {"key": "photos/1.jpg", "url": "https://url1.com/"},
+                {"key": "photos/2.jpg", "url": "https://url2.com/"},
+            ],
+        )
+        from django.urls import reverse
+
+        response = authenticated_client.post(
+            reverse(self.URL),
+            {
+                "files": [
+                    {"content_type": "photo", "extension": "jpg"},
+                    {"content_type": "photo", "extension": "jpg"},
+                ]
+            },
+            format="json",
+        )
+
+        assert response.status_code == 200
+        data = response.data
+        assert len(data["data"]) == 2
+        assert data["data"][0]["key"] == "photos/1.jpg"
+        assert data["data"][1]["key"] == "photos/2.jpg"
+
+    def test_invalid_content_type(self, db, authenticated_client):
+        from django.urls import reverse
+
+        response = authenticated_client.post(
+            reverse(self.URL),
+            {
+                "files": [
+                    {"content_type": "document"}
+                ]
+            },
+            format="json",
+        )
+        assert response.status_code == 400
+
+
 class TestVideoEndpoint:
     """Integration tests for POST /api/content/posts/video/"""
 
@@ -130,7 +201,7 @@ class TestVideoEndpoint:
             return_value="videos/2026-06-15/abc.mp4",
         )
         mock_delay = mocker.patch(
-            "content.tasks.publish_platform_entry.delay",
+            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)
@@ -180,7 +251,7 @@ class TestVideoEndpoint:
             return_value="videos/2026-06-15/m.mp4",
         )
         mock_delay = mocker.patch(
-            "content.tasks.publish_platform_entry.delay",
+            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)
@@ -256,7 +327,7 @@ class TestVideoEndpoint:
             return_value="https://r2-presigned-url.com/thumb.jpg",
         )
         mock_delay = mocker.patch(
-            "content.tasks.publish_platform_entry.delay",
+            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)
@@ -320,7 +391,7 @@ class TestPhotoEndpoint:
             return_value="photos/2026-06-15/p.jpg",
         )
         mock_delay = mocker.patch(
-            "content.tasks.publish_platform_entry.delay",
+            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)
@@ -370,7 +441,7 @@ class TestPhotoEndpoint:
             ],
         )
         mock_delay = mocker.patch(
-            "content.tasks.publish_platform_entry.delay",
+            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)

@@ -2,7 +2,8 @@
 Orchestrates publishing a ContentPostPlatform entry to its target platform.
 Supports both video and photo content types.
 """
-
+from content.models import ContentPost
+from django.db import transaction
 from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentPostPlatform
 from content.services.content_post_service import ContentPostService
@@ -207,14 +208,18 @@ class PostingService:
 
     @classmethod
     def cleanup_r2_media(cls, content_post) -> None:
-        if ContentPostService.has_pending_entries(content_post):
-            return
+        with transaction.atomic():
+            content_post = ContentPost.objects.select_for_update().get(
+                pk=content_post.pk
+            )
+            if ContentPostService.has_pending_entries(content_post):
+                return
 
-        for media_item in content_post.media_items.all():
-            R2StorageService.delete_file(media_item.r2_key)
-            
-        if content_post.thumbnail_r2_key:
-            R2StorageService.delete_file(content_post.thumbnail_r2_key)
+            for media_item in content_post.media_items.all():
+                R2StorageService.delete_file(media_item.r2_key)
+                
+            if content_post.thumbnail_r2_key:
+                R2StorageService.delete_file(content_post.thumbnail_r2_key)
 
     # ── private helpers ────────────────────────────────────
 
