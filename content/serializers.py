@@ -1,6 +1,7 @@
 import json
 
 from drf_yasg import openapi
+from filetype.types import IMAGE, VIDEO
 from rest_framework import serializers
 
 from content.enums import PhotoPlatformOptions, PostStatus, TextPlatformOptions
@@ -13,18 +14,8 @@ PLATFORM_ENUMS = [choice[0] for choice in PlatformChoices.choices]
 PHOTO_PLATFORM_ENUMS = [choice[0] for choice in PhotoPlatformOptions.choices]
 TEXT_PLATFORM_ENUMS = [choice[0] for choice in TextPlatformOptions.choices]
 
-ALLOWED_PHOTO_EXTENSIONS = [
-    "jpg",
-    "jpeg",
-    "png",
-    "webp",
-    "gif",
-    "heic",
-    "tiff",
-    "bmp",
-    "svg",
-]
-ALLOWED_VIDEO_EXTENSIONS = ["mp4", "mov", "webm", "avi", "mkv", "wmv", "flv", "m4v"]
+PHOTO_EXTENSIONS = {t.extension for t in IMAGE} | {"jpeg", "jpe", "tiff"}
+VIDEO_EXTENSIONS = {t.extension for t in VIDEO}
 
 
 class PresignedUrlFileSerializer(serializers.Serializer):
@@ -38,17 +29,10 @@ class PresignedUrlFileSerializer(serializers.Serializer):
             ext = ext.lower().strip(".")
             data["extension"] = ext
 
-            if content_type == "photo" and ext not in ALLOWED_PHOTO_EXTENSIONS:
+            allowed_exts = PHOTO_EXTENSIONS if content_type == "photo" else VIDEO_EXTENSIONS
+            if ext not in allowed_exts:
                 raise serializers.ValidationError(
-                    {
-                        "extension": f"Invalid photo extension: {ext}. Allowed: {', '.join(ALLOWED_PHOTO_EXTENSIONS)}."
-                    }
-                )
-            if content_type == "video" and ext not in ALLOWED_VIDEO_EXTENSIONS:
-                raise serializers.ValidationError(
-                    {
-                        "extension": f"Invalid video extension: {ext}. Allowed: {', '.join(ALLOWED_VIDEO_EXTENSIONS)}."
-                    }
+                    {"extension": f"Unsupported {content_type} extension: {ext}"}
                 )
         return data
 

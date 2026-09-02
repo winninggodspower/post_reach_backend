@@ -119,6 +119,8 @@ filelock==3.18.0
     # via
     #   post-reach-backend (pyproject.toml)
     #   virtualenv
+filetype==1.2.0
+    # via post-reach-backend (pyproject.toml)
 google-api-core==2.24.2
     # via
     #   post-reach-backend (pyproject.toml)
