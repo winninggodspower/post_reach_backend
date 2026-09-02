@@ -29,7 +29,9 @@ class PresignedUrlFileSerializer(serializers.Serializer):
             ext = ext.lower().strip(".")
             data["extension"] = ext
 
-            allowed_exts = PHOTO_EXTENSIONS if content_type == "photo" else VIDEO_EXTENSIONS
+            allowed_exts = (
+                PHOTO_EXTENSIONS if content_type == "photo" else VIDEO_EXTENSIONS
+            )
             if ext not in allowed_exts:
                 raise serializers.ValidationError(
                     {"extension": f"Unsupported {content_type} extension: {ext}"}
