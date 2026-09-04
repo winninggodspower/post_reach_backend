@@ -35,34 +35,27 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_has_completed_onboarding(self, user):
-        default_brand = self._get_default_brand(user)
-        if not default_brand:
+        active_brand = self._get_active_brand(user)
+        if not active_brand:
             return False
 
         required_values = [
             user.role,
-            default_brand.industry,
-            default_brand.posting_frequency,
-            default_brand.primary_platform,
-            default_brand.team_size,
+            active_brand.industry,
+            active_brand.posting_frequency,
+            active_brand.primary_platform,
+            active_brand.team_size,
         ]
         return all(required_values)
 
-    def _get_default_brand(self, user):
-        """Return the user's default brand, preferring prefetched data."""
-        if (
-            hasattr(user, "_prefetched_objects_cache")
-            and "brands" in user._prefetched_objects_cache
-        ):
-            brands = user._prefetched_objects_cache["brands"]
-            return next((b for b in brands if b.is_default), None)
-        return user.brands.filter(is_default=True).first()
+    def _get_active_brand(self, user):
+        from users.services import BrandService
+
+        return user.active_brand or BrandService.get_default_brand(user) 
 
     def get_brand(self, user):
-        default_brand = self._get_default_brand(user)
-        if default_brand is None:
-            return None
-        return BrandSerializer(default_brand).data
+        active_brand = self._get_active_brand(user)
+        return BrandSerializer(active_brand).data
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

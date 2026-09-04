@@ -1,3 +1,4 @@
+from users.services import BrandService
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -105,3 +106,8 @@ class UserService:
         user.active_brand = brand
         user.save(update_fields=["active_brand"])
         return brand
+
+    @staticmethod
+    @log_exceptions
+    def get_active_brand(user):
+        return user.active_brand or BrandService.get_default_brand(user)

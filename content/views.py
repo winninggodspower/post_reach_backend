@@ -18,6 +18,7 @@ from content.serializers import (
 )
 from content.services.content_post_service import ContentPostService
 from users.services.brand_service import BrandService
+from users.services.user_service import UserService
 from utils.custom_logger import CustomLogger
 from utils.r2_storage import R2StorageService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
@@ -216,10 +217,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         GET /api/content/posts/calendar/
         """
         user = request.user
-        try:
-            brand = BrandService.get_default_brand(user)
-        except ValueError as e:
-            return CustomErrorResponse(str(e), status=status.HTTP_400_BAD_REQUEST)
+        brand = user.active_brand
 
         start_date_str = request.query_params.get("start_date")
         end_date_str = request.query_params.get("end_date")
