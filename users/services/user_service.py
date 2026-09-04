@@ -1,4 +1,3 @@
-from users.services import BrandService
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -6,6 +5,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from users.services import BrandService
 from utils.custom_logger import CustomLogger, log_exceptions
 
 User = get_user_model()

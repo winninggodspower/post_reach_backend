@@ -51,7 +51,7 @@ class UserSerializer(serializers.ModelSerializer):
     def _get_active_brand(self, user):
         from users.services import BrandService
 
-        return user.active_brand or BrandService.get_default_brand(user) 
+        return user.active_brand or BrandService.get_default_brand(user)
 
     def get_brand(self, user):
         active_brand = self._get_active_brand(user)
