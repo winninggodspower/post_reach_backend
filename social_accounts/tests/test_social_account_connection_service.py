@@ -48,7 +48,9 @@ class TestSocialAccountConnectionServiceProfilePicture:
         mock_client_cls.return_value = mock_client
 
         mock_gen_key.return_value = "platform_profiles/2026-09-06/uuid.jpg"
-        mock_presigned.return_value = "https://r2.example.com/platform_profiles/2026-09-06/uuid.jpg"
+        mock_presigned.return_value = (
+            "https://r2.example.com/platform_profiles/2026-09-06/uuid.jpg"
+        )
 
         old_url = "https://r2.example.com/platform_profiles/2026-09-06/old.jpg"
 
@@ -60,17 +62,21 @@ class TestSocialAccountConnectionServiceProfilePicture:
             existing_r2_url=old_url,
         )
 
-        mock_gen_key.assert_called_once_with(content_type="platform_profile", extension="jpg")
+        mock_gen_key.assert_called_once_with(
+            content_type="platform_profile", extension="jpg"
+        )
         mock_upload.assert_called_once_with(
-            b"fake-image-bytes", "platform_profiles/2026-09-06/uuid.jpg", content_type="platform_profile"
+            b"fake-image-bytes",
+            "platform_profiles/2026-09-06/uuid.jpg",
+            content_type="platform_profile",
         )
         mock_delete.assert_called_once_with(old_url)
-        assert synced_url == "https://r2.example.com/platform_profiles/2026-09-06/uuid.jpg"
+        assert (
+            synced_url == "https://r2.example.com/platform_profiles/2026-09-06/uuid.jpg"
+        )
 
     @patch.object(SocialAccountConnectionService, "_sync_platform_profile_picture")
-    def test_save_account_sets_brand_logo_if_initially_none(
-        self, mock_sync, brand
-    ):
+    def test_save_account_sets_brand_logo_if_initially_none(self, mock_sync, brand):
         """Should set brand.logo_url fallback if brand has no logo."""
         brand.logo_url = None
         brand.save(update_fields=["logo_url"])
@@ -93,7 +99,10 @@ class TestSocialAccountConnectionServiceProfilePicture:
 
         brand.refresh_from_db()
         assert brand.logo_url == "https://r2.example.com/platform_profiles/new.jpg"
-        assert account.profile_picture_url == "https://r2.example.com/platform_profiles/new.jpg"
+        assert (
+            account.profile_picture_url
+            == "https://r2.example.com/platform_profiles/new.jpg"
+        )
 
     @patch.object(SocialAccountConnectionService, "_sync_platform_profile_picture")
     def test_save_account_updates_brand_logo_if_it_matches_old_account_image(
@@ -136,9 +145,7 @@ class TestSocialAccountConnectionServiceProfilePicture:
         assert brand.logo_url == new_url
 
     @patch.object(SocialAccountConnectionService, "_sync_platform_profile_picture")
-    def test_save_account_does_not_overwrite_custom_brand_logo(
-        self, mock_sync, brand
-    ):
+    def test_save_account_does_not_overwrite_custom_brand_logo(self, mock_sync, brand):
         """Should NOT update brand.logo_url if brand already has a custom logo different from old account image."""
         now = timezone.now()
         expiry = now + timedelta(days=30)
