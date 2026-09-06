@@ -1,3 +1,5 @@
+import os
+
 import google_auth_oauthlib
 from django.conf import settings
 from google.auth.transport import requests
@@ -40,6 +42,11 @@ class GoogleAuthService:
                 scopes=self.scopes,
                 redirect_uri=self.redirect_uri,
             )
+
+            # Google may return extra scopes (e.g. YouTube) that were previously
+            # granted by this account. Allow scope changes so the login flow
+            # doesn't reject tokens with additional scopes.
+            os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
             flow.fetch_token(code=auth_code)
 
