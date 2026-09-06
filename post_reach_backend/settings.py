@@ -221,7 +221,7 @@ LINKEDIN_CLIENT_SECRET = env("LINKEDIN_CLIENT_SECRET")
 # Dev base uses the frontend dev server; prod base is read from environment
 # _REDIRECT_BASE_DEV = "http://localhost:3000"
 _REDIRECT_BASE_DEV = "https://postreach.winningtech.xyz"
-_REDIRECT_BASE_PROD = env("REDIRECT_BASE_URL", default="https://postreach.app")
+_REDIRECT_BASE_PROD = env("REDIRECT_BASE_URL", default="https://postglee.com")
 _REDIRECT_BASE = _REDIRECT_BASE_DEV if DEBUG else _REDIRECT_BASE_PROD
 
 REDIRECT_URI = {
