@@ -45,7 +45,7 @@ class TestPostScheduling:
         future_time = timezone.now() + timedelta(hours=2)
         post = ContentPostService.create_content_post(
             user=user,
-            media_files=[],
+            media_keys=[],
             caption="Scheduled Post",
             platforms=["facebook", "instagram"],
             content_type="text",
@@ -77,7 +77,7 @@ class TestPostScheduling:
         # 1. Post due to be published
         due_post = ContentPostService.create_content_post(
             user=user,
-            media_files=[],
+            media_keys=[],
             caption="Due Post",
             platforms=["facebook"],
             content_type="text",
@@ -87,7 +87,7 @@ class TestPostScheduling:
         # 2. Post not yet due
         future_post = ContentPostService.create_content_post(
             user=user,
-            media_files=[],
+            media_keys=[],
             caption="Future Post",
             platforms=["facebook"],
             content_type="text",
@@ -109,12 +109,16 @@ class TestPostScheduling:
     def test_calendar_endpoint_filtering(
         self, authenticated_client, user, brand, connected_accounts
     ):
+        # Calendar view filters by user.active_brand
+        user.active_brand = brand
+        user.save(update_fields=["active_brand"])
+
         now = timezone.now()
 
         # Post 1: Scheduled today
         post_today = ContentPostService.create_content_post(
             user=user,
-            media_files=[],
+            media_keys=[],
             caption="Today",
             platforms=["facebook"],
             content_type="text",
@@ -124,7 +128,7 @@ class TestPostScheduling:
         # Post 2: Scheduled next week
         post_next_week = ContentPostService.create_content_post(
             user=user,
-            media_files=[],
+            media_keys=[],
             caption="Next Week",
             platforms=["facebook"],
             content_type="text",

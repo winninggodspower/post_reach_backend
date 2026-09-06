@@ -116,13 +116,6 @@ class TestContentPostService:
             "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
         )
-        mock_upload = mocker.patch(
-            "content.services.content_post_service.R2StorageService.upload_file",
-        )
-        mocker.patch(
-            "content.services.content_post_service.R2StorageService.generate_key",
-            return_value="videos/2026-01-01/abc.mp4",
-        )
         mock_delay = mocker.patch(
             "content.tasks.wait_for_media_and_publish_platform_entry.delay",
         )
@@ -148,17 +141,6 @@ class TestContentPostService:
         mocker.patch(
             "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
-        )
-        mock_upload = mocker.patch(
-            "content.services.content_post_service.R2StorageService.upload_file",
-        )
-        mocker.patch(
-            "content.services.content_post_service.R2StorageService.generate_key",
-            side_effect=[
-                "photos/2026-01-01/a.jpg",
-                "photos/2026-01-01/b.jpg",
-                "photos/2026-01-01/c.jpg",
-            ],
         )
         mock_delay = mocker.patch(
             "content.tasks.wait_for_media_and_publish_platform_entry.delay",
@@ -187,7 +169,6 @@ class TestContentPostService:
         assert items[2].order == 2
         assert content_post.platform_entries.count() == 2
         assert mock_delay.call_count == 2
-        assert mock_upload.call_count == 3
 
     def test_create_multiple_dispatches_one_task_per_platform(
         self, db, user, brand, mocker
@@ -195,13 +176,6 @@ class TestContentPostService:
         mocker.patch(
             "content.services.content_post_service.transaction.on_commit",
             side_effect=lambda f: f(),
-        )
-        mock_upload = mocker.patch(
-            "content.services.content_post_service.R2StorageService.upload_file",
-        )
-        mocker.patch(
-            "content.services.content_post_service.R2StorageService.generate_key",
-            return_value="videos/2026-01-01/abc.mp4",
         )
         mock_delay = mocker.patch(
             "content.tasks.wait_for_media_and_publish_platform_entry.delay",

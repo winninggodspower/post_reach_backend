@@ -5,7 +5,6 @@ Integration tests for ContentPostViewSet endpoints:
 """
 
 import io
-import json
 
 import pytest
 from django.urls import reverse
@@ -213,11 +212,9 @@ class TestVideoEndpoint:
                 "video_key": "videos/2026-06-15/abc.mp4",
                 "caption": "Test Video",
                 "platforms": [PlatformChoices.YOUTUBE],
-                "platform_settings": json.dumps(
-                    {"youtube": {"title": "YouTube Title"}}
-                ),
+                "platform_settings": {"youtube": {"title": "YouTube Title"}},
             },
-            format="multipart",
+            format="json",
         )
 
         assert response.status_code == 201
@@ -264,11 +261,9 @@ class TestVideoEndpoint:
                 "video_key": "videos/2026-06-15/m.mp4",
                 "caption": "Multi",
                 "platforms": [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK],
-                "platform_settings": json.dumps(
-                    {"youtube": {"title": "YouTube Title"}}
-                ),
+                "platform_settings": {"youtube": {"title": "YouTube Title"}},
             },
-            format="multipart",
+            format="json",
         )
 
         assert response.status_code == 201
@@ -294,11 +289,9 @@ class TestVideoEndpoint:
                 "video_key": "videos/2026-06-15/m.mp4",
                 "caption": "Test",
                 "platforms": [PlatformChoices.YOUTUBE],
-                "platform_settings": json.dumps(
-                    {"youtube": {"title": "YouTube Title"}}
-                ),
+                "platform_settings": {"youtube": {"title": "YouTube Title"}},
             },
-            format="multipart",
+            format="json",
         )
         assert response.status_code == 400
         assert "No default brand" in response.data.get("message", "")
@@ -341,11 +334,9 @@ class TestVideoEndpoint:
                 "video_thumbnail_offset": 5000,
                 "caption": "Test Video",
                 "platforms": [PlatformChoices.YOUTUBE],
-                "platform_settings": json.dumps(
-                    {"youtube": {"title": "YouTube Title"}}
-                ),
+                "platform_settings": {"youtube": {"title": "YouTube Title"}},
             },
-            format="multipart",
+            format="json",
         )
 
         assert response.status_code == 201
@@ -364,7 +355,7 @@ class TestVideoEndpoint:
         from rest_framework.test import APIClient
 
         client = APIClient()
-        response = client.post(reverse(self.URL), {}, format="multipart")
+        response = client.post(reverse(self.URL), {}, format="json")
         assert response.status_code == 401
 
 
@@ -404,7 +395,7 @@ class TestPhotoEndpoint:
                 "caption": "Nice shot",
                 "platforms": [PlatformChoices.INSTAGRAM],
             },
-            format="multipart",
+            format="json",
         )
 
         assert response.status_code == 201
@@ -454,7 +445,7 @@ class TestPhotoEndpoint:
                 "caption": "Multi photo",
                 "platforms": [PlatformChoices.FACEBOOK],
             },
-            format="multipart",
+            format="json",
         )
 
         assert response.status_code == 201
@@ -476,7 +467,7 @@ class TestPhotoEndpoint:
                 "caption": "Test",
                 "platforms": [PlatformChoices.INSTAGRAM],
             },
-            format="multipart",
+            format="json",
         )
         assert response.status_code == 400
         assert "No connected account" in response.data.get("message", "")
@@ -485,7 +476,7 @@ class TestPhotoEndpoint:
         from rest_framework.test import APIClient
 
         client = APIClient()
-        response = client.post(reverse(self.URL), {}, format="multipart")
+        response = client.post(reverse(self.URL), {}, format="json")
         assert response.status_code == 401
 
     def test_expired_connection_raises_error(
@@ -508,7 +499,7 @@ class TestPhotoEndpoint:
                 "caption": "Test",
                 "platforms": [PlatformChoices.INSTAGRAM],
             },
-            format="multipart",
+            format="json",
         )
         assert response.status_code == 400
         assert "have expired" in response.data.get("message", "")
