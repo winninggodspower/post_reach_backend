@@ -1,28 +1,80 @@
+from django.db.models import Q
+from django.utils.dateparse import parse_date
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
 from content.models import ContentPost
 from content.serializers import (
     ContentPostCreateSerializer,
     ContentPostResponseSerializer,
+    ContentPostUpdateSerializer,
     PhotoPostCreateSerializer,
+    PresignedUrlRequestSerializer,
     TextPostCreateSerializer,
-    photo_post_parameters,
-    text_post_parameters,
 )
-from content.services.content_creation_service import ContentCreationService
 from content.services.content_post_service import ContentPostService
+from users.services.brand_service import BrandService
+from users.services.user_service import UserService
 from utils.custom_logger import CustomLogger
+from utils.r2_storage import R2StorageService
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
 
 class ContentPostViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [JSONParser]
+
+    @swagger_auto_schema(
+        operation_summary="Generate a presigned URL for media upload",
+        operation_description=(
+            "Returns a presigned URL that the frontend can use to upload media (video or photo) "
+            "directly to R2. Also returns the 'key' which must be passed when creating the post."
+        ),
+        request_body=PresignedUrlRequestSerializer,
+        responses={
+            200: openapi.Response(
+                "Success",
+                openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            "key": openapi.Schema(type=openapi.TYPE_STRING),
+                            "url": openapi.Schema(type=openapi.TYPE_STRING),
+                        },
+                    ),
+                ),
+            ),
+            400: openapi.Response("Bad Request"),
+        },
+    )
+    @action(detail=False, methods=["post"], url_path="presigned-url")
+    def get_presigned_url(self, request):
+        """
+        POST /api/content/posts/presigned-url/
+        """
+        serializer = PresignedUrlRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        files = serializer.validated_data["files"]
+
+        results = []
+        for file_req in files:
+            result = R2StorageService.generate_presigned_upload_url(
+                content_type=file_req["content_type"],
+                extension=file_req.get("extension"),
+            )
+            if not result:
+                return CustomErrorResponse(
+                    "Failed to generate presigned URL.",
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            results.append(result)
+
+        return CustomSuccessResponse(results)
 
     # ── Video ──────────────────────────────────────────────
 
@@ -39,7 +91,6 @@ class ContentPostViewSet(viewsets.ViewSet):
             201: ContentPostResponseSerializer,
             400: openapi.Response("Bad Request"),
         },
-        consumes=["multipart/form-data"],
     )
     @action(detail=False, methods=["post"], url_path="video")
     def create_video(self, request):
@@ -52,13 +103,13 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         return self._create_and_dispatch(
             request=request,
-            media_files=[validated["video"]],
+            media_keys=[validated["video_key"]],
             caption=validated.get("caption", ""),
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
             content_type="video",
             scheduled_at=validated.get("scheduled_at"),
-            thumbnail=validated.get("thumbnail"),
+            thumbnail_key=validated.get("thumbnail_key"),
             video_thumbnail_offset=validated.get("video_thumbnail_offset"),
         )
 
@@ -72,12 +123,11 @@ class ContentPostViewSet(viewsets.ViewSet):
             "tasks to publish the photos to each selected platform. Each platform must "
             "already be connected to the user's active brand."
         ),
-        manual_parameters=photo_post_parameters,
+        request_body=PhotoPostCreateSerializer,
         responses={
             201: ContentPostResponseSerializer,
             400: openapi.Response("Bad Request"),
         },
-        consumes=["multipart/form-data"],
     )
     @action(detail=False, methods=["post"], url_path="photo")
     def create_photo(self, request):
@@ -90,7 +140,7 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         return self._create_and_dispatch(
             request=request,
-            media_files=validated["photos"],
+            media_keys=validated["photo_keys"],
             caption=validated.get("caption", ""),
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
@@ -108,12 +158,11 @@ class ContentPostViewSet(viewsets.ViewSet):
             "to each selected platform (e.g. Facebook, LinkedIn). "
             "Each platform must already be connected to the user's active brand."
         ),
-        manual_parameters=text_post_parameters,
+        request_body=TextPostCreateSerializer,
         responses={
             201: ContentPostResponseSerializer,
             400: openapi.Response("Bad Request"),
         },
-        consumes=["application/x-www-form-urlencoded", "multipart/form-data"],
     )
     @action(detail=False, methods=["post"], url_path="text")
     def create_text(self, request):
@@ -126,7 +175,7 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         return self._create_and_dispatch(
             request=request,
-            media_files=[],
+            media_keys=[],
             caption=validated["caption"],
             platforms=validated["platforms"],
             platform_settings=validated.get("platform_settings", {}),
@@ -167,16 +216,8 @@ class ContentPostViewSet(viewsets.ViewSet):
         """
         GET /api/content/posts/calendar/
         """
-        from django.db.models import Q
-        from django.utils.dateparse import parse_date
-
-        from users.services.brand_service import BrandService
-
         user = request.user
-        try:
-            brand = BrandService.get_default_brand(user)
-        except ValueError as e:
-            return CustomErrorResponse(str(e), status=status.HTTP_400_BAD_REQUEST)
+        brand = user.active_brand
 
         start_date_str = request.query_params.get("start_date")
         end_date_str = request.query_params.get("end_date")
@@ -208,11 +249,11 @@ class ContentPostViewSet(viewsets.ViewSet):
     # ── Retrieve status ────────────────────────────────────
 
     @swagger_auto_schema(
-        operation_summary="Get the status of a content post",
+        operation_summary="Get a content post by ID",
         operation_description=(
-            "Returns a ContentPost by ID with per-platform status details "
-            "(pending, uploading, posted, or failed) including platform_post_id "
-            "and error_message for each platform."
+            "Returns the full details of a ContentPost by ID, including its media, "
+            "caption, and per-platform status details (pending, uploading, posted, "
+            "or failed) with platform_post_id and error_message for each platform."
         ),
         responses={
             200: ContentPostResponseSerializer,
@@ -237,19 +278,102 @@ class ContentPostViewSet(viewsets.ViewSet):
         response_data = ContentPostResponseSerializer(content_post).data
         return CustomSuccessResponse(response_data)
 
+    @swagger_auto_schema(
+        operation_summary="Update a scheduled content post",
+        operation_description=(
+            "Updates the caption, scheduled_at, or platform_settings of a ContentPost. "
+            "Only allowed if the post has not started processing yet (all platforms are PENDING or SCHEDULED)."
+        ),
+        request_body=ContentPostUpdateSerializer,
+        responses={
+            200: ContentPostResponseSerializer,
+            400: openapi.Response("Bad Request"),
+            404: openapi.Response("Not Found"),
+        },
+    )
+    def partial_update(self, request, pk=None):
+        """
+        PATCH /api/content/posts/{id}/
+        """
+        try:
+            content_post = ContentPostService.get_content_post(
+                post_id=pk, user=request.user
+            )
+        except ContentPost.DoesNotExist:
+            return CustomErrorResponse(
+                "Content post not found.",
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ContentPostUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            content_post = ContentPostService.update_content_post(
+                content_post=content_post,
+                validated_data=serializer.validated_data,
+            )
+        except ValueError as e:
+            return CustomErrorResponse(
+                str(e),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        response_data = ContentPostResponseSerializer(content_post).data
+        return CustomSuccessResponse(response_data)
+
+    @swagger_auto_schema(
+        operation_summary="Delete a scheduled content post",
+        operation_description=(
+            "Deletes a scheduled ContentPost and its associated media. "
+            "Only allowed if the post has not started processing yet (all platforms are PENDING or SCHEDULED)."
+        ),
+        responses={
+            204: openapi.Response("No Content"),
+            400: openapi.Response("Bad Request"),
+            404: openapi.Response("Not Found"),
+        },
+    )
+    def destroy(self, request, pk=None):
+        """
+        DELETE /api/content/posts/{id}/
+        """
+        try:
+            content_post = ContentPostService.get_content_post(
+                post_id=pk, user=request.user
+            )
+        except ContentPost.DoesNotExist:
+            return CustomErrorResponse(
+                "Content post not found.",
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            ContentPostService.delete_content_post(content_post)
+        except ValueError as e:
+            return CustomErrorResponse(
+                str(e),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return CustomSuccessResponse(
+            "Post deleted successfully.",
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
     # ── shared helper ──────────────────────────────────────
 
     def _create_and_dispatch(
         self,
         *,
         request,
-        media_files,
+        media_keys,
         platforms,
         content_type,
         caption="",
         platform_settings=None,
         scheduled_at=None,
-        thumbnail=None,
+        thumbnail_key=None,
         video_thumbnail_offset=None,
     ):
         """
@@ -257,15 +381,15 @@ class ContentPostViewSet(viewsets.ViewSet):
         return the serialized response.
         """
         try:
-            content_post = ContentCreationService.create_content_post(
+            content_post = ContentPostService.create_content_post(
                 user=request.user,
-                media_files=media_files,
+                media_keys=media_keys,
                 caption=caption,
                 platforms=platforms,
                 platform_settings=platform_settings,
                 content_type=content_type,
                 scheduled_at=scheduled_at,
-                thumbnail_file=thumbnail,
+                thumbnail_key=thumbnail_key,
                 video_thumbnail_offset=video_thumbnail_offset,
             )
         except ValueError as e:

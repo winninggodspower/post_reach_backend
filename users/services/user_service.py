@@ -5,6 +5,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from users.services import BrandService
 from utils.custom_logger import CustomLogger, log_exceptions
 
 User = get_user_model()
@@ -13,13 +14,16 @@ User = get_user_model()
 class UserService:
     @staticmethod
     @log_exceptions()
-    def get_or_create_social_user(email, first_name="", last_name=""):
+    def get_or_create_social_user(
+        email, first_name="", last_name="", profile_picture_url=None
+    ):
         email = User.objects.normalize_email(email)
         user, created = User.objects.get_or_create(
             email=email,
             defaults={
                 "first_name": first_name,
                 "last_name": last_name,
+                "profile_picture_url": profile_picture_url,
             },
         )
         return user, created
@@ -102,3 +106,8 @@ class UserService:
         user.active_brand = brand
         user.save(update_fields=["active_brand"])
         return brand
+
+    @staticmethod
+    @log_exceptions
+    def get_active_brand(user):
+        return user.active_brand or BrandService.get_default_brand(user)

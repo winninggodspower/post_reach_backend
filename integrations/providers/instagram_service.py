@@ -39,6 +39,7 @@ class InstagramService(SocialAccountService):
             "state": state,
             "scope": ",".join(cls.REQUIRED_PERMISSIONS),
             "response_type": "code",
+            "force_authentication": 1,
         }
 
         query_string = "&".join(f"{k}={v}" for k, v in params.items())
@@ -328,7 +329,7 @@ class InstagramService(SocialAccountService):
             response_data = cls().get(
                 f"/{container_id}",
                 params={
-                    "fields": "status_code,status",
+                    "fields": "status_code,status,error_message",
                     "access_token": access_token,
                 },
             )
@@ -387,7 +388,7 @@ class InstagramService(SocialAccountService):
                     "access_token": access_token,
                 },
             )
-        except APIError as e:
+        except Exception as e:
             CustomLogger.exception(
                 "Failed to fetch Instagram permalink",
                 extra={

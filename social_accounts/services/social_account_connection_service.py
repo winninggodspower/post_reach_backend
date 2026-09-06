@@ -30,6 +30,10 @@ class SocialAccountConnectionService:
         if "metadata" in defaults and "picture_url" in defaults["metadata"]:
             defaults["metadata"]["picture_url"] = synced_r2_url
 
+        if synced_r2_url and not brand.logo_url:
+            brand.logo_url = synced_r2_url
+            brand.save(update_fields=["logo_url"])
+
         return SocialAccount.objects.update_or_create(
             brand=brand,
             platform=platform,

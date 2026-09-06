@@ -42,6 +42,7 @@ class FacebookService(SocialAccountService):
             "state": state,
             "scope": ",".join(cls.REQUIRED_SCOPES),
             "response_type": "code",
+            "auth_type": "rerequest",
         }
 
         query_string = "&".join(f"{k}={v}" for k, v in params.items())

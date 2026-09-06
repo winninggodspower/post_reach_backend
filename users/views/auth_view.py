@@ -125,11 +125,13 @@ class GoogleSignInView(APIView):
             email = user_info["email"]
             first_name = user_info["first_name"]
             last_name = user_info["last_name"]
+            profile_picture_url = user_info.get("profile_picture_url")
 
             user, _created = UserService.get_or_create_social_user(
                 email=email,
                 first_name=first_name,
                 last_name=last_name,
+                profile_picture_url=profile_picture_url,
             )
 
             return CustomSuccessResponse(

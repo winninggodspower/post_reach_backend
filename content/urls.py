@@ -4,6 +4,11 @@ from .views import ContentPostViewSet
 
 urlpatterns = [
     path(
+        "posts/presigned-url/",
+        ContentPostViewSet.as_view({"post": "get_presigned_url"}),
+        name="content-post-presigned-url",
+    ),
+    path(
         "posts/video/",
         ContentPostViewSet.as_view({"post": "create_video"}),
         name="content-post-video",
@@ -25,7 +30,9 @@ urlpatterns = [
     ),
     path(
         "posts/<uuid:pk>/",
-        ContentPostViewSet.as_view({"get": "retrieve"}),
+        ContentPostViewSet.as_view(
+            {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
+        ),
         name="content-post-detail",
     ),
 ]

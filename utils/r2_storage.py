@@ -5,6 +5,7 @@ Provides upload, delete, download, and presigned URL generation for temporary
 media storage (video and photo) during the content posting pipeline.
 """
 
+import mimetypes
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -211,3 +212,102 @@ class R2StorageService:
                 extra={"bucket": settings.CLOUDFLARE_R2_BUCKET, "key": key},
             )
             return None
+
+    @classmethod
+    def generate_presigned_upload_url(
+        cls, content_type: str = "video", extension: str = None, expiration: int = 3600
+    ) -> dict | None:
+        """
+        Generate a presigned URL for uploading a new object to R2.
+
+        Returns a dict containing 'key' and 'url', or None on failure.
+        """
+        key = cls.generate_key(content_type, extension)
+        info = CONTENT_TYPE_MAP.get(content_type, CONTENT_TYPE_MAP["video"])
+        mime_type = info["mime"]
+        if extension:
+            guessed_mime = mimetypes.guess_type(f"file.{extension}")[0]
+            if guessed_mime:
+                mime_type = guessed_mime
+
+        client = cls._get_client()
+
+        try:
+            url = client.generate_presigned_url(
+                "put_object",
+                Params={
+                    "Bucket": settings.CLOUDFLARE_R2_BUCKET,
+                    "Key": key,
+                    "ContentType": mime_type,
+                },
+                ExpiresIn=expiration,
+            )
+            return {"key": key, "url": url}
+        except Exception:
+            CustomLogger.exception(
+                "R2 presigned upload URL generation failed",
+                extra={"bucket": settings.CLOUDFLARE_R2_BUCKET, "key": key},
+            )
+            return None
+
+    @classmethod
+    def is_file_accessible(cls, key: str) -> bool:
+        """
+        Check if a file is accessible via HEAD request to its public presigned URL.
+
+        Useful for verifying that media uploaded via presigned URL is immediately
+        available for social platform fetching.
+
+        :param key: Object key in the bucket.
+        :return: True if accessible (HTTP 200/206), False otherwise.
+        """
+        import requests
+
+        try:
+            url = cls.generate_presigned_url(key, expiration=3600)
+            if not url:
+                CustomLogger.warning(
+                    "Failed to generate presigned URL for accessibility check",
+                    extra={"bucket": settings.CLOUDFLARE_R2_BUCKET, "key": key},
+                )
+                return False
+
+            response = requests.head(url, timeout=10, allow_redirects=True)
+            is_ready = response.status_code in (200, 206)
+
+            if is_ready:
+                CustomLogger.info(
+                    "R2 file accessibility check passed",
+                    extra={
+                        "bucket": settings.CLOUDFLARE_R2_BUCKET,
+                        "key": key,
+                        "status_code": response.status_code,
+                    },
+                )
+            else:
+                CustomLogger.warning(
+                    "R2 file not yet ready",
+                    extra={
+                        "bucket": settings.CLOUDFLARE_R2_BUCKET,
+                        "key": key,
+                        "status_code": response.status_code,
+                    },
+                )
+
+            return is_ready
+        except requests.RequestException as e:
+            CustomLogger.warning(
+                "R2 file accessibility check request failed",
+                extra={
+                    "bucket": settings.CLOUDFLARE_R2_BUCKET,
+                    "key": key,
+                    "error": str(e),
+                },
+            )
+            return False
+        except Exception as e:
+            CustomLogger.exception(
+                "R2 file accessibility check failed",
+                extra={"bucket": settings.CLOUDFLARE_R2_BUCKET, "key": key},
+            )
+            return False

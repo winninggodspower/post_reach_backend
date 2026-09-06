@@ -63,6 +63,7 @@ class GoogleAuthService:
         email = id_info.get("email")
         first_name = id_info.get("given_name", "")
         last_name = id_info.get("family_name", "")
+        picture_url = id_info.get("picture")
 
         if not email:
             raise ValueError("Email not found in ID token")
@@ -71,4 +72,5 @@ class GoogleAuthService:
             "email": email,
             "first_name": first_name,
             "last_name": last_name,
+            "profile_picture_url": picture_url,
         }
