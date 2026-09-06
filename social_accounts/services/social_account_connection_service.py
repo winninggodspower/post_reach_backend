@@ -20,17 +20,32 @@ class SocialAccountConnectionService:
     @classmethod
     @log_exceptions()
     def _save_account(cls, *, brand, platform, defaults):
-        synced_r2_url = cls._sync_profile_picture_if_needed(
-            brand,
-            platform,
-            defaults.get("profile_picture_url"),
-            defaults.get("external_id", "unknown"),
+        # Look up any existing social account connection so we know its previous R2 profile picture URL
+        existing_account = SocialAccount.objects.filter(
+            brand=brand, platform=platform
+        ).first()
+        existing_r2_url = (
+            existing_account.profile_picture_url if existing_account else None
+        )
+
+        # Upload the fetched platform profile picture to R2 in the dedicated platform_profiles folder and delete the old one
+        synced_r2_url = cls._sync_platform_profile_picture(
+            brand=brand,
+            platform=platform,
+            fetched_raw_url=defaults.get("profile_picture_url"),
+            external_id=defaults.get("external_id", "unknown"),
+            existing_r2_url=existing_r2_url,
         )
         defaults["profile_picture_url"] = synced_r2_url
         if "metadata" in defaults and "picture_url" in defaults["metadata"]:
             defaults["metadata"]["picture_url"] = synced_r2_url
 
-        if synced_r2_url and not brand.logo_url:
+        # Sync brand logo fallback:
+        # 1. If brand has no logo yet, adopt this connected platform's synced picture.
+        # 2. If brand's logo was set to this platform's previous image (which was just replaced/deleted from R2),
+        #    update it to the new image so the brand logo doesn't become a broken link.
+        # 3. If the brand has an official custom logo (brand.logo_url != existing_r2_url), preserve it untouched.
+        if synced_r2_url and (not brand.logo_url or brand.logo_url == existing_r2_url):
             brand.logo_url = synced_r2_url
             brand.save(update_fields=["logo_url"])
 
@@ -41,16 +56,28 @@ class SocialAccountConnectionService:
         )
 
     @classmethod
-    def _sync_profile_picture_if_needed(
-        cls, brand, platform, fetched_raw_url, external_id
+    def _sync_platform_profile_picture(
+        cls,
+        brand,
+        platform,
+        fetched_raw_url,
+        external_id,
+        existing_r2_url=None,
     ):
-        existing_account = SocialAccount.objects.filter(
-            brand=brand, platform=platform
-        ).first()
-        existing_r2_url = (
-            existing_account.profile_picture_url if existing_account else None
-        )
+        # If the platform returned no profile picture URL, nothing to sync
+        if not fetched_raw_url:
+            return None
 
+        # Resolve existing R2 URL if not provided by caller
+        if existing_r2_url is None:
+            existing_account = SocialAccount.objects.filter(
+                brand=brand, platform=platform
+            ).first()
+            existing_r2_url = (
+                existing_account.profile_picture_url if existing_account else None
+            )
+
+        # Skip if the raw URL is somehow already the stored R2 URL
         if existing_r2_url == fetched_raw_url:
             return fetched_raw_url
 
@@ -58,23 +85,27 @@ class SocialAccountConnectionService:
             with httpx.Client(timeout=10.0, follow_redirects=True) as client:
                 resp = client.get(fetched_raw_url)
                 resp.raise_for_status()
+
+                # Store social platform profile pictures in the dedicated 'platform_profiles' folder in R2
                 key = R2StorageService.generate_key(
-                    content_type="photo", extension="jpg"
+                    content_type="platform_profile", extension="jpg"
                 )
-                R2StorageService.upload_file(resp.content, key, content_type="photo")
+                R2StorageService.upload_file(
+                    resp.content, key, content_type="platform_profile"
+                )
                 synced_r2_url = R2StorageService.generate_presigned_url(key)
 
                 if not synced_r2_url:
                     raise ValueError("Failed to generate presigned URL")
 
-                # Delete the old image ONLY after successfully uploading the new one
+                # Delete the previous R2 image ONLY after successfully uploading the new one
                 if existing_r2_url:
                     R2StorageService.delete_from_url(existing_r2_url)
 
                 return synced_r2_url
         except Exception as e:
             CustomLogger.warning(
-                "Failed to sync profile picture to R2",
+                "Failed to sync platform profile picture to R2",
                 extra={
                     "identifier": external_id,
                     "url": fetched_raw_url,

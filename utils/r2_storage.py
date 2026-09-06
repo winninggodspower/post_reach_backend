@@ -20,6 +20,9 @@ from utils.custom_logger import CustomLogger
 CONTENT_TYPE_MAP = {
     "video": {"prefix": "videos", "mime": "video/mp4"},
     "photo": {"prefix": "photos", "mime": "image/jpeg"},
+    "profile_picture": {"prefix": "profile_pictures", "mime": "image/jpeg"},
+    "brand_logo": {"prefix": "brand_logos", "mime": "image/jpeg"},
+    "platform_profile": {"prefix": "platform_profiles", "mime": "image/jpeg"},
 }
 
 
