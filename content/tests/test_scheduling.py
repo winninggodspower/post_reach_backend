@@ -157,3 +157,36 @@ class TestPostScheduling:
         )
         assert response.status_code == 200
         assert len(response.data["data"]) == 2
+
+    def test_calendar_endpoint_fallback_when_active_brand_none(
+        self, authenticated_client, user, brand, connected_accounts
+    ):
+        # Ensure user.active_brand is None (the default state for new users)
+        user.active_brand = None
+        user.save(update_fields=["active_brand"])
+
+        now = timezone.now()
+        post = ContentPostService.create_content_post(
+            user=user,
+            media_keys=[],
+            caption="Scheduled with active_brand=None",
+            platforms=["facebook"],
+            content_type="text",
+            scheduled_at=now,
+        )
+
+        url = reverse("content-post-calendar")
+        # Should work with ISO format strings as well as YYYY-MM-DD
+        response = authenticated_client.get(
+            url,
+            {
+                "start_date": (now - timedelta(days=1)).strftime("%Y-%m-%d"),
+                "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+            },
+        )
+        assert response.status_code == 200
+        data = response.data
+        assert data["success"] is True
+        assert len(data["data"]) == 1
+        assert data["data"][0]["id"] == str(post.id)
+

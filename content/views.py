@@ -217,7 +217,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         GET /api/content/posts/calendar/
         """
         user = request.user
-        brand = user.active_brand
+        brand = UserService.get_active_brand(user)
 
         start_date_str = request.query_params.get("start_date")
         end_date_str = request.query_params.get("end_date")
