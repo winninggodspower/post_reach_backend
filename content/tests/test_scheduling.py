@@ -189,4 +189,3 @@ class TestPostScheduling:
         assert data["success"] is True
         assert len(data["data"]) == 1
         assert data["data"][0]["id"] == str(post.id)
-
