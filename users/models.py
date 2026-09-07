@@ -86,3 +86,6 @@ class Brand(UUIDTimestampedModel):
                 name="unique_user_default_brand",
             ),
         ]
+
+    def __str__(self):
+        return f"{self.name} ({self.user.email})"

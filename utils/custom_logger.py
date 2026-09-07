@@ -46,12 +46,16 @@ def get_logger(name: str) -> logging.Logger:
     return logger
 
 
-def log_exceptions(logger: logging.Logger | None = None):
+def log_exceptions(func_or_logger: Any = None):
     """Decorator to log any exception raised by the wrapped function.
 
     The original exception is re-raised after logging.
     Usage:
         @log_exceptions()
+        def my_service(...):
+            ...
+        or:
+        @log_exceptions
         def my_service(...):
             ...
     """
@@ -68,6 +72,9 @@ def log_exceptions(logger: logging.Logger | None = None):
                 raise
 
         return wrapper  # type: ignore
+
+    if callable(func_or_logger) and not isinstance(func_or_logger, logging.Logger):
+        return decorator(func_or_logger)
 
     return decorator
 

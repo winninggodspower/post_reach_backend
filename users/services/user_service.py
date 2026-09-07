@@ -108,6 +108,6 @@ class UserService:
         return brand
 
     @staticmethod
-    @log_exceptions
+    @log_exceptions()
     def get_active_brand(user):
         return user.active_brand or BrandService.get_default_brand(user)
