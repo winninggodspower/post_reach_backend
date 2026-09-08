@@ -7,6 +7,7 @@ import os
 import sys
 import threading
 import time
+import traceback
 from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from functools import wraps
@@ -219,14 +220,73 @@ def _build_fingerprint(
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:20]
 
 
+def _extract_exception_details(
+    exc_type: Any, exc_value: Any, exc_tb: Any
+) -> dict[str, Any]:
+    details: dict[str, Any] = {}
+    if exc_type:
+        details["exception_type"] = (
+            exc_type.__name__ if hasattr(exc_type, "__name__") else str(exc_type)
+        )
+    if exc_value:
+        details["exception"] = str(exc_value)
+
+    if exc_tb:
+        try:
+            formatted_tb = "".join(
+                traceback.format_exception(exc_type, exc_value, exc_tb)
+            )
+            details["traceback"] = formatted_tb
+
+            frames = traceback.extract_tb(exc_tb)
+            if frames:
+                last_frame = frames[-1]
+                filename = last_frame.filename
+                try:
+                    rel_path = os.path.relpath(filename)
+                    display_file = (
+                        rel_path
+                        if not rel_path.startswith("..")
+                        else os.path.basename(filename)
+                    )
+                except Exception:
+                    display_file = os.path.basename(filename)
+
+                details["error_file"] = display_file.replace("\\", "/")
+                details["error_line"] = last_frame.lineno
+                details["error_func"] = last_frame.name
+                if last_frame.line:
+                    details["error_code"] = last_frame.line.strip()
+        except Exception:
+            pass
+
+    return details
+
+
 def _write_local_log(
-    source: str, level: str, message: str, extra: dict[str, Any]
+    source: str,
+    level: str,
+    message: str,
+    extra: dict[str, Any],
+    exc_info: Any = None,
 ) -> None:
     level_number = getattr(logging, level.upper(), logging.INFO)
     logger = get_logger(source)
-    if extra:
-        message = f"{message} | extra={json.dumps(extra, sort_keys=True, default=str)}"
-    logger.log(level_number, message, extra={SKIP_DISCORD_BRIDGE_ATTR: True})
+    log_extra = dict(extra)
+    # Don't duplicate raw multi-line traceback inside the single-line JSON extra if exc_info is provided,
+    # because logger.log(..., exc_info=exc_info) outputs the formatted traceback directly.
+    if exc_info:
+        log_extra.pop("traceback", None)
+    if log_extra:
+        message = (
+            f"{message} | extra={json.dumps(log_extra, sort_keys=True, default=str)}"
+        )
+    logger.log(
+        level_number,
+        message,
+        exc_info=exc_info,
+        extra={SKIP_DISCORD_BRIDGE_ATTR: True},
+    )
 
 
 def _send_to_discord_async(
@@ -275,15 +335,25 @@ def _send_to_discord_async(
         },
     ]
 
-    for k, v in list(extra.items())[:8]:
-        if k in ("source", "environment", "fingerprint"):
+    for k, v in list(extra.items()):
+        if k in ("source", "environment", "fingerprint", "traceback"):
             continue
+        if len(fields) >= 24:
+            break
         val_str = str(v)
         if len(val_str) > 300:
             val_str = val_str[:297] + "..."
         fields.append({"name": str(k), "value": f"`{val_str}`", "inline": True})
 
-    desc = f"```{message[:1700]}```" if message else "(No message content)"
+    tb_str = extra.get("traceback")
+    if tb_str:
+        tb_trimmed = str(tb_str).strip()
+        if len(tb_trimmed) > 1200:
+            tb_trimmed = "..." + tb_trimmed[-1197:]
+        desc = f"**{message}**\n```py\n{tb_trimmed}\n```"
+    else:
+        desc = f"```{message[:1700]}```" if message else "(No message content)"
+
     embed = {
         "title": f"[{level}] [{env_label}] {source}",
         "description": desc,
@@ -313,6 +383,7 @@ def _dispatch_log_event(
     emit_local: bool,
     emit_discord: bool,
     mention_here: bool | None = None,
+    exc_info: Any = None,
 ) -> None:
     normalized_source = str(source)
     normalized_level = str(level).upper()
@@ -328,6 +399,7 @@ def _dispatch_log_event(
             level=normalized_level,
             message=normalized_message,
             extra=sanitized_extra,
+            exc_info=exc_info,
         )
 
     if emit_discord:
@@ -440,33 +512,65 @@ class CustomLogger:
         )
 
     def error(
-        self: "CustomLogger | str", *args: Any, extra: dict[str, Any] | None = None
+        self: "CustomLogger | str",
+        *args: Any,
+        extra: dict[str, Any] | None = None,
+        exc_info: Any = None,
     ) -> None:
         source, resolved_message, positional_extra = CustomLogger._resolve_call(
             self, args
         )
+        merged_extra = dict(extra or positional_extra or {})
+        passed_exc = None
+        if exc_info is True:
+            passed_exc = sys.exc_info()
+        elif isinstance(exc_info, tuple):
+            passed_exc = exc_info
+
+        if passed_exc and passed_exc[0]:
+            exc_details = _extract_exception_details(*passed_exc)
+            for k, v in exc_details.items():
+                merged_extra.setdefault(k, v)
+
         _dispatch_log_event(
             source=source,
             level="ERROR",
             message=resolved_message,
-            extra=extra or positional_extra,
+            extra=merged_extra,
             emit_local=True,
             emit_discord=True,
+            exc_info=passed_exc if passed_exc and passed_exc[0] else None,
         )
 
     def critical(
-        self: "CustomLogger | str", *args: Any, extra: dict[str, Any] | None = None
+        self: "CustomLogger | str",
+        *args: Any,
+        extra: dict[str, Any] | None = None,
+        exc_info: Any = None,
     ) -> None:
         source, resolved_message, positional_extra = CustomLogger._resolve_call(
             self, args
         )
+        merged_extra = dict(extra or positional_extra or {})
+        passed_exc = None
+        if exc_info is True:
+            passed_exc = sys.exc_info()
+        elif isinstance(exc_info, tuple):
+            passed_exc = exc_info
+
+        if passed_exc and passed_exc[0]:
+            exc_details = _extract_exception_details(*passed_exc)
+            for k, v in exc_details.items():
+                merged_extra.setdefault(k, v)
+
         _dispatch_log_event(
             source=source,
             level="CRITICAL",
             message=resolved_message,
-            extra=extra or positional_extra,
+            extra=merged_extra,
             emit_local=True,
             emit_discord=True,
+            exc_info=passed_exc if passed_exc and passed_exc[0] else None,
         )
 
     def exception(
@@ -475,12 +579,14 @@ class CustomLogger:
         source, resolved_message, positional_extra = CustomLogger._resolve_call(
             self, args, default_message="Unhandled exception"
         )
-        exc_type, exc_value, _ = sys.exc_info()
+        exc_info = sys.exc_info()
+        exc_type, exc_value, exc_tb = exc_info
         merged_extra = dict(extra or positional_extra or {})
-        if exc_type:
-            merged_extra.setdefault("exception_type", exc_type.__name__)
-        if exc_value:
-            merged_extra.setdefault("exception", str(exc_value))
+
+        exc_details = _extract_exception_details(exc_type, exc_value, exc_tb)
+        for k, v in exc_details.items():
+            merged_extra.setdefault(k, v)
+
         _dispatch_log_event(
             source=source,
             level="ERROR",
@@ -488,6 +594,7 @@ class CustomLogger:
             extra=merged_extra,
             emit_local=True,
             emit_discord=True,
+            exc_info=exc_info if exc_type else True,
         )
 
     def __getattr__(self, item):
@@ -509,10 +616,11 @@ def dispatch_stdlib_record_to_discord(record: logging.LogRecord) -> None:
 
     extra: dict[str, Any] = {"module": record.module, "line": record.lineno}
     extra["source_logger"] = record.name
-    if record.exc_info and record.exc_info[0]:
-        extra["exception_type"] = record.exc_info[0].__name__
-    if record.exc_info and record.exc_info[1]:
-        extra["exception"] = str(record.exc_info[1])
+    if record.exc_info:
+        exc_type, exc_value, exc_tb = record.exc_info
+        exc_details = _extract_exception_details(exc_type, exc_value, exc_tb)
+        for k, v in exc_details.items():
+            extra.setdefault(k, v)
 
     rendered_message = record.getMessage()
     if record.name == "django.request":
