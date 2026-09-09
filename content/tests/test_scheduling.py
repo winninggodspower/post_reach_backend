@@ -189,3 +189,129 @@ class TestPostScheduling:
         assert data["success"] is True
         assert len(data["data"]) == 1
         assert data["data"][0]["id"] == str(post.id)
+
+    def test_scheduled_endpoint_returns_only_future_scheduled_posts_in_order(
+        self, authenticated_client, user, brand, connected_accounts
+    ):
+        now = timezone.now()
+
+        # 1. Past scheduled post
+        past_post = ContentPostService.create_content_post(
+            user=user,
+            media_keys=[],
+            caption="Past Post",
+            platforms=["facebook"],
+            content_type="text",
+            scheduled_at=now - timedelta(hours=2),
+        )
+
+        # 2. Immediate post (not scheduled)
+        immediate_post = ContentPostService.create_content_post(
+            user=user,
+            media_keys=[],
+            caption="Immediate Post",
+            platforms=["facebook"],
+            content_type="text",
+            scheduled_at=None,
+        )
+
+        # 3. Future post #1 (in 2 hours)
+        future_soon = ContentPostService.create_content_post(
+            user=user,
+            media_keys=[],
+            caption="Future Soon",
+            platforms=["facebook"],
+            content_type="text",
+            scheduled_at=now + timedelta(hours=2),
+        )
+
+        # 4. Future post #2 (in 2 days)
+        future_later = ContentPostService.create_content_post(
+            user=user,
+            media_keys=[],
+            caption="Future Later",
+            platforms=["facebook"],
+            content_type="text",
+            scheduled_at=now + timedelta(days=2),
+        )
+
+        url = reverse("content-post-scheduled")
+        response = authenticated_client.get(url)
+
+        assert response.status_code == 200
+        data = response.data
+        assert data["success"] is True
+        # Only the 2 future posts should be returned
+        assert len(data["data"]) == 2
+        # Earliest upcoming post should be first (ascending order)
+        assert data["data"][0]["id"] == str(future_soon.id)
+        assert data["data"][0]["caption"] == "Future Soon"
+        assert data["data"][1]["id"] == str(future_later.id)
+        assert data["data"][1]["caption"] == "Future Later"
+
+    def test_scheduled_endpoint_filters_by_platform_and_content_type(
+        self, authenticated_client, user, brand, connected_accounts
+    ):
+        now = timezone.now()
+
+        post_fb_text = ContentPostService.create_content_post(
+            user=user,
+            media_keys=[],
+            caption="FB Text Post",
+            platforms=["facebook"],
+            content_type="text",
+            scheduled_at=now + timedelta(hours=1),
+        )
+
+        post_ig_photo = ContentPostService.create_content_post(
+            user=user,
+            media_keys=["dummy_photo_key"],
+            caption="IG Photo Post",
+            platforms=["instagram"],
+            content_type="photo",
+            scheduled_at=now + timedelta(hours=3),
+        )
+
+        url = reverse("content-post-scheduled")
+
+        # Filter by platform: instagram
+        response_ig = authenticated_client.get(url, {"platform": "instagram"})
+        assert response_ig.status_code == 200
+        assert len(response_ig.data["data"]) == 1
+        assert response_ig.data["data"][0]["id"] == str(post_ig_photo.id)
+
+        # Filter by content_type: text
+        response_text = authenticated_client.get(url, {"content_type": "text"})
+        assert response_text.status_code == 200
+        assert len(response_text.data["data"]) == 1
+        assert response_text.data["data"][0]["id"] == str(post_fb_text.id)
+
+    def test_scheduled_endpoint_supports_limit(
+        self, authenticated_client, user, brand, connected_accounts
+    ):
+        now = timezone.now()
+
+        for i in range(3):
+            ContentPostService.create_content_post(
+                user=user,
+                media_keys=[],
+                caption=f"Future Post {i}",
+                platforms=["facebook"],
+                content_type="text",
+                scheduled_at=now + timedelta(hours=i + 1),
+            )
+
+        url = reverse("content-post-scheduled")
+        response = authenticated_client.get(url, {"limit": 2})
+
+        assert response.status_code == 200
+        assert len(response.data["data"]) == 2
+
+    def test_scheduled_endpoint_rejects_invalid_limit(
+        self, authenticated_client, user, brand, connected_accounts
+    ):
+        url = reverse("content-post-scheduled")
+        response = authenticated_client.get(url, {"limit": "not-a-number"})
+
+        assert response.status_code == 400
+        assert "limit must be a valid integer" in response.data["message"]

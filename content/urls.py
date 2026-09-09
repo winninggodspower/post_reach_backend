@@ -29,6 +29,11 @@ urlpatterns = [
         name="content-post-calendar",
     ),
     path(
+        "posts/scheduled/",
+        ContentPostViewSet.as_view({"get": "get_scheduled_posts"}),
+        name="content-post-scheduled",
+    ),
+    path(
         "posts/<uuid:pk>/",
         ContentPostViewSet.as_view(
             {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}

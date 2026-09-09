@@ -8,6 +8,7 @@ from uuid import UUID
 
 from django.db import transaction
 from django.db.models import Prefetch
+from django.utils import timezone
 
 from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
@@ -182,6 +183,52 @@ class ContentPostService:
             )
             .get(id=post_id, user=user)
         )
+
+    @classmethod
+    def get_scheduled_posts(
+        cls,
+        *,
+        brand,
+        platform: str = None,
+        content_type: str = None,
+        limit: int = None,
+    ):
+        """
+        Retrieves future scheduled posts for a brand that are pending publication.
+        Ordered chronologically (earliest scheduled date first).
+        """
+        now = timezone.now()
+        qs = (
+            ContentPost.objects.filter(
+                brand=brand,
+                scheduled_at__gt=now,
+                platform_entries__status=PostStatus.SCHEDULED,
+            )
+            .distinct()
+            .select_related("brand")
+            .prefetch_related(
+                Prefetch(
+                    "media_items",
+                    queryset=ContentMedia.objects.order_by("order"),
+                ),
+                Prefetch(
+                    "platform_entries",
+                    queryset=ContentPostPlatform.objects.all(),
+                ),
+            )
+            .order_by("scheduled_at")
+        )
+
+        if platform:
+            qs = qs.filter(platform_entries__platform=platform)
+
+        if content_type:
+            qs = qs.filter(content_type=content_type)
+
+        if limit and limit > 0:
+            qs = qs[:limit]
+
+        return qs
 
     @classmethod
     def get_media_items(

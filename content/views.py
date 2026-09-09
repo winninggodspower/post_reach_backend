@@ -246,6 +246,72 @@ class ContentPostViewSet(viewsets.ViewSet):
         serializer = ContentPostResponseSerializer(posts, many=True)
         return CustomSuccessResponse(serializer.data)
 
+    @swagger_auto_schema(
+        operation_summary="Get upcoming scheduled content posts",
+        operation_description=(
+            "Returns a list of future scheduled posts for the active brand that are pending publication. "
+            "Posts are ordered chronologically (earliest scheduled date first). "
+            "Supports optional filtering by platform, content_type, and limit."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                "platform",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                required=False,
+                description="Filter by target platform (e.g. instagram, tiktok, youtube, facebook, linkedin, twitter)",
+            ),
+            openapi.Parameter(
+                "content_type",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                required=False,
+                description="Filter by content type: video, photo, or text",
+            ),
+            openapi.Parameter(
+                "limit",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                required=False,
+                description="Limit the number of returned posts (e.g. for dashboard widgets)",
+            ),
+        ],
+        responses={
+            200: ContentPostResponseSerializer(many=True),
+        },
+    )
+    @action(detail=False, methods=["get"], url_path="scheduled")
+    def get_scheduled_posts(self, request):
+        """
+        GET /api/content/posts/scheduled/
+        """
+        user = request.user
+        brand = UserService.get_active_brand(user)
+
+        platform = request.query_params.get("platform")
+        content_type = request.query_params.get("content_type")
+        limit_param = request.query_params.get("limit")
+
+        limit = None
+        if limit_param:
+            try:
+                limit = int(limit_param)
+            except (ValueError, TypeError):
+                return CustomErrorResponse(
+                    "limit must be a valid integer.",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        posts = ContentPostService.get_scheduled_posts(
+            brand=brand,
+            platform=platform,
+            content_type=content_type,
+            limit=limit,
+        )
+
+        serializer = ContentPostResponseSerializer(posts, many=True)
+        return CustomSuccessResponse(serializer.data)
+
     # ── Retrieve status ────────────────────────────────────
 
     @swagger_auto_schema(
