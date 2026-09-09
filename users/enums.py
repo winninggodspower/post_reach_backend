@@ -27,4 +27,3 @@ class TeamSizeChoices(models.TextChoices):
     SIX_TO_TWENTY = "6-20", "6-20"
     TWENTY_ONE_TO_FIFTY = "21-50", "21-50"
     FIFTY_ONE_PLUS = "51+", "51+"
-
