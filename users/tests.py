@@ -190,7 +190,7 @@ def test_onboarding_updates_user_and_default_brand(authenticated_client, user):
             "posting_frequency": "weekly",
             "primary_platform": "instagram",
             "role": "creator",
-            "team_size": "just_me",
+            "team_size": "1",
         },
         format="json",
     )
@@ -207,7 +207,7 @@ def test_onboarding_updates_user_and_default_brand(authenticated_client, user):
     assert brand.industry == "technology"
     assert brand.posting_frequency == "weekly"
     assert brand.primary_platform == "instagram"
-    assert brand.team_size == "just_me"
+    assert brand.team_size == "1"
 
 
 def test_onboarding_rejects_unknown_choice(authenticated_client):
@@ -218,7 +218,7 @@ def test_onboarding_rejects_unknown_choice(authenticated_client):
             "posting_frequency": "weekly",
             "primary_platform": "instagram",
             "role": "creator",
-            "team_size": "just_me",
+            "team_size": "1",
         },
         format="json",
     )
@@ -322,7 +322,7 @@ def test_complete_onboarding_updates_records(user):
         industry="technology",
         posting_frequency="weekly",
         primary_platform="instagram",
-        team_size="just_me",
+        team_size="1",
     )
 
     user.refresh_from_db()
@@ -332,7 +332,7 @@ def test_complete_onboarding_updates_records(user):
     assert brand.industry == "technology"
     assert brand.posting_frequency == "weekly"
     assert brand.primary_platform == "instagram"
-    assert brand.team_size == "just_me"
+    assert brand.team_size == "1"
 
 
 def test_get_user_brands_returns_brands(authenticated_client, brand):

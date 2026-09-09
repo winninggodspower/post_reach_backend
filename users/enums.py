@@ -22,7 +22,9 @@ class PlatformChoices(models.TextChoices):
 
 
 class TeamSizeChoices(models.TextChoices):
-    JUST_ME = "just_me", "Just Me"
-    SMALL_TEAM = "small_team", "Small Team"
-    MEDIUM_TEAM = "medium_team", "Medium Team"
-    LARGE_TEAM = "large_team", "Large Team"
+    JUST_ME = "1", "1"
+    TWO_TO_FIVE = "2-5", "2-5"
+    SIX_TO_TWENTY = "6-20", "6-20"
+    TWENTY_ONE_TO_FIFTY = "21-50", "21-50"
+    FIFTY_ONE_PLUS = "51+", "51+"
+
