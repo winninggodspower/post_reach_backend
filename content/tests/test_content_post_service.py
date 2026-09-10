@@ -201,3 +201,54 @@ class TestHasPendingEntries:
         )
 
         assert ContentPostService.has_pending_entries(post) is False
+
+
+class TestUpdateContentPost:
+    """Tests for ContentPostService.update_content_post()"""
+
+    def test_update_caption_and_platform_settings(self, db, user, brand):
+        """Should update caption across existing platform entries, honoring platform_settings overrides."""
+        post = ContentPost.objects.create(
+            user=user,
+            brand=brand,
+            caption="Old general caption",
+            content_type="text",
+            scheduled_at=timezone.now() + timezone.timedelta(days=1),
+        )
+        fb_entry = ContentPostPlatform.objects.create(
+            content_post=post,
+            platform=PlatformChoices.FACEBOOK,
+            caption="Old general caption",
+            status=PostStatus.SCHEDULED,
+        )
+        li_entry = ContentPostPlatform.objects.create(
+            content_post=post,
+            platform=PlatformChoices.LINKEDIN,
+            caption="Old general caption",
+            status=PostStatus.SCHEDULED,
+        )
+
+        validated_data = {
+            "caption": "the days that is dark as night",
+            "platform_settings": {
+                "linkedin": {
+                    "caption": "the days that is dark as night linkedin",
+                }
+            },
+            "platforms": {PlatformChoices.FACEBOOK, PlatformChoices.LINKEDIN},
+        }
+
+        updated_post = ContentPostService.update_content_post(post, validated_data)
+
+        assert updated_post.caption == "the days that is dark as night"
+
+        fb_entry.refresh_from_db()
+        li_entry.refresh_from_db()
+
+        # Facebook should inherit the updated global caption
+        assert fb_entry.caption == "the days that is dark as night"
+        # LinkedIn should have the platform-specific override
+        assert li_entry.caption == "the days that is dark as night linkedin"
+        assert li_entry.settings == {
+            "caption": "the days that is dark as night linkedin"
+        }

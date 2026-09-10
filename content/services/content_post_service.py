@@ -316,6 +316,7 @@ class ContentPostService:
             content_post.save()
 
         with transaction.atomic():
+            platforms_to_add = set()
             if "platforms" in validated_data:
                 new_platform_set = set(validated_data["platforms"])
                 existing_platform_set = {
@@ -389,19 +390,48 @@ class ContentPostService:
                         platform__in=platforms_to_remove
                     ).delete()
 
-            # Refresh the platforms so we can update settings safely
-            platform_settings = validated_data.get("platform_settings")
-            if platform_settings:
-                # We need to query again to ensure we have the latest entries if they were modified
-                current_entries = ContentPostPlatform.objects.filter(
-                    content_post=content_post
-                )
-                for entry in current_entries:
-                    if entry.platform in platform_settings:
-                        current_settings = entry.settings or {}
-                        current_settings.update(platform_settings[entry.platform])
-                        entry.settings = current_settings
-                        entry.save()
+            # Update settings, caption, and title on existing platform entries
+            caption_updated = "caption" in validated_data
+            platform_settings = validated_data.get("platform_settings", {})
+
+            # Query all current entries except newly created ones (which were already initialized with latest values)
+            entries_to_update = content_post.platform_entries.exclude(
+                platform__in=platforms_to_add
+            )
+            for entry in entries_to_update:
+                save_entry = False
+                plat_settings = platform_settings.get(entry.platform)
+
+                if plat_settings:
+                    current_settings = entry.settings or {}
+                    current_settings.update(plat_settings)
+                    entry.settings = current_settings
+                    save_entry = True
+
+                if entry.platform == "youtube":
+                    if plat_settings and "title" in plat_settings:
+                        entry.title = plat_settings["title"]
+                        save_entry = True
+                    if plat_settings and (
+                        "description" in plat_settings or "caption" in plat_settings
+                    ):
+                        entry.caption = plat_settings.get(
+                            "description", plat_settings.get("caption")
+                        )
+                        save_entry = True
+                    elif caption_updated:
+                        entry.caption = content_post.caption
+                        save_entry = True
+                else:
+                    if plat_settings and "caption" in plat_settings:
+                        entry.caption = plat_settings["caption"]
+                        save_entry = True
+                    elif caption_updated:
+                        entry.caption = content_post.caption
+                        save_entry = True
+
+                if save_entry:
+                    entry.save()
 
         # Re-fetch the content_post from DB to ensure related items are fresh before returning
         return cls.get_content_post(post_id=content_post.id, user=content_post.user)
