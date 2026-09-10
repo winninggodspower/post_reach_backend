@@ -1,4 +1,15 @@
+from datetime import timedelta
+from unittest.mock import patch
+
 import pytest
+from django.utils import timezone
+
+from integrations.providers.linkedin_service import LinkedinService
+from social_accounts.enums import PlatformChoices
+from social_accounts.models import SocialAccount
+from social_accounts.services.social_account_connection_service import (
+    SocialAccountConnectionService,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -149,3 +160,120 @@ class TestLinkedinConnectEndpoint:
         )
 
         assert response.status_code == 401
+
+
+class TestLinkedinConnectionService:
+    """Tests for SocialAccountConnectionService.connect_linkedin()."""
+
+    @patch.object(SocialAccountConnectionService, "_sync_platform_profile_picture")
+    def test_connect_linkedin_stores_refresh_token(
+        self, mock_sync, mocker, user, brand
+    ):
+        """connect_linkedin should persist refresh_token when provided by token exchange."""
+        mock_sync.return_value = "https://r2.example.com/pic.jpg"
+        mocker.patch.object(
+            LinkedinService,
+            "exchange_code_for_token",
+            return_value={
+                "access_token": "li_access_token_123",
+                "refresh_token": "li_refresh_token_456",
+                "expires_in": 5184000,
+                "scope": "openid profile email w_member_social",
+            },
+        )
+        mocker.patch.object(
+            LinkedinService,
+            "fetch_user_info",
+            return_value={
+                "account_name": "Jane Doe",
+                "external_id": "li_user_789",
+                "profile_picture_url": "https://media.licdn.com/pic.jpg",
+            },
+        )
+
+        account, created = SocialAccountConnectionService.connect_linkedin(
+            user=user,
+            brand=brand,
+            code="auth_code_xyz",
+            redirect_uri="https://example.com/callback",
+        )
+
+        assert created is True
+        assert account.platform == "linkedin"
+        assert account.access_token == "li_access_token_123"
+        assert account.refresh_token == "li_refresh_token_456"
+        assert account.account_name == "Jane Doe"
+        assert account.external_id == "li_user_789"
+
+
+class TestLinkedinSocialAccountRefresh:
+    """Tests for SocialAccount.refresh_access_token() with LinkedIn."""
+
+    def test_refresh_access_token_success(self, brand, mocker):
+        """Should refresh access token and update refresh token if returned."""
+        account = SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.LINKEDIN,
+            account_name="Jane Doe",
+            external_id="li_user_789",
+            token_expires_at=timezone.now() - timedelta(minutes=5),
+        )
+        account.access_token = "old_access_token"
+        account.refresh_token = "valid_refresh_token"
+        account.save()
+
+        mocker.patch.object(
+            LinkedinService,
+            "refresh_access_token",
+            return_value={
+                "access_token": "brand_new_access_token",
+                "refresh_token": "rotated_refresh_token",
+                "expires_in": 3600,
+            },
+        )
+
+        result = account.refresh_access_token()
+
+        assert result is True
+        account.refresh_from_db()
+        assert account.access_token == "brand_new_access_token"
+        assert account.refresh_token == "rotated_refresh_token"
+        assert account.token_expires_at > timezone.now()
+
+    def test_refresh_access_token_without_refresh_token_fails(self, brand):
+        """Should return False if refresh_token is missing on the account."""
+        account = SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.LINKEDIN,
+            account_name="Jane Doe",
+            external_id="li_user_789",
+            token_expires_at=timezone.now() - timedelta(minutes=5),
+        )
+        account.access_token = "old_access_token"
+        account.save()
+
+        assert account.refresh_token is None
+        result = account.refresh_access_token()
+        assert result is False
+
+    def test_refresh_access_token_failure_returns_false(self, brand, mocker):
+        """Should catch exception and return False if refresh API fails."""
+        account = SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.LINKEDIN,
+            account_name="Jane Doe",
+            external_id="li_user_789",
+            token_expires_at=timezone.now() - timedelta(minutes=5),
+        )
+        account.access_token = "old_access_token"
+        account.refresh_token = "invalid_refresh_token"
+        account.save()
+
+        mocker.patch.object(
+            LinkedinService,
+            "refresh_access_token",
+            side_effect=ValueError("LinkedIn Token Refresh Error: invalid_grant"),
+        )
+
+        result = account.refresh_access_token()
+        assert result is False

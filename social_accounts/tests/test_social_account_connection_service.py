@@ -232,4 +232,3 @@ class TestSocialAccountConnectionServiceProfilePicture:
         reconnected_account.save()
         reconnected_account.refresh_from_db()
         assert reconnected_account.last_connected_at == saved_last_connected
-

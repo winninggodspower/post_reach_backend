@@ -290,6 +290,7 @@ class SocialAccountConnectionService:
                 "external_id": user_info["external_id"],
                 "profile_picture_url": user_info.get("profile_picture_url"),
                 "access_token": access_token,
+                "refresh_token": token_data.get("refresh_token"),
                 "token_expires_at": timezone.now()
                 + timedelta(seconds=token_data["expires_in"]),
                 "scope": token_data.get("scope", ""),

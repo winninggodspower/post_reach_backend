@@ -143,7 +143,9 @@ class BrandSerializer(serializers.ModelSerializer):
         accounts = brand.social_accounts.all()
         return [
             ConnectedAccountSerializer(account).data
-            for account in sorted(accounts, key=lambda account: account.last_connected_at)
+            for account in sorted(
+                accounts, key=lambda account: account.last_connected_at
+            )
         ]
 
 

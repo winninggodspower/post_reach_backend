@@ -5,6 +5,7 @@ from django.db.models import UniqueConstraint
 from django.utils import timezone
 
 from integrations.providers.instagram_service import InstagramService
+from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
 from post_reach_backend.models import UUIDTimestampedModel
@@ -124,7 +125,22 @@ class SocialAccount(UUIDTimestampedModel):
                 self.save()
                 return True
 
-            # Facebook, LinkedIn and others without refresh logic
+            elif self.platform == PlatformChoices.LINKEDIN:
+                if not self.refresh_token:
+                    return False
+                response = LinkedinService.refresh_access_token(self.refresh_token)
+                if not response:
+                    return False
+                self.access_token = response["access_token"]
+                if response.get("refresh_token"):
+                    self.refresh_token = response["refresh_token"]
+                self.token_expires_at = timezone.now() + timedelta(
+                    seconds=response["expires_in"]
+                )
+                self.save()
+                return True
+
+            # Facebook and others without refresh logic
             return False
 
         except Exception:

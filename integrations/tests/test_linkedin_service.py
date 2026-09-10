@@ -5,6 +5,7 @@ from django.core.cache import cache
 
 from integrations.providers.linkedin_service import LinkedinService
 from utils.cache_keys import CacheKeys
+from utils.http import APIError
 
 
 class TestGenerateAuthUrl:
@@ -173,6 +174,7 @@ class TestFetchUserInfo:
         assert result == {
             "account_name": "John Doe",
             "external_id": "urn:li:person:abc123",
+            "profile_picture_url": None,
         }
         # Verify it used the correct endpoint
         assert mock_get.call_args[0][0] == "https://api.linkedin.com/v2/userinfo"
@@ -200,6 +202,7 @@ class TestFetchUserInfo:
         assert result == {
             "account_name": "Jane Smith",
             "external_id": "urn:li:person:def456",
+            "profile_picture_url": None,
         }
 
     def test_fetch_user_info_missing_sub(self, mocker):
@@ -232,7 +235,59 @@ class TestFetchUserInfo:
 class TestRefreshAccessToken:
     """Tests for LinkedinService.refresh_access_token()"""
 
-    def test_refresh_access_token_returns_none(self):
-        """Should return None as LinkedIn token refresh is not supported."""
-        result = LinkedinService.refresh_access_token("some_refresh_token")
-        assert result is None
+    def test_refresh_access_token_empty_returns_none(self):
+        """Should return None if refresh token is falsy."""
+        assert LinkedinService.refresh_access_token("") is None
+        assert LinkedinService.refresh_access_token(None) is None
+
+    def test_refresh_access_token_success(self, mocker):
+        """Should successfully refresh the access token via LinkedIn OAuth endpoint."""
+        mock_response = {
+            "access_token": "new_access_token_123",
+            "expires_in": 5184000,
+            "refresh_token": "new_refresh_token_456",
+            "refresh_token_expires_in": 31536000,
+            "scope": "openid profile email w_member_social",
+        }
+        mock_post = mocker.patch.object(
+            LinkedinService, "post", return_value=mock_response
+        )
+
+        result = LinkedinService.refresh_access_token("valid_refresh_token")
+
+        assert result == mock_response
+        mock_post.assert_called_once_with(
+            "/accessToken",
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": "valid_refresh_token",
+                "client_id": LinkedinService.CLIENT_ID,
+                "client_secret": LinkedinService.CLIENT_SECRET,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+
+    def test_refresh_access_token_api_error_raises_value_error(self, mocker):
+        """Should raise ValueError when APIError occurs during token refresh."""
+        mocker.patch.object(
+            LinkedinService,
+            "post",
+            side_effect=APIError("Refresh token expired or revoked"),
+        )
+
+        with pytest.raises(ValueError, match="LinkedIn Token Refresh Error"):
+            LinkedinService.refresh_access_token("expired_refresh_token")
+
+    def test_refresh_access_token_missing_access_token_raises_value_error(self, mocker):
+        """Should raise ValueError when response does not contain access_token."""
+        mocker.patch.object(
+            LinkedinService,
+            "post",
+            return_value={
+                "error": "invalid_grant",
+                "error_description": "The provided refresh token is invalid",
+            },
+        )
+
+        with pytest.raises(ValueError, match="The provided refresh token is invalid"):
+            LinkedinService.refresh_access_token("invalid_token")

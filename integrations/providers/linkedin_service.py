@@ -118,7 +118,41 @@ class LinkedinService(SocialAccountService):
 
     @classmethod
     def refresh_access_token(cls, refresh_token):
-        return None
+        """
+        Refreshes the LinkedIn access token using a refresh token.
+        POST https://www.linkedin.com/oauth/v2/accessToken
+        Returns dict containing access_token, expires_in, refresh_token (optional), etc.
+        """
+        if not refresh_token:
+            return None
+
+        try:
+            response_data = cls().post(
+                "/accessToken",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                    "client_id": cls.CLIENT_ID,
+                    "client_secret": cls.CLIENT_SECRET,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "LinkedIn access token refresh failed",
+                extra={"operation": "refresh_access_token"},
+            )
+            raise ValueError(f"LinkedIn Token Refresh Error: {e}") from e
+
+        if "access_token" not in response_data:
+            error_message = (
+                response_data.get("error_description")
+                or response_data.get("error")
+                or "LinkedIn access token refresh failed"
+            )
+            raise ValueError(f"LinkedIn Token Refresh Error: {error_message}")
+
+        return response_data
 
     # ------------------------------------------------------------------
     # Media upload helpers (shared by image and video publishing)
