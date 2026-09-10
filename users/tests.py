@@ -155,7 +155,7 @@ def test_me_includes_connected_accounts(authenticated_client, brand):
             "external_id": "ig_123456789",
             "account_name": "brand_insta",
             "profile_picture_url": "https://example.com/profile.jpg",
-            "connected_at": dt_field.to_representation(account.created_at),
+            "connected_at": dt_field.to_representation(account.last_connected_at),
             "is_expired": account.is_token_expired(),
             "expired_at": dt_field.to_representation(account.token_expires_at),
         }

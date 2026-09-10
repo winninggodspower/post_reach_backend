@@ -181,3 +181,55 @@ class TestSocialAccountConnectionServiceProfilePicture:
 
         brand.refresh_from_db()
         assert brand.logo_url == custom_logo_url
+
+    @patch.object(SocialAccountConnectionService, "_sync_platform_profile_picture")
+    def test_save_account_sets_and_updates_last_connected_at(self, mock_sync, brand):
+        """Initial connection and re-connection should set and update last_connected_at."""
+        mock_sync.return_value = "https://r2.example.com/pic.jpg"
+        past_time = timezone.now() - timedelta(days=7)
+
+        # 1. First connection
+        account, created = SocialAccountConnectionService._save_account(
+            brand=brand,
+            platform="youtube",
+            defaults={
+                "account_name": "My Channel",
+                "external_id": "yt_123",
+                "profile_picture_url": "https://yt3.ggpht.com/avatar.jpg",
+                "access_token": "token123",
+                "token_expires_at": timezone.now() + timedelta(days=30),
+            },
+        )
+        assert created is True
+        initial_connected_at = account.last_connected_at
+        assert initial_connected_at is not None
+
+        # Simulate time passing and backdate created_at & last_connected_at
+        SocialAccount.objects.filter(id=account.id).update(
+            last_connected_at=past_time,
+        )
+        account.refresh_from_db()
+        assert account.last_connected_at == past_time
+
+        # 2. Re-connection / re-authorization via _save_account
+        reconnected_account, created = SocialAccountConnectionService._save_account(
+            brand=brand,
+            platform="youtube",
+            defaults={
+                "account_name": "My Channel",
+                "external_id": "yt_123",
+                "profile_picture_url": "https://yt3.ggpht.com/avatar.jpg",
+                "access_token": "token456",
+                "token_expires_at": timezone.now() + timedelta(days=60),
+            },
+        )
+        assert created is False
+        assert reconnected_account.last_connected_at > past_time
+
+        # 3. Background token save updates updated_at, but NOT last_connected_at
+        saved_last_connected = reconnected_account.last_connected_at
+        reconnected_account.access_token = "token789"
+        reconnected_account.save()
+        reconnected_account.refresh_from_db()
+        assert reconnected_account.last_connected_at == saved_last_connected
+

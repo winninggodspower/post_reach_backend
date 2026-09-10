@@ -49,6 +49,8 @@ class SocialAccountConnectionService:
             brand.logo_url = synced_r2_url
             brand.save(update_fields=["logo_url"])
 
+        defaults["last_connected_at"] = timezone.now()
+
         return SocialAccount.objects.update_or_create(
             brand=brand,
             platform=platform,

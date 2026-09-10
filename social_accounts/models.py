@@ -41,6 +41,10 @@ class SocialAccount(UUIDTimestampedModel):
     token_type = models.CharField(max_length=50, default="Bearer")
 
     metadata = models.JSONField(default=dict, blank=True)
+    last_connected_at = models.DateTimeField(
+        default=timezone.now,
+        help_text="The timestamp when this account was most recently connected or re-authenticated.",
+    )
 
     class Meta:
         constraints = [

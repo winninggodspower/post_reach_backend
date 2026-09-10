@@ -114,7 +114,7 @@ class ConnectedAccountSerializer(serializers.Serializer):
     external_id = serializers.CharField()
     account_name = serializers.CharField()
     profile_picture_url = serializers.URLField(allow_null=True, required=False)
-    connected_at = serializers.DateTimeField(source="created_at")
+    connected_at = serializers.DateTimeField(source="last_connected_at")
     is_expired = serializers.SerializerMethodField()
     expired_at = serializers.DateTimeField(source="token_expires_at", allow_null=True)
 
@@ -143,7 +143,7 @@ class BrandSerializer(serializers.ModelSerializer):
         accounts = brand.social_accounts.all()
         return [
             ConnectedAccountSerializer(account).data
-            for account in sorted(accounts, key=lambda account: account.created_at)
+            for account in sorted(accounts, key=lambda account: account.last_connected_at)
         ]
 
 
