@@ -15,6 +15,8 @@ def pytest_configure():
             "LOCATION": "test-password-reset-cache",
         }
     }
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    settings.CELERY_TASK_EAGER_PROPAGATES = True
 
 
 @pytest.fixture

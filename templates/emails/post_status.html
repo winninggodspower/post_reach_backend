@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ email_title }}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f8;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+        }
+        .wrapper {
+            width: 100%;
+            background-color: #f4f6f8;
+            padding: 30px 10px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+        }
+        .header {
+            padding: 28px 32px 20px;
+            border-bottom: 1px solid #edf2f7;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+        }
+        .header span {
+            color: #4f46e5;
+        }
+        .content {
+            padding: 32px;
+        }
+        .greeting {
+            font-size: 16px;
+            color: #334155;
+            margin-bottom: 16px;
+        }
+        .banner {
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: block;
+        }
+        .banner-success {
+            background-color: #ecfdf5;
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+        .banner-warning {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+        }
+        .banner-failed {
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
+            color: #991b1b;
+        }
+        .banner-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 4px 0;
+        }
+        .banner-desc {
+            font-size: 14px;
+            margin: 0;
+            line-height: 1.4;
+        }
+        .post-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+        .post-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        .post-caption {
+            font-size: 14px;
+            color: #334155;
+            line-height: 1.5;
+            margin: 0;
+            font-style: italic;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 24px 0 12px;
+        }
+        .platform-item {
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .platform-success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        .platform-failed {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+        }
+        .platform-name {
+            font-weight: 600;
+            font-size: 15px;
+            color: #0f172a;
+        }
+        .badge {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            display: inline-block;
+        }
+        .badge-live {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .badge-failed {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .platform-action {
+            margin-top: 8px;
+        }
+        .btn-link {
+            font-size: 13px;
+            color: #4f46e5;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .btn-link:hover {
+            text-decoration: underline;
+        }
+        .error-box {
+            margin-top: 8px;
+            padding: 10px 12px;
+            background-color: #ffffff;
+            border-radius: 6px;
+            border-left: 3px solid #ef4444;
+            font-size: 13px;
+            color: #7f1d1d;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+        .dashboard-btn-container {
+            text-align: center;
+            margin-top: 32px;
+            margin-bottom: 12px;
+        }
+        .dashboard-btn {
+            display: inline-block;
+            background-color: #4f46e5;
+            color: #ffffff !important;
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+        }
+        .footer {
+            padding: 24px 32px;
+            background-color: #f8fafc;
+            border-top: 1px solid #edf2f7;
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.6;
+            text-align: center;
+        }
+        .footer a {
+            color: #4f46e5;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <h1>Post<span>Reach</span></h1>
+            </div>
+
+            <div class="content">
+                <p class="greeting">Hello <strong>{{ user_name }}</strong>,</p>
+
+                {% if all_succeeded %}
+                <div class="banner banner-success">
+                    <p class="banner-title">🎉 Your post is now live!</p>
+                    <p class="banner-desc">Your post for <strong>{{ brand_name }}</strong> has been successfully published across all selected platforms.</p>
+                </div>
+                {% elif all_failed %}
+                <div class="banner banner-failed">
+                    <p class="banner-title">⚠️ Post Publishing Failed</p>
+                    <p class="banner-desc">We were unable to publish your post for <strong>{{ brand_name }}</strong>. Please see the failure details below.</p>
+                </div>
+                {% else %}
+                <div class="banner banner-warning">
+                    <p class="banner-title">📢 Post Publishing Update</p>
+                    <p class="banner-desc">Your post for <strong>{{ brand_name }}</strong> has finished publishing. Some platforms succeeded while others encountered issues.</p>
+                </div>
+                {% endif %}
+
+                {% if post_caption %}
+                <div class="post-card">
+                    <div class="post-label">Post Caption / Content</div>
+                    <p class="post-caption">"{{ post_caption }}"</p>
+                </div>
+                {% endif %}
+
+                {% if successful_entries %}
+                <div class="section-title" style="color: #059669;">Published Platforms ({{ successful_entries|length }})</div>
+                {% for item in successful_entries %}
+                <div class="platform-item platform-success">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td align="left">
+                                <span class="platform-name">{{ item.platform_label }}</span>
+                            </td>
+                            <td align="right">
+                                <span class="badge badge-live">Live</span>
+                            </td>
+                        </tr>
+                    </table>
+                    {% if item.post_url %}
+                    <div class="platform-action">
+                        <a href="{{ item.post_url }}" class="btn-link" target="_blank" rel="noopener noreferrer">View post on {{ item.platform_label }} &rarr;</a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if failed_entries %}
+                <div class="section-title" style="color: #dc2626;">Failed Platforms ({{ failed_entries|length }})</div>
+                {% for item in failed_entries %}
+                <div class="platform-item platform-failed">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td align="left">
+                                <span class="platform-name">{{ item.platform_label }}</span>
+                            </td>
+                            <td align="right">
+                                <span class="badge badge-failed">Failed</span>
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="error-box">
+                        <strong>Reason:</strong> {{ item.error_message }}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if dashboard_url %}
+                <div class="dashboard-btn-container">
+                    <a href="{{ dashboard_url }}" class="dashboard-btn" target="_blank">Open PostReach Dashboard</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="footer">
+                <p>Best regards,<br>The PostReach Team</p>
+                <p>
+                    Need assistance? <a href="mailto:support@postreach.app">Contact our support team</a>.
+                </p>
+                <p>&copy; {% now "Y" %} PostReach. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -47,6 +47,12 @@ class ContentPost(UUIDTimestampedModel):
         default=None,
         help_text="The selected frame offset in milliseconds from the start of the video.",
     )
+    email_notified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Timestamp when the post completion email notification was sent.",
+    )
 
     class Meta:
         ordering = ["-created_at"]

@@ -217,12 +217,14 @@ TIKTOK_CLIENT_SECRET = env("TIKTOK_CLIENT_SECRET")
 LINKEDIN_CLIENT_ID = env("LINKEDIN_CLIENT_ID")
 LINKEDIN_CLIENT_SECRET = env("LINKEDIN_CLIENT_SECRET")
 
+# Frontend URL
+FRONTEND_URL = env("FRONTEND_URL", default="https://postglee.com")
+
 # OAuth Redirect URI configuration
 # Dev base uses the frontend dev server; prod base is read from environment
 # _REDIRECT_BASE_DEV = "http://localhost:3000"
 _REDIRECT_BASE_DEV = "https://postreach.winningtech.xyz"
-_REDIRECT_BASE_PROD = env("REDIRECT_BASE_URL", default="https://postglee.com")
-_REDIRECT_BASE = _REDIRECT_BASE_DEV if DEBUG else _REDIRECT_BASE_PROD
+_REDIRECT_BASE = _REDIRECT_BASE_DEV if DEBUG else FRONTEND_URL
 
 REDIRECT_URI = {
     "youtube": f"{_REDIRECT_BASE}/social/oauth/youtube/callback",
@@ -298,6 +300,11 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 # 4. Limit local worker concurrency to save connection pools
 CELERY_WORKER_CONCURRENCY = 2
 
+# Media retention for failed posts (in days) before permanent R2 deletion
+FAILED_POST_MEDIA_RETENTION_DAYS = env.int(
+    "FAILED_POST_MEDIA_RETENTION_DAYS", default=7
+)
+
 CELERY_BEAT_SCHEDULE = {
     "refresh_social_tokens": {
         "task": "social_accounts.tasks.refresh_expiring_tokens",
@@ -310,5 +317,9 @@ CELERY_BEAT_SCHEDULE = {
     "sweep_stuck_platform_entries": {
         "task": "content.tasks.sweep_stuck_platform_entries",
         "schedule": 3600,  # 1 hour in seconds
+    },
+    "cleanup_expired_failed_post_media": {
+        "task": "content.tasks.cleanup_expired_failed_post_media",
+        "schedule": 86400,  # 24 hours in seconds
     },
 }

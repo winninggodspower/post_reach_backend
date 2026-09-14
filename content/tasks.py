@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from celery import shared_task
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -147,7 +148,9 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
             raise self.retry(countdown=60 * (self.request.retries + 1))
 
     if result_entry.status == PostStatus.POSTED:
-        PostingService.cleanup_r2_media(result_entry.content_post)
+        PostingService.on_platform_entry_completed(result_entry.content_post)
+    elif result_entry.status == PostStatus.FAILED:
+        PostingService.on_platform_entry_completed(result_entry.content_post)
     elif result_entry.status == PostStatus.PROCESSING:
         if result_entry.platform == PlatformChoices.INSTAGRAM:
             CustomLogger.info(
@@ -227,8 +230,8 @@ def check_instagram_container_status(self, platform_entry_id):
                 update_fields=["status", "platform_post_id", "post_url", "updated_at"]
             )
 
-            # Clean up R2 media if everything is posted
-            PostingService.cleanup_r2_media(entry.content_post)
+            # Clean up R2 media and notify if everything is posted
+            PostingService.on_platform_entry_completed(entry.content_post)
 
             return {
                 "status": "posted",
@@ -240,7 +243,7 @@ def check_instagram_container_status(self, platform_entry_id):
             entry.status = PostStatus.POSTED
 
             entry.save(update_fields=["status", "updated_at"])
-            PostingService.cleanup_r2_media(entry.content_post)
+            PostingService.on_platform_entry_completed(entry.content_post)
             return {
                 "status": "posted",
                 "platform_post_id": entry.platform_post_id,
@@ -268,7 +271,7 @@ def check_instagram_container_status(self, platform_entry_id):
             entry.status = PostStatus.FAILED
             entry.error_message = f"Instagram processing timed out or failed: {str(e)}"
             entry.save(update_fields=["status", "error_message", "updated_at"])
-            PostingService.cleanup_r2_media(entry.content_post)
+            PostingService.on_platform_entry_completed(entry.content_post)
             raise e
         else:
             raise self.retry(exc=e)
@@ -323,7 +326,7 @@ def check_tiktok_publish_status(self, platform_entry_id):
                 update_fields=["status", "platform_post_id", "post_url", "updated_at"]
             )
 
-            PostingService.cleanup_r2_media(entry.content_post)
+            PostingService.on_platform_entry_completed(entry.content_post)
 
             return {
                 "status": "posted",
@@ -355,7 +358,7 @@ def check_tiktok_publish_status(self, platform_entry_id):
             entry.status = PostStatus.FAILED
             entry.error_message = f"TikTok processing failed: {str(e)}"
             entry.save(update_fields=["status", "error_message", "updated_at"])
-            PostingService.cleanup_r2_media(entry.content_post)
+            PostingService.on_platform_entry_completed(entry.content_post)
             # Do not raise the exception so we don't retry
             return {"status": "failed", "message": str(e)}
         else:
@@ -436,6 +439,9 @@ def sweep_stuck_platform_entries():
                     locked_entry.save(
                         update_fields=["status", "error_message", "updated_at"]
                     )
+                    PostingService.on_platform_entry_completed(
+                        locked_entry.content_post
+                    )
                     CustomLogger.warning(
                         "Swept stuck platform entry and marked as FAILED.",
                         extra={
@@ -448,3 +454,53 @@ def sweep_stuck_platform_entries():
                 "Error sweeping stuck platform entry",
                 extra={"platform_entry_id": str(entry.id), "error": str(e)},
             )
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def send_post_status_notification_task(self, content_post_id):
+    """
+    Celery task that sends an email notification to the post creator once all
+    platforms for the post have reached a terminal state (POSTED or FAILED).
+    """
+    from utils.notification_service import NotificationService
+
+    try:
+        sent = NotificationService.send_post_status_notification(
+            content_post_id=content_post_id
+        )
+        return {"status": "success", "sent": sent}
+    except Exception as exc:
+        CustomLogger.exception(
+            "Error in send_post_status_notification_task",
+            extra={"content_post_id": str(content_post_id)},
+        )
+        raise self.retry(exc=exc)
+
+
+@shared_task
+def cleanup_expired_failed_post_media():
+    """
+    Periodic task to clean up R2 media for posts with failed platform entries
+    that have exceeded the retention window (default 7 days).
+    """
+    retention_days = getattr(settings, "FAILED_POST_MEDIA_RETENTION_DAYS", 7)
+    cutoff = timezone.now() - timedelta(days=retention_days)
+
+    expired_posts = ContentPostService.get_expired_failed_posts(cutoff)
+
+    cleaned_count = 0
+    for post in expired_posts:
+        try:
+            if not ContentPostService.has_pending_entries(post):
+                PostingService.cleanup_r2_media(post, force=True)
+                cleaned_count += 1
+        except Exception as e:
+            CustomLogger.exception(
+                "Error cleaning up expired failed post media",
+                extra={"content_post_id": str(post.id), "error": str(e)},
+            )
+
+    CustomLogger.info(
+        f"Cleaned up expired media for {cleaned_count} failed posts older than {retention_days} days."
+    )
+    return f"Cleaned up {cleaned_count} expired posts"

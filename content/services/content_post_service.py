@@ -7,7 +7,7 @@ never import from content.models directly.
 from uuid import UUID
 
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.utils import timezone
 
 from content.enums import FileTypeChoice, PostStatus
@@ -182,6 +182,50 @@ class ContentPostService:
                 ),
             )
             .get(id=post_id, user=user)
+        )
+
+    @classmethod
+    def get_content_post_by_id(
+        cls, post_id: UUID | str
+    ) -> ContentPost:
+        """
+        Retrieve a ContentPost by ID with related user, brand, and platform_entries.
+
+        :raises ContentPost.DoesNotExist: If not found.
+        :return: The ContentPost instance.
+        """
+        return (
+            ContentPost.objects.select_related("user", "brand")
+            .prefetch_related("platform_entries")
+            .get(id=post_id)
+        )
+
+    @classmethod
+    def get_expired_failed_posts(cls, cutoff_date):
+        """
+        Retrieves distinct posts where:
+        - At least one platform entry failed at or before cutoff_date
+        - Either post has no scheduled time, or scheduled_at is at or before cutoff_date
+        - No platform entry is still pending, scheduled, uploading, or processing
+        - No platform entry was updated after cutoff_date (e.g. recently retried)
+        """
+        return (
+            ContentPost.objects.filter(
+                platform_entries__status=PostStatus.FAILED,
+                platform_entries__updated_at__lte=cutoff_date,
+            )
+            .filter(Q(scheduled_at__isnull=True) | Q(scheduled_at__lte=cutoff_date))
+            .exclude(
+                platform_entries__status__in=[
+                    PostStatus.PENDING,
+                    PostStatus.SCHEDULED,
+                    PostStatus.UPLOADING,
+                    PostStatus.PROCESSING,
+                ]
+            )
+            .exclude(platform_entries__updated_at__gt=cutoff_date)
+            .distinct()
+            .prefetch_related("media_items", "platform_entries")
         )
 
     @classmethod

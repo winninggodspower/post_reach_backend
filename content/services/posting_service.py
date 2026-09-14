@@ -208,7 +208,12 @@ class PostingService:
         return entry
 
     @classmethod
-    def cleanup_r2_media(cls, content_post) -> None:
+    def cleanup_r2_media(cls, content_post, force: bool = False) -> None:
+        """
+        Cleans up R2 media if all platform entries are done.
+        If force is False, retains media if any platform failed so the author can retry.
+        If force is True, deletes all media regardless of failure state (used by expired sweep).
+        """
         with transaction.atomic():
             content_post = ContentPost.objects.select_for_update().get(
                 pk=content_post.pk
@@ -216,11 +221,46 @@ class PostingService:
             if ContentPostService.has_pending_entries(content_post):
                 return
 
+            if not force:
+                has_failures = content_post.platform_entries.filter(
+                    status=PostStatus.FAILED
+                ).exists()
+                if has_failures:
+                    CustomLogger.info(
+                        "Retaining R2 media for failed post to allow author retry",
+                        extra={"content_post_id": str(content_post.id)},
+                    )
+                    return
+
             for media_item in content_post.media_items.all():
                 R2StorageService.delete_file(media_item.r2_key)
 
             if content_post.thumbnail_r2_key:
                 R2StorageService.delete_file(content_post.thumbnail_r2_key)
+
+    @classmethod
+    def on_platform_entry_completed(cls, content_post) -> None:
+        """
+        Invoked whenever a platform entry reaches a terminal state (POSTED or FAILED).
+        If any entries are still pending/uploading/processing, exits early.
+        When all platform entries are done:
+        1. Cleans up R2 media.
+        2. Dispatches a Celery task to notify the user via email.
+        """
+        if ContentPostService.has_pending_entries(content_post):
+            return
+
+        cls.cleanup_r2_media(content_post)
+
+        try:
+            from content.tasks import send_post_status_notification_task
+
+            send_post_status_notification_task.delay(str(content_post.id))
+        except Exception as e:
+            CustomLogger.exception(
+                "Failed to enqueue post status notification task",
+                extra={"content_post_id": str(content_post.id), "error": str(e)},
+            )
 
     # ── private helpers ────────────────────────────────────
 
