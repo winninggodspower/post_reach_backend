@@ -38,7 +38,7 @@ class TestPasswordResetService:
         result = PasswordResetService.send_reset_otp(email="nobody@example.com")
         assert result is True
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_send_reset_otp_sends_email_for_existing_user(self, mock_send_mail, user):
         result = PasswordResetService.send_reset_otp(email=user.email)
         assert result is True
@@ -46,7 +46,7 @@ class TestPasswordResetService:
         call_args = mock_send_mail.call_args
         assert user.email in call_args.kwargs["recipient_list"]
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_send_reset_otp_stores_otp_in_cache(self, mock_send_mail, user):
         PasswordResetService.send_reset_otp(email=user.email)
         otp_key = CacheKeys.pw_reset_otp(user.email)
@@ -56,7 +56,7 @@ class TestPasswordResetService:
         assert len(otp_data["otp"]) == 6
         assert otp_data["attempts"] == 0
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_send_reset_otp_rate_limits(self, mock_send_mail, user):
         """Second call within 60s should not send another email."""
         PasswordResetService.send_reset_otp(email=user.email)
@@ -65,7 +65,7 @@ class TestPasswordResetService:
         PasswordResetService.send_reset_otp(email=user.email)
         mock_send_mail.assert_not_called()
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_verify_reset_otp_returns_token(self, mock_send_mail, user):
         PasswordResetService.send_reset_otp(email=user.email)
         otp_key = CacheKeys.pw_reset_otp(user.email)
@@ -81,7 +81,7 @@ class TestPasswordResetService:
         token_key = CacheKeys.pw_reset_token(reset_token)
         assert cache.get(token_key) == user.email.lower()
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_verify_reset_otp_removes_otp_after_use(self, mock_send_mail, user):
         PasswordResetService.send_reset_otp(email=user.email)
         otp_key = CacheKeys.pw_reset_otp(user.email)
@@ -93,7 +93,7 @@ class TestPasswordResetService:
         )
         assert cache.get(otp_key) is None  # OTP consumed
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_verify_reset_otp_rejects_wrong_otp(self, mock_send_mail, user):
         PasswordResetService.send_reset_otp(email=user.email)
 
@@ -103,7 +103,7 @@ class TestPasswordResetService:
                 otp="000000",
             )
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_verify_reset_otp_rejects_expired_otp(self, mock_send_mail, user):
         with pytest.raises(ValueError, match="expired"):
             PasswordResetService.verify_reset_otp(
@@ -111,7 +111,7 @@ class TestPasswordResetService:
                 otp="123456",
             )
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_verify_reset_otp_blocks_after_max_attempts(self, mock_send_mail, user):
         PasswordResetService.send_reset_otp(email=user.email)
         otp_key = CacheKeys.pw_reset_otp(user.email)
@@ -145,7 +145,7 @@ class TestPasswordResetService:
                 otp=wrong_otp,
             )
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_reset_password_success(self, mock_send_mail, user):
         """Full flow: request OTP -> verify -> reset password."""
         PasswordResetService.send_reset_otp(email=user.email)
@@ -165,7 +165,7 @@ class TestPasswordResetService:
         user.refresh_from_db()
         assert user.check_password("NewStrongPass456!")
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_reset_password_invalid_token(self, mock_send_mail, user):
         with pytest.raises(ValueError, match="invalid or has expired"):
             PasswordResetService.reset_password(
@@ -173,7 +173,7 @@ class TestPasswordResetService:
                 new_password="NewStrongPass456!",
             )
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_reset_password_weak_password(self, mock_send_mail, user):
         PasswordResetService.send_reset_otp(email=user.email)
         otp_key = CacheKeys.pw_reset_otp(user.email)
@@ -197,7 +197,7 @@ class TestPasswordResetAPI:
     def setup_method(self):
         cache.clear()
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_request_otp_returns_200_for_existing_user(
         self, mock_send_mail, api_client, user
     ):
@@ -227,7 +227,7 @@ class TestPasswordResetAPI:
         )
         assert response.status_code == 400
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_full_reset_flow(self, mock_send_mail, api_client, user):
         """End-to-end test: request OTP -> verify -> reset password."""
         # 1. Request OTP
@@ -267,7 +267,7 @@ class TestPasswordResetAPI:
         user.refresh_from_db()
         assert user.check_password("NewStrongPass456!")
 
-    @patch("users.services.password_reset_service.send_mail")
+    @patch("utils.notification_service.send_mail")
     def test_verify_otp_rejects_wrong_code(self, mock_send_mail, api_client, user):
         api_client.post(
             reverse("password-reset-request-otp"),

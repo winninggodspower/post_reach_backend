@@ -19,6 +19,7 @@ PLATFORM_LABELS = {
     "youtube": "YouTube",
     "linkedin": "LinkedIn",
     "twitter": "Twitter",
+    "x": "X",
 }
 
 
@@ -36,21 +37,38 @@ class NotificationService:
         subject: str,
         template_name: str,
         context: dict,
+        from_name: str | None = None,
+        from_email: str | None = None,
         plain_text_message: str | None = None,
     ) -> bool:
         """
         Render an HTML template and send an email to the recipient.
+
+        :param from_name: Optional sender display name (e.g. "Winning from PostGlee", defaults to "PostGlee").
+        :param from_email: Optional sender email address (defaults to settings.DEFAULT_FROM_EMAIL).
         """
         try:
             html_message = render_to_string(template_name, context)
             if plain_text_message is None:
                 plain_text_message = strip_tags(html_message).strip()
 
+            base_email = from_email or settings.DEFAULT_FROM_EMAIL
+            # Extract clean email address if already formatted like 'Name <email@domain>'
+            if "<" in base_email and ">" in base_email:
+                sender_addr = base_email.split("<")[1].split(">")[0].strip()
+                existing_name = base_email.split("<")[0].strip()
+                sender_name = from_name or existing_name or "PostGlee"
+            else:
+                sender_addr = base_email.strip()
+                sender_name = from_name or "PostGlee"
+
+            formatted_from = f"{sender_name} <{sender_addr}>"
+
             send_mail(
                 subject=subject,
                 message=plain_text_message,
                 html_message=html_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=formatted_from,
                 recipient_list=[to_email],
                 fail_silently=False,
             )
@@ -116,14 +134,15 @@ class NotificationService:
         failed_entries = []
 
         for entry in platform_entries:
-            platform_label = PLATFORM_LABELS.get(
-                entry.platform.lower(), entry.platform.title()
-            )
+            platform_key = entry.platform.lower()
+            platform_label = PLATFORM_LABELS.get(platform_key, entry.platform.title())
+            icon_url = FrontendUrls.social_icon(entry.platform)
             if entry.status == PostStatus.POSTED:
                 successful_entries.append(
                     {
                         "platform": entry.platform,
                         "platform_label": platform_label,
+                        "icon_url": icon_url,
                         "post_url": entry.post_url,
                     }
                 )
@@ -132,6 +151,7 @@ class NotificationService:
                     {
                         "platform": entry.platform,
                         "platform_label": platform_label,
+                        "icon_url": icon_url,
                         "error_message": entry.error_message
                         or "An unexpected platform error occurred.",
                     }
@@ -190,6 +210,7 @@ class NotificationService:
             "all_succeeded": all_succeeded,
             "all_failed": all_failed,
             "dashboard_url": FrontendUrls.dashboard(),
+            "home_url": FrontendUrls.base(),
             "retry_url": (
                 FrontendUrls.retry_post(content_post.id) if failed_entries else None
             ),

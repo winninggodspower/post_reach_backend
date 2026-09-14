@@ -1,118 +1,154 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>{{ email_title }}</title>
+    <!-- Google Fonts: Sora (Headings) & Inter (Body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #f4f6f8;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            color: #1e293b;
+            background-color: #f9fafb;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #374151;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         .wrapper {
             width: 100%;
-            background-color: #f4f6f8;
-            padding: 30px 10px;
+            background-color: #f9fafb;
+            padding: 36px 12px;
         }
         .container {
-            max-width: 600px;
+            max-width: 580px;
             margin: 0 auto;
             background-color: #ffffff;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
         }
         .header {
-            padding: 28px 32px 20px;
-            border-bottom: 1px solid #edf2f7;
+            padding: 32px 32px 24px;
+            border-bottom: 1px solid #f3f4f6;
             text-align: center;
+            background-color: #ffffff;
         }
-        .header h1 {
-            margin: 0;
+        .logo-img {
+            height: 38px;
+            max-height: 42px;
+            width: auto;
+            display: inline-block;
+            border: 0;
+            outline: none;
+            text-decoration: none;
+        }
+        .logo-fallback {
+            font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 24px;
             font-weight: 700;
-            color: #0f172a;
+            color: #fb923c;
+            text-decoration: none;
             letter-spacing: -0.5px;
-        }
-        .header span {
-            color: #4f46e5;
         }
         .content {
             padding: 32px;
         }
         .greeting {
             font-size: 16px;
-            color: #334155;
-            margin-bottom: 16px;
+            color: #374151;
+            margin: 0 0 20px 0;
+            line-height: 1.5;
+        }
+        .greeting strong {
+            color: #1f2937;
         }
         .banner {
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 16px 20px;
             margin-bottom: 24px;
             display: block;
         }
         .banner-success {
-            background-color: #ecfdf5;
-            border-left: 4px solid #10b981;
-            color: #065f46;
+            background-color: #f0fdf4;
+            border-left: 4px solid #16a34a;
+        }
+        .banner-success .banner-title {
+            color: #15803d;
+        }
+        .banner-success .banner-desc {
+            color: #166534;
         }
         .banner-warning {
-            background-color: #fffbeb;
-            border-left: 4px solid #f59e0b;
-            color: #92400e;
+            background-color: #fff7ed;
+            border-left: 4px solid #fb923c;
+        }
+        .banner-warning .banner-title {
+            color: #c2410c;
+        }
+        .banner-warning .banner-desc {
+            color: #9a3412;
         }
         .banner-failed {
             background-color: #fef2f2;
             border-left: 4px solid #ef4444;
+        }
+        .banner-failed .banner-title {
+            color: #b91c1c;
+        }
+        .banner-failed .banner-desc {
             color: #991b1b;
         }
         .banner-title {
+            font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 16px;
             font-weight: 700;
             margin: 0 0 4px 0;
+            letter-spacing: -0.2px;
         }
         .banner-desc {
             font-size: 14px;
             margin: 0;
-            line-height: 1.4;
+            line-height: 1.5;
         }
         .post-card {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
             padding: 16px 20px;
             margin-bottom: 24px;
         }
         .post-label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #64748b;
+            letter-spacing: 0.05em;
+            color: #6b7280;
             margin-bottom: 8px;
         }
         .post-caption {
             font-size: 14px;
-            color: #334155;
-            line-height: 1.5;
+            color: #374151;
+            line-height: 1.55;
             margin: 0;
-            font-style: italic;
         }
         .section-title {
-            font-size: 14px;
+            font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 13px;
             font-weight: 700;
-            color: #0f172a;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.05em;
             margin: 24px 0 12px;
         }
         .platform-item {
-            border-radius: 8px;
-            padding: 14px 16px;
-            margin-bottom: 10px;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
             display: block;
         }
         .platform-success {
@@ -126,87 +162,136 @@
         .platform-name {
             font-weight: 600;
             font-size: 15px;
-            color: #0f172a;
+            color: #1f2937;
+        }
+        .platform-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: block;
+            border: 0;
+            outline: none;
         }
         .badge {
             font-size: 12px;
             font-weight: 600;
-            padding: 3px 10px;
+            padding: 4px 12px;
             border-radius: 9999px;
             display: inline-block;
         }
         .badge-live {
-            background-color: #d1fae5;
-            color: #065f46;
+            background-color: #dcfce7;
+            color: #15803d;
         }
         .badge-failed {
             background-color: #fee2e2;
-            color: #991b1b;
+            color: #b91c1c;
         }
         .platform-action {
             margin-top: 8px;
         }
         .btn-link {
             font-size: 13px;
-            color: #4f46e5;
+            color: #f87c1c;
             font-weight: 600;
             text-decoration: none;
         }
         .btn-link:hover {
+            color: #ea580c;
             text-decoration: underline;
         }
         .error-box {
-            margin-top: 8px;
-            padding: 10px 12px;
+            margin-top: 10px;
+            padding: 10px 14px;
             background-color: #ffffff;
-            border-radius: 6px;
+            border-radius: 8px;
             border-left: 3px solid #ef4444;
             font-size: 13px;
             color: #7f1d1d;
-            line-height: 1.4;
+            line-height: 1.45;
             word-break: break-word;
         }
-        .dashboard-btn-container {
+        .error-box strong {
+            color: #991b1b;
+        }
+        .action-container {
             text-align: center;
             margin-top: 32px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
-        .dashboard-btn {
+        .btn-primary {
             display: inline-block;
-            background-color: #4f46e5;
+            background-color: #fb923c;
             color: #ffffff !important;
-            padding: 12px 28px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 14px;
+            padding: 14px 32px;
+            border-radius: 9999px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 700;
+            font-size: 15px;
             text-decoration: none;
-            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+            box-shadow: 0 4px 14px rgba(251, 146, 60, 0.35);
+            transition: all 150ms ease-in-out;
+        }
+        .btn-primary:hover {
+            background-color: #fca55f;
+        }
+        .secondary-link {
+            margin-top: 14px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+        .secondary-link a {
+            color: #f87c1c;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .secondary-link a:hover {
+            text-decoration: underline;
         }
         .footer {
-            padding: 24px 32px;
-            background-color: #f8fafc;
-            border-top: 1px solid #edf2f7;
+            padding: 28px 32px;
+            background-color: #f9fafb;
+            border-top: 1px solid #e5e7eb;
             font-size: 13px;
-            color: #64748b;
+            color: #6b7280;
             line-height: 1.6;
             text-align: center;
         }
+        .footer p {
+            margin: 0 0 8px 0;
+        }
+        .footer p:last-child {
+            margin-bottom: 0;
+        }
+        .footer strong {
+            color: #374151;
+        }
         .footer a {
-            color: #4f46e5;
+            color: #f87c1c;
             text-decoration: none;
+            font-weight: 500;
+        }
+        .footer a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="wrapper">
         <div class="container">
+            <!-- Header with PostGlee Logo -->
             <div class="header">
-                <h1>Post<span>Reach</span></h1>
+                <a href="{{ home_url|default:'https://postglee.com' }}" target="_blank" style="text-decoration: none; display: inline-block;">
+                    <img src="https://postglee.com/postglee-logo.png" alt="PostGlee" class="logo-img" width="148" height="38" style="display: block; border: 0; outline: none; margin: 0 auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                    <span class="logo-fallback" style="display: none;">PostGlee</span>
+                </a>
             </div>
 
+            <!-- Main Content Area -->
             <div class="content">
                 <p class="greeting">Hello <strong>{{ user_name }}</strong>,</p>
 
+                <!-- Status Banner -->
                 {% if all_succeeded %}
                 <div class="banner banner-success">
                     <p class="banner-title">🎉 Your post is now live!</p>
@@ -215,15 +300,16 @@
                 {% elif all_failed %}
                 <div class="banner banner-failed">
                     <p class="banner-title">⚠️ Post Publishing Failed</p>
-                    <p class="banner-desc">We were unable to publish your post for <strong>{{ brand_name }}</strong>. Please see the failure details below.</p>
+                    <p class="banner-desc">We were unable to publish your post for <strong>{{ brand_name }}</strong>. Please review the platform error details below.</p>
                 </div>
                 {% else %}
                 <div class="banner banner-warning">
                     <p class="banner-title">📢 Post Publishing Update</p>
-                    <p class="banner-desc">Your post for <strong>{{ brand_name }}</strong> has finished publishing. Some platforms succeeded while others encountered issues.</p>
+                    <p class="banner-desc">Your post for <strong>{{ brand_name }}</strong> finished publishing. Some platforms published successfully while others encountered issues.</p>
                 </div>
                 {% endif %}
 
+                <!-- Post Preview Snippet -->
                 {% if post_caption %}
                 <div class="post-card">
                     <div class="post-label">Post Caption / Content</div>
@@ -231,22 +317,34 @@
                 </div>
                 {% endif %}
 
+                <!-- Live / Published Platforms -->
                 {% if successful_entries %}
                 <div class="section-title" style="color: #059669;">Published Platforms ({{ successful_entries|length }})</div>
                 {% for item in successful_entries %}
                 <div class="platform-item platform-success">
                     <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         <tr>
-                            <td align="left">
-                                <span class="platform-name">{{ item.platform_label }}</span>
+                            <td align="left" valign="middle" style="vertical-align: middle;">
+                                <table cellpadding="0" cellspacing="0" border="0">
+                                    <tr>
+                                        {% if item.icon_url %}
+                                        <td valign="middle" style="vertical-align: middle; padding-right: 12px;">
+                                            <img src="{{ item.icon_url }}" alt="{{ item.platform_label }}" width="32" height="32" class="platform-icon" style="border-radius: 50%; width: 32px; height: 32px; display: block; border: 0;" />
+                                        </td>
+                                        {% endif %}
+                                        <td valign="middle" style="vertical-align: middle;">
+                                            <span class="platform-name">{{ item.platform_label }}</span>
+                                        </td>
+                                    </tr>
+                                </table>
                             </td>
-                            <td align="right">
+                            <td align="right" valign="middle" style="vertical-align: middle;">
                                 <span class="badge badge-live">Live</span>
                             </td>
                         </tr>
                     </table>
                     {% if item.post_url %}
-                    <div class="platform-action">
+                    <div class="platform-action" style="{% if item.icon_url %}margin-left: 44px;{% endif %}">
                         <a href="{{ item.post_url }}" class="btn-link" target="_blank" rel="noopener noreferrer">View post on {{ item.platform_label }} &rarr;</a>
                     </div>
                     {% endif %}
@@ -254,40 +352,59 @@
                 {% endfor %}
                 {% endif %}
 
+                <!-- Failed Platforms -->
                 {% if failed_entries %}
                 <div class="section-title" style="color: #dc2626;">Failed Platforms ({{ failed_entries|length }})</div>
                 {% for item in failed_entries %}
                 <div class="platform-item platform-failed">
                     <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         <tr>
-                            <td align="left">
-                                <span class="platform-name">{{ item.platform_label }}</span>
+                            <td align="left" valign="middle" style="vertical-align: middle;">
+                                <table cellpadding="0" cellspacing="0" border="0">
+                                    <tr>
+                                        {% if item.icon_url %}
+                                        <td valign="middle" style="vertical-align: middle; padding-right: 12px;">
+                                            <img src="{{ item.icon_url }}" alt="{{ item.platform_label }}" width="32" height="32" class="platform-icon" style="border-radius: 50%; width: 32px; height: 32px; display: block; border: 0;" />
+                                        </td>
+                                        {% endif %}
+                                        <td valign="middle" style="vertical-align: middle;">
+                                            <span class="platform-name">{{ item.platform_label }}</span>
+                                        </td>
+                                    </tr>
+                                </table>
                             </td>
-                            <td align="right">
+                            <td align="right" valign="middle" style="vertical-align: middle;">
                                 <span class="badge badge-failed">Failed</span>
                             </td>
                         </tr>
                     </table>
-                    <div class="error-box">
+                    <div class="error-box" style="{% if item.icon_url %}margin-left: 44px;{% endif %}">
                         <strong>Reason:</strong> {{ item.error_message }}
                     </div>
                 </div>
                 {% endfor %}
                 {% endif %}
 
-                {% if dashboard_url %}
-                <div class="dashboard-btn-container">
-                    <a href="{{ dashboard_url }}" class="dashboard-btn" target="_blank">Open PostReach Dashboard</a>
+                <!-- Call to Action Buttons -->
+                <div class="action-container">
+                    {% if retry_url %}
+                    <a href="{{ retry_url }}" class="btn-primary" target="_blank">Retry Failed Post &rarr;</a>
+                    <div class="secondary-link">
+                        or <a href="{{ dashboard_url|default:'https://postglee.com/dashboard' }}" target="_blank">go to PostGlee Dashboard</a>
+                    </div>
+                    {% elif dashboard_url %}
+                    <a href="{{ dashboard_url }}" class="btn-primary" target="_blank">Open PostGlee Dashboard &rarr;</a>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
 
+            <!-- Footer -->
             <div class="footer">
-                <p>Best regards,<br>The PostReach Team</p>
+                <p>Best regards,<br><strong>The PostGlee Team</strong></p>
                 <p>
-                    Need assistance? <a href="mailto:support@postreach.app">Contact our support team</a>.
+                    Need assistance? <a href="https://postglee.com/support" target="_blank">Visit our Help Center</a> or reply to this email.
                 </p>
-                <p>&copy; {% now "Y" %} PostReach. All rights reserved.</p>
+                <p>&copy; {% now "Y" %} PostGlee. All rights reserved. &bull; Social media management made effortless.</p>
             </div>
         </div>
     </div>

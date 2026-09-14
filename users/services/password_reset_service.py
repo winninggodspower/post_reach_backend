@@ -7,11 +7,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
 
 from utils.cache_keys import CacheKeys
 from utils.custom_logger import CustomLogger, log_exceptions
+from utils.frontend_urls import FrontendUrls
+from utils.notification_service import NotificationService
 
 User = get_user_model()
 
@@ -31,84 +31,66 @@ class PasswordResetService:
 
     @staticmethod
     def _generate_reset_token(length: int = 32) -> str:
-        """Generate a secure random token for password reset authorization."""
-        return "".join(random.choices(string.ascii_letters + string.digits, k=length))
+        """Generate a secure, URL-safe one-time reset token."""
+        return "".join(
+            random.choices(string.ascii_letters + string.digits, k=length)
+        )
 
-    @staticmethod
+    @classmethod
     @log_exceptions()
-    def send_reset_otp(*, email: str) -> bool:
+    def send_reset_otp(cls, email: str) -> bool:
         """
-        Generate and send a password reset OTP to the given email.
-
-        Returns True always for security (don't reveal if email exists).
-        Rate-limited to one request per 60 seconds per email.
+        Generates an OTP, caches it, and sends it via email.
+        Enforces a 60-second rate limit between requests per email.
+        Always returns True to prevent user enumeration attacks.
         """
-        normalized_email = User.objects.normalize_email(email)
+        normalized_email = email.strip().lower()
 
-        # Check rate limit
-        rate_key = CacheKeys.pw_reset_rate_limit(normalized_email)
-        if cache.get(rate_key):
-            CustomLogger.info(
-                "Password reset OTP rate-limited",
+        # Check rate limit (1 email per 60 seconds)
+        rate_limit_key = CacheKeys.pw_reset_rate_limit(normalized_email)
+        if cache.get(rate_limit_key):
+            CustomLogger.warning(
+                "Password reset rate limit hit",
                 extra={"email": normalized_email},
             )
-            return True  # Silently succeed to not reveal existence
+            return True  # Silent return to avoid timing/enumeration leaks
 
-        # Set rate limit
-        cache.set(rate_key, 1, RATE_LIMIT_TTL)
+        # Set rate limit before checking user existence (prevents timing attacks)
+        cache.set(rate_limit_key, True, RATE_LIMIT_TTL)
 
-        # Check if user exists
+        # Check user existence (silent exit if not found)
         try:
             user = User.objects.get(email=normalized_email)
         except User.DoesNotExist:
             CustomLogger.info(
-                "Password reset OTP requested for non-existent email",
+                "Password reset requested for non-existent email",
                 extra={"email": normalized_email},
             )
-            return True  # Still return True for security
+            return True
 
         # Generate and store OTP
         otp = PasswordResetService._generate_otp()
         otp_key = CacheKeys.pw_reset_otp(normalized_email)
         cache.set(otp_key, {"otp": otp, "attempts": 0}, OTP_TTL)
 
-        # Send email via Django's send_mail
-        subject = "Your Password Reset Code"
-        message = (
-            f"Hello {user.first_name or 'User'},\n\n"
-            f"Your password reset code is: {otp}\n\n"
-            f"This code is valid for 10 minutes. "
-            f"Do not share this code with anyone.\n\n"
-            f"If you did not request a password reset, please ignore this email."
-        )
-        html_message = render_to_string(
-            "emails/password_reset_otp.html",
-            {"user_name": user.first_name or "User", "otp": otp},
+        # Send email via NotificationService
+        sent = NotificationService.send_email(
+            to_email=normalized_email,
+            subject="Your PostGlee Password Reset Code",
+            template_name="emails/password_reset_otp.html",
+            context={
+                "user_name": user.first_name or "there",
+                "otp": otp,
+                "home_url": FrontendUrls.base(),
+            },
         )
 
-        try:
-            send_mail(
-                subject=subject,
-                message=message,
-                html_message=html_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[normalized_email],
-                fail_silently=False,
-            )
-            CustomLogger.info(
-                "Password reset OTP sent successfully",
-                extra={"email": normalized_email},
-            )
-        except Exception as exc:
-            CustomLogger.exception(
-                "Failed to send password reset OTP email",
-                extra={"email": normalized_email},
-            )
+        if not sent:
             # Remove the OTP from cache since email failed
             cache.delete(otp_key)
             raise ValueError(
                 "Failed to send the verification code. Please try again later."
-            ) from exc
+            )
 
         return True
 
