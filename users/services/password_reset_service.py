@@ -32,9 +32,7 @@ class PasswordResetService:
     @staticmethod
     def _generate_reset_token(length: int = 32) -> str:
         """Generate a secure, URL-safe one-time reset token."""
-        return "".join(
-            random.choices(string.ascii_letters + string.digits, k=length)
-        )
+        return "".join(random.choices(string.ascii_letters + string.digits, k=length))
 
     @classmethod
     @log_exceptions()

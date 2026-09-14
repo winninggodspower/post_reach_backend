@@ -134,15 +134,14 @@ class NotificationService:
         failed_entries = []
 
         for entry in platform_entries:
-            platform_key = entry.platform.lower()
-            platform_label = PLATFORM_LABELS.get(platform_key, entry.platform.title())
-            icon_url = FrontendUrls.social_icon(entry.platform)
+            platform_label = PLATFORM_LABELS.get(
+                entry.platform.lower(), entry.platform.title()
+            )
             if entry.status == PostStatus.POSTED:
                 successful_entries.append(
                     {
                         "platform": entry.platform,
                         "platform_label": platform_label,
-                        "icon_url": icon_url,
                         "post_url": entry.post_url,
                     }
                 )
@@ -151,7 +150,6 @@ class NotificationService:
                     {
                         "platform": entry.platform,
                         "platform_label": platform_label,
-                        "icon_url": icon_url,
                         "error_message": entry.error_message
                         or "An unexpected platform error occurred.",
                     }

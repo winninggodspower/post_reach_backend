@@ -164,14 +164,6 @@
             font-size: 15px;
             color: #1f2937;
         }
-        .platform-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: block;
-            border: 0;
-            outline: none;
-        }
         .badge {
             font-size: 12px;
             font-weight: 600;
@@ -324,27 +316,16 @@
                 <div class="platform-item platform-success">
                     <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         <tr>
-                            <td align="left" valign="middle" style="vertical-align: middle;">
-                                <table cellpadding="0" cellspacing="0" border="0">
-                                    <tr>
-                                        {% if item.icon_url %}
-                                        <td valign="middle" style="vertical-align: middle; padding-right: 12px;">
-                                            <img src="{{ item.icon_url }}" alt="{{ item.platform_label }}" width="32" height="32" class="platform-icon" style="border-radius: 50%; width: 32px; height: 32px; display: block; border: 0;" />
-                                        </td>
-                                        {% endif %}
-                                        <td valign="middle" style="vertical-align: middle;">
-                                            <span class="platform-name">{{ item.platform_label }}</span>
-                                        </td>
-                                    </tr>
-                                </table>
+                            <td align="left">
+                                <span class="platform-name">{{ item.platform_label }}</span>
                             </td>
-                            <td align="right" valign="middle" style="vertical-align: middle;">
+                            <td align="right">
                                 <span class="badge badge-live">Live</span>
                             </td>
                         </tr>
                     </table>
                     {% if item.post_url %}
-                    <div class="platform-action" style="{% if item.icon_url %}margin-left: 44px;{% endif %}">
+                    <div class="platform-action">
                         <a href="{{ item.post_url }}" class="btn-link" target="_blank" rel="noopener noreferrer">View post on {{ item.platform_label }} &rarr;</a>
                     </div>
                     {% endif %}
@@ -359,26 +340,15 @@
                 <div class="platform-item platform-failed">
                     <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         <tr>
-                            <td align="left" valign="middle" style="vertical-align: middle;">
-                                <table cellpadding="0" cellspacing="0" border="0">
-                                    <tr>
-                                        {% if item.icon_url %}
-                                        <td valign="middle" style="vertical-align: middle; padding-right: 12px;">
-                                            <img src="{{ item.icon_url }}" alt="{{ item.platform_label }}" width="32" height="32" class="platform-icon" style="border-radius: 50%; width: 32px; height: 32px; display: block; border: 0;" />
-                                        </td>
-                                        {% endif %}
-                                        <td valign="middle" style="vertical-align: middle;">
-                                            <span class="platform-name">{{ item.platform_label }}</span>
-                                        </td>
-                                    </tr>
-                                </table>
+                            <td align="left">
+                                <span class="platform-name">{{ item.platform_label }}</span>
                             </td>
-                            <td align="right" valign="middle" style="vertical-align: middle;">
+                            <td align="right">
                                 <span class="badge badge-failed">Failed</span>
                             </td>
                         </tr>
                     </table>
-                    <div class="error-box" style="{% if item.icon_url %}margin-left: 44px;{% endif %}">
+                    <div class="error-box">
                         <strong>Reason:</strong> {{ item.error_message }}
                     </div>
                 </div>

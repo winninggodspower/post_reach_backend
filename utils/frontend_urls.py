@@ -48,18 +48,3 @@ class FrontendUrls:
     def password_reset(cls, token: str) -> str:
         """URL to password reset page with token."""
         return f"{cls.base()}/reset-password?token={token}"
-
-    PLATFORM_ICONS = {
-        "youtube": "https://postglee.com/social-icons/youtube-circle.png",
-        "facebook": "https://postglee.com/social-icons/facebook-circle.png",
-        "instagram": "https://postglee.com/social-icons/instagram-circle.png",
-        "tiktok": "https://postglee.com/social-icons/tiktok-circle.png",
-        "linkedin": "https://postglee.com/social-icons/linkedin-circle.png",
-        "twitter": "https://postglee.com/social-icons/twitter-circle.png",
-        "x": "https://postglee.com/social-icons/twitter-circle.png",
-    }
-
-    @classmethod
-    def social_icon(cls, platform: str) -> str | None:
-        """Returns the circular social platform icon URL for the given platform key."""
-        return cls.PLATFORM_ICONS.get(platform.lower().strip())
