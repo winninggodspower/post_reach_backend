@@ -8,7 +8,9 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 
 from content.enums import PostStatus
+from content.selectors import ContentPostSelector
 from utils.custom_logger import CustomLogger, log_exceptions
+from utils.frontend_urls import FrontendUrls
 
 PLATFORM_LABELS = {
     "instagram": "Instagram",
@@ -34,7 +36,7 @@ class NotificationService:
         subject: str,
         template_name: str,
         context: dict,
-        plain_text_message: Optional[str] = None,
+        plain_text_message: str | None = None,
     ) -> bool:
         """
         Render an HTML template and send an email to the recipient.
@@ -81,10 +83,8 @@ class NotificationService:
         targeted platforms have finished publishing (either POSTED or FAILED).
         Guarantees idempotency via content_post.email_notified_at.
         """
-        from content.services.content_post_service import ContentPostService
-
         try:
-            content_post = ContentPostService.get_content_post_by_id(content_post_id)
+            content_post = ContentPostSelector.get_content_post_by_id(content_post_id)
         except Exception:
             CustomLogger.error(
                 "ContentPost not found for notification dispatch",
@@ -101,7 +101,7 @@ class NotificationService:
             return False
 
         # Check if there are still pending/processing platform entries
-        if ContentPostService.has_pending_entries(content_post):
+        if ContentPostSelector.has_pending_entries(content_post):
             CustomLogger.info(
                 "ContentPost still has pending platform entries, postponing notification",
                 extra={"content_post_id": str(content_post.id)},
@@ -116,7 +116,9 @@ class NotificationService:
         failed_entries = []
 
         for entry in platform_entries:
-            platform_label = PLATFORM_LABELS.get(entry.platform.lower(), entry.platform.title())
+            platform_label = PLATFORM_LABELS.get(
+                entry.platform.lower(), entry.platform.title()
+            )
             if entry.status == PostStatus.POSTED:
                 successful_entries.append(
                     {
@@ -187,7 +189,10 @@ class NotificationService:
             "failed_entries": failed_entries,
             "all_succeeded": all_succeeded,
             "all_failed": all_failed,
-            "dashboard_url": getattr(settings, "FRONTEND_URL", "https://postglee.com"),
+            "dashboard_url": FrontendUrls.dashboard(),
+            "retry_url": (
+                FrontendUrls.retry_post(content_post.id) if failed_entries else None
+            ),
         }
 
         sent = cls.send_email(

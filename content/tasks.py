@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentPostPlatform
-from content.services.content_post_service import ContentPostService
+from content.selectors import ContentPostSelector
 from content.services.posting_service import PostingService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.tiktok_service import TiktokService
@@ -16,6 +16,7 @@ from social_accounts.services.social_account_validation_service import (
     SocialAccountValidationService,
 )
 from utils.custom_logger import CustomLogger
+from utils.notification_service import NotificationService
 from utils.r2_storage import R2StorageService
 
 
@@ -42,12 +43,12 @@ def wait_for_media_and_publish_platform_entry(
     files_to_check = []
 
     if content_type == "photo":
-        photos = ContentPostService.get_media_items(
+        photos = ContentPostSelector.get_media_items(
             content_post, file_type=FileTypeChoice.IMAGE
         )
         files_to_check = [item.r2_key for item in photos]
     else:
-        videos = ContentPostService.get_media_items(
+        videos = ContentPostSelector.get_media_items(
             content_post, file_type=FileTypeChoice.VIDEO
         )
         video_item = videos.first()
@@ -462,8 +463,6 @@ def send_post_status_notification_task(self, content_post_id):
     Celery task that sends an email notification to the post creator once all
     platforms for the post have reached a terminal state (POSTED or FAILED).
     """
-    from utils.notification_service import NotificationService
-
     try:
         sent = NotificationService.send_post_status_notification(
             content_post_id=content_post_id
@@ -486,12 +485,12 @@ def cleanup_expired_failed_post_media():
     retention_days = getattr(settings, "FAILED_POST_MEDIA_RETENTION_DAYS", 7)
     cutoff = timezone.now() - timedelta(days=retention_days)
 
-    expired_posts = ContentPostService.get_expired_failed_posts(cutoff)
+    expired_posts = ContentPostSelector.get_expired_failed_posts(cutoff)
 
     cleaned_count = 0
     for post in expired_posts:
         try:
-            if not ContentPostService.has_pending_entries(post):
+            if not ContentPostSelector.has_pending_entries(post):
                 PostingService.cleanup_r2_media(post, force=True)
                 cleaned_count += 1
         except Exception as e:

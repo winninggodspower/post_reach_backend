@@ -17,7 +17,10 @@ class TestNotificationService:
     def test_send_post_status_notification_all_succeeded(self, user, brand):
         """Should send a live notification email with post links when all platforms succeed."""
         cp = ContentPost.objects.create(
-            user=user, brand=brand, caption="Check out my new video!", content_type="video"
+            user=user,
+            brand=brand,
+            caption="Check out my new video!",
+            content_type="video",
         )
         ContentPostPlatform.objects.create(
             content_post=cp,
@@ -42,7 +45,10 @@ class TestNotificationService:
         assert "Your post is live on" in email.subject
         assert "Instagram" in email.subject
         assert "TikTok" in email.subject
-        assert "https://instagram.com/p/abc123" in email.body or "https://instagram.com/p/abc123" in email.alternatives[0][0]
+        assert (
+            "https://instagram.com/p/abc123" in email.body
+            or "https://instagram.com/p/abc123" in email.alternatives[0][0]
+        )
         assert "Check out my new video!" in email.alternatives[0][0]
 
         # Verify idempotency field updated
@@ -120,11 +126,17 @@ class TestNotificationService:
         )
 
         # First send
-        assert NotificationService.send_post_status_notification(content_post_id=cp.id) is True
+        assert (
+            NotificationService.send_post_status_notification(content_post_id=cp.id)
+            is True
+        )
         assert len(mail.outbox) == 1
 
         # Second send attempt
-        assert NotificationService.send_post_status_notification(content_post_id=cp.id) is False
+        assert (
+            NotificationService.send_post_status_notification(content_post_id=cp.id)
+            is False
+        )
         assert len(mail.outbox) == 1  # Still 1, no duplicate sent
 
     def test_does_not_send_when_platform_entries_still_pending(self, user, brand):
@@ -153,7 +165,9 @@ class TestNotificationService:
         cp.refresh_from_db()
         assert cp.email_notified_at is None
 
-    def test_on_platform_entry_completed_dispatches_task_when_all_done(self, user, brand, mocker):
+    def test_on_platform_entry_completed_dispatches_task_when_all_done(
+        self, user, brand, mocker
+    ):
         """PostingService.on_platform_entry_completed triggers task when all entries are done."""
         cp = ContentPost.objects.create(
             user=user, brand=brand, caption="Entry completed test"
@@ -164,14 +178,18 @@ class TestNotificationService:
             status=PostStatus.POSTED,
         )
 
-        mock_delay = mocker.patch("content.tasks.send_post_status_notification_task.delay")
+        mock_delay = mocker.patch(
+            "content.tasks.send_post_status_notification_task.delay"
+        )
         mocker.patch.object(PostingService, "cleanup_r2_media")
 
         PostingService.on_platform_entry_completed(cp)
 
         mock_delay.assert_called_once_with(str(cp.id))
 
-    def test_on_platform_entry_completed_waits_if_entries_pending(self, user, brand, mocker):
+    def test_on_platform_entry_completed_waits_if_entries_pending(
+        self, user, brand, mocker
+    ):
         """PostingService.on_platform_entry_completed does not trigger task if entries are pending."""
         cp = ContentPost.objects.create(
             user=user, brand=brand, caption="Entry pending test"
@@ -187,7 +205,9 @@ class TestNotificationService:
             status=PostStatus.UPLOADING,
         )
 
-        mock_delay = mocker.patch("content.tasks.send_post_status_notification_task.delay")
+        mock_delay = mocker.patch(
+            "content.tasks.send_post_status_notification_task.delay"
+        )
         mocker.patch.object(PostingService, "cleanup_r2_media")
 
         PostingService.on_platform_entry_completed(cp)
@@ -253,7 +273,9 @@ class TestFailedPostMediaRetention:
 
         mock_delete.assert_called_once_with("videos/success.mp4")
 
-    def test_cleanup_r2_media_forced_deletes_failed_post_media(self, user, brand, mocker):
+    def test_cleanup_r2_media_forced_deletes_failed_post_media(
+        self, user, brand, mocker
+    ):
         """Should delete R2 files on failed post when force=True is passed."""
         from content.models import ContentMedia
 
@@ -275,10 +297,14 @@ class TestFailedPostMediaRetention:
 
         mock_delete.assert_called_once_with("videos/force.mp4")
 
-    def test_cleanup_expired_failed_post_media_respects_scheduled_post(self, user, brand, mocker):
+    def test_cleanup_expired_failed_post_media_respects_scheduled_post(
+        self, user, brand, mocker
+    ):
         """A post created weeks ago that failed recently must NOT be deleted."""
         from datetime import timedelta
+
         from django.utils import timezone
+
         from content.models import ContentMedia
         from content.tasks import cleanup_expired_failed_post_media
 
@@ -300,7 +326,9 @@ class TestFailedPostMediaRetention:
             status=PostStatus.FAILED,
         )
         # Failure updated yesterday (well within 7 days)
-        ContentPostPlatform.objects.filter(id=entry.id).update(updated_at=now - timedelta(days=1))
+        ContentPostPlatform.objects.filter(id=entry.id).update(
+            updated_at=now - timedelta(days=1)
+        )
 
         mock_delete = mocker.patch("utils.r2_storage.R2StorageService.delete_file")
 
@@ -309,10 +337,14 @@ class TestFailedPostMediaRetention:
         # Should NOT be deleted because it failed only 1 day ago!
         mock_delete.assert_not_called()
 
-    def test_cleanup_expired_failed_post_media_deletes_after_retention_window(self, user, brand, mocker):
+    def test_cleanup_expired_failed_post_media_deletes_after_retention_window(
+        self, user, brand, mocker
+    ):
         """A post whose failure is older than retention window (8 days ago) is deleted."""
         from datetime import timedelta
+
         from django.utils import timezone
+
         from content.models import ContentMedia
         from content.tasks import cleanup_expired_failed_post_media
 
@@ -331,7 +363,9 @@ class TestFailedPostMediaRetention:
             status=PostStatus.FAILED,
         )
         # Failure was 8 days ago
-        ContentPostPlatform.objects.filter(id=entry.id).update(updated_at=now - timedelta(days=8))
+        ContentPostPlatform.objects.filter(id=entry.id).update(
+            updated_at=now - timedelta(days=8)
+        )
 
         mock_delete = mocker.patch("utils.r2_storage.R2StorageService.delete_file")
 
@@ -340,3 +374,59 @@ class TestFailedPostMediaRetention:
         # Should be deleted
         mock_delete.assert_called_once_with("videos/expired.mp4")
 
+
+class TestFrontendUrls:
+    def test_frontend_urls_build_correctly(self):
+        """FrontendUrls should build clean, typed routes using FRONTEND_URL."""
+        from utils.frontend_urls import FrontendUrls
+
+        assert FrontendUrls.base() == "https://postglee.com"
+        assert FrontendUrls.dashboard() == "https://postglee.com/dashboard"
+        assert FrontendUrls.post_detail("123") == "https://postglee.com/posts/123"
+        assert FrontendUrls.retry_post("123") == "https://postglee.com/posts/123/retry"
+        assert (
+            FrontendUrls.social_connections()
+            == "https://postglee.com/settings/connections"
+        )
+        assert FrontendUrls.login() == "https://postglee.com/login"
+        assert (
+            FrontendUrls.password_reset("xyz")
+            == "https://postglee.com/reset-password?token=xyz"
+        )
+
+
+class TestContentPostSelector:
+    def test_selector_get_methods(self, user, brand):
+        """ContentPostSelector should retrieve posts cleanly for user and by ID."""
+        from content.selectors import ContentPostSelector
+
+        cp = ContentPost.objects.create(
+            user=user, brand=brand, caption="Selector test", content_type="video"
+        )
+        ContentPostPlatform.objects.create(
+            content_post=cp,
+            platform=PlatformChoices.INSTAGRAM,
+            status=PostStatus.POSTED,
+        )
+
+        fetched_for_user = ContentPostSelector.get_content_post(cp.id, user)
+        assert fetched_for_user.id == cp.id
+
+        fetched_by_id = ContentPostSelector.get_content_post_by_id(cp.id)
+        assert fetched_by_id.id == cp.id
+        assert fetched_by_id.user == user
+        assert fetched_by_id.brand == brand
+
+    def test_selector_has_pending_entries(self, user, brand):
+        """ContentPostSelector.has_pending_entries should reflect active states."""
+        from content.selectors import ContentPostSelector
+
+        cp = ContentPost.objects.create(user=user, brand=brand, caption="Pending check")
+        entry = ContentPostPlatform.objects.create(
+            content_post=cp, platform=PlatformChoices.TIKTOK, status=PostStatus.PENDING
+        )
+        assert ContentPostSelector.has_pending_entries(cp) is True
+
+        entry.status = PostStatus.POSTED
+        entry.save(update_fields=["status"])
+        assert ContentPostSelector.has_pending_entries(cp) is False

@@ -9,13 +9,14 @@ from django.utils import timezone
 
 from content.enums import PostStatus
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
+from content.selectors import ContentPostSelector
 from content.services.content_post_service import ContentPostService
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
 
 
 class TestGetContentPost:
-    """Tests for ContentPostService.get_content_post()"""
+    """Tests for ContentPostSelector.get_content_post()"""
 
     def test_retrieves_own_post(self, db, user, brand):
         """Should return the post when the user owns it."""
@@ -23,7 +24,7 @@ class TestGetContentPost:
             user=user, brand=brand, caption="My Post", content_type="video"
         )
 
-        result = ContentPostService.get_content_post(post.id, user)
+        result = ContentPostSelector.get_content_post(post.id, user)
         assert result.id == post.id
         assert result.caption == "My Post"
         assert result.brand == brand
@@ -40,7 +41,7 @@ class TestGetContentPost:
             content_post=post, r2_key="photos/b.jpg", file_type="image", order=1
         )
 
-        result = ContentPostService.get_content_post(post.id, user)
+        result = ContentPostSelector.get_content_post(post.id, user)
         # Access media_items after retrieval — should use prefetched cache
         items = list(result.media_items.all())
         assert len(items) == 2
@@ -57,7 +58,7 @@ class TestGetContentPost:
             content_post=post, platform=PlatformChoices.FACEBOOK
         )
 
-        result = ContentPostService.get_content_post(post.id, user)
+        result = ContentPostSelector.get_content_post(post.id, user)
         entries = list(result.platform_entries.all())
         assert len(entries) == 2
 
@@ -78,16 +79,16 @@ class TestGetContentPost:
         )
 
         with pytest.raises(ContentPost.DoesNotExist):
-            ContentPostService.get_content_post(post.id, other_user)
+            ContentPostSelector.get_content_post(post.id, other_user)
 
     def test_raises_does_not_exist_for_random_uuid(self, db, user, brand):
         """Should raise DoesNotExist for a non-existent post ID."""
         with pytest.raises(ContentPost.DoesNotExist):
-            ContentPostService.get_content_post(uuid.uuid4(), user)
+            ContentPostSelector.get_content_post(uuid.uuid4(), user)
 
 
 class TestGetMediaItems:
-    """Tests for ContentPostService.get_media_items()"""
+    """Tests for ContentPostSelector.get_media_items()"""
 
     def test_returns_filtered_by_file_type(self, db, user, brand):
         """Should return only items matching the requested file_type."""
@@ -104,7 +105,7 @@ class TestGetMediaItems:
             content_post=post, r2_key="videos/b.mp4", file_type="video", order=2
         )
 
-        videos = list(ContentPostService.get_media_items(post, file_type="video"))
+        videos = list(ContentPostSelector.get_media_items(post, file_type="video"))
         assert len(videos) == 2
         assert videos[0].id == v1.id
         assert videos[1].id == v2.id
@@ -124,7 +125,7 @@ class TestGetMediaItems:
             content_post=post, r2_key="photos/c.jpg", file_type="image", order=2
         )
 
-        items = list(ContentPostService.get_media_items(post, file_type="image"))
+        items = list(ContentPostSelector.get_media_items(post, file_type="image"))
         assert items[0].id == first.id
         assert items[1].id == second.id
         assert items[2].id == third.id
@@ -138,12 +139,12 @@ class TestGetMediaItems:
             content_post=post, r2_key="videos/a.mp4", file_type="video", order=0
         )
 
-        images = list(ContentPostService.get_media_items(post, file_type="image"))
+        images = list(ContentPostSelector.get_media_items(post, file_type="image"))
         assert len(images) == 0
 
 
 class TestHasPendingEntries:
-    """Tests for ContentPostService.has_pending_entries()"""
+    """Tests for ContentPostSelector.has_pending_entries()"""
 
     def test_returns_true_when_pending_exists(self, db, user, brand):
         """Should return True if any platform entry is in PENDING status."""
@@ -161,7 +162,7 @@ class TestHasPendingEntries:
             status=PostStatus.PENDING,
         )
 
-        assert ContentPostService.has_pending_entries(post) is True
+        assert ContentPostSelector.has_pending_entries(post) is True
 
     def test_returns_true_when_uploading_exists(self, db, user, brand):
         """Should return True if any platform entry is in UPLOADING status."""
@@ -174,7 +175,7 @@ class TestHasPendingEntries:
             status=PostStatus.UPLOADING,
         )
 
-        assert ContentPostService.has_pending_entries(post) is True
+        assert ContentPostSelector.has_pending_entries(post) is True
 
     def test_returns_false_when_all_finished(self, db, user, brand):
         """Should return False when all entries are POSTED or FAILED."""
@@ -192,7 +193,7 @@ class TestHasPendingEntries:
             status=PostStatus.FAILED,
         )
 
-        assert ContentPostService.has_pending_entries(post) is False
+        assert ContentPostSelector.has_pending_entries(post) is False
 
     def test_returns_false_when_no_entries(self, db, user, brand):
         """Should return False when there are no platform entries at all."""
@@ -200,7 +201,7 @@ class TestHasPendingEntries:
             user=user, brand=brand, caption="No Entries", content_type="video"
         )
 
-        assert ContentPostService.has_pending_entries(post) is False
+        assert ContentPostSelector.has_pending_entries(post) is False
 
 
 class TestUpdateContentPost:

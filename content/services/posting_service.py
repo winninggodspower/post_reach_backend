@@ -7,7 +7,7 @@ from django.db import transaction
 
 from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentPost, ContentPostPlatform
-from content.services.content_post_service import ContentPostService
+from content.selectors import ContentPostSelector
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
@@ -93,7 +93,7 @@ class PostingService:
 
                 if content_type == "photo":
                     # Generate a presigned URL for each image
-                    image_items = ContentPostService.get_media_items(
+                    image_items = ContentPostSelector.get_media_items(
                         content_post, file_type=FileTypeChoice.IMAGE
                     )
                     presigned_urls = [
@@ -113,7 +113,7 @@ class PostingService:
                         raise ValueError("Failed to generate presigned URLs for photos")
                 elif needs_url:
                     # Single video → single presigned URL
-                    video_items = ContentPostService.get_media_items(
+                    video_items = ContentPostSelector.get_media_items(
                         content_post, file_type=FileTypeChoice.VIDEO
                     )
                     video_item = video_items.first()
@@ -133,7 +133,7 @@ class PostingService:
                         raise ValueError("Failed to generate presigned URL")
 
                 if needs_bytes:
-                    video_items = ContentPostService.get_media_items(
+                    video_items = ContentPostSelector.get_media_items(
                         content_post, file_type=FileTypeChoice.VIDEO
                     )
                     video_item = video_items.first()
@@ -218,7 +218,7 @@ class PostingService:
             content_post = ContentPost.objects.select_for_update().get(
                 pk=content_post.pk
             )
-            if ContentPostService.has_pending_entries(content_post):
+            if ContentPostSelector.has_pending_entries(content_post):
                 return
 
             if not force:
@@ -247,7 +247,7 @@ class PostingService:
         1. Cleans up R2 media.
         2. Dispatches a Celery task to notify the user via email.
         """
-        if ContentPostService.has_pending_entries(content_post):
+        if ContentPostSelector.has_pending_entries(content_post):
             return
 
         cls.cleanup_r2_media(content_post)

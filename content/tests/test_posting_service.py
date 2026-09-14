@@ -348,7 +348,7 @@ class TestPostingService:
         assert result.status == PostStatus.FAILED
         assert result.error_message == "API down"
 
-    def test_cleanup_when_all_finished(self, db, user, brand, mocker):
+    def test_cleanup_when_all_posted(self, db, user, brand, mocker):
         mock_delete = mocker.patch(
             "content.services.posting_service.R2StorageService.delete_file",
             return_value=True,
@@ -366,11 +366,39 @@ class TestPostingService:
             content_post=cp, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
         )
         ContentPostPlatform.objects.create(
-            content_post=cp, platform=PlatformChoices.FACEBOOK, status=PostStatus.FAILED
+            content_post=cp, platform=PlatformChoices.FACEBOOK, status=PostStatus.POSTED
         )
         PostingService.cleanup_r2_media(cp)
-        # Should delete both media items
+        # Should delete both media items when all platforms posted successfully
         assert mock_delete.call_count == 2
+
+    def test_cleanup_retains_media_when_platform_failed_unless_forced(
+        self, db, user, brand, mocker
+    ):
+        mock_delete = mocker.patch(
+            "content.services.posting_service.R2StorageService.delete_file",
+            return_value=True,
+        )
+        cp = ContentPost.objects.create(
+            user=user, brand=brand, caption="C", content_type="video"
+        )
+        ContentMedia.objects.create(
+            content_post=cp, r2_key="videos/k.mp4", file_type="video", order=0
+        )
+        ContentPostPlatform.objects.create(
+            content_post=cp, platform=PlatformChoices.YOUTUBE, status=PostStatus.POSTED
+        )
+        ContentPostPlatform.objects.create(
+            content_post=cp, platform=PlatformChoices.FACEBOOK, status=PostStatus.FAILED
+        )
+
+        # Default cleanup preserves media for author retry
+        PostingService.cleanup_r2_media(cp, force=False)
+        mock_delete.assert_not_called()
+
+        # Force cleanup (e.g. from expired retention sweep) deletes media
+        PostingService.cleanup_r2_media(cp, force=True)
+        assert mock_delete.call_count == 1
 
     def test_cleanup_skips_when_pending(self, db, user, brand, mocker):
         mock_delete = mocker.patch(

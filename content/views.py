@@ -1,4 +1,3 @@
-from django.db.models import Q
 from django.utils.dateparse import parse_date
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -8,6 +7,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
 from content.models import ContentPost
+from content.selectors import ContentPostSelector
 from content.serializers import (
     ContentPostCreateSerializer,
     ContentPostResponseSerializer,
@@ -222,27 +222,15 @@ class ContentPostViewSet(viewsets.ViewSet):
         start_date_str = request.query_params.get("start_date")
         end_date_str = request.query_params.get("end_date")
 
-        posts = ContentPost.objects.filter(brand=brand).prefetch_related(
-            "platform_entries", "media_items"
+        start_date = parse_date(start_date_str) if start_date_str else None
+        end_date = parse_date(end_date_str) if end_date_str else None
+
+        posts = ContentPostSelector.get_calendar_posts(
+            brand=brand,
+            start_date=start_date,
+            end_date=end_date,
         )
 
-        if start_date_str:
-            start_date = parse_date(start_date_str)
-            if start_date:
-                posts = posts.filter(
-                    Q(scheduled_at__date__gte=start_date)
-                    | Q(scheduled_at__isnull=True, created_at__date__gte=start_date)
-                )
-
-        if end_date_str:
-            end_date = parse_date(end_date_str)
-            if end_date:
-                posts = posts.filter(
-                    Q(scheduled_at__date__lte=end_date)
-                    | Q(scheduled_at__isnull=True, created_at__date__lte=end_date)
-                )
-
-        posts = posts.order_by("scheduled_at", "created_at")
         serializer = ContentPostResponseSerializer(posts, many=True)
         return CustomSuccessResponse(serializer.data)
 
@@ -302,7 +290,7 @@ class ContentPostViewSet(viewsets.ViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        posts = ContentPostService.get_scheduled_posts(
+        posts = ContentPostSelector.get_scheduled_posts(
             brand=brand,
             platform=platform,
             content_type=content_type,
@@ -332,7 +320,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         GET /api/content/posts/{id}/
         """
         try:
-            content_post = ContentPostService.get_content_post(
+            content_post = ContentPostSelector.get_content_post(
                 post_id=pk, user=request.user
             )
         except ContentPost.DoesNotExist:
@@ -362,7 +350,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         PATCH /api/content/posts/{id}/
         """
         try:
-            content_post = ContentPostService.get_content_post(
+            content_post = ContentPostSelector.get_content_post(
                 post_id=pk, user=request.user
             )
         except ContentPost.DoesNotExist:
@@ -405,7 +393,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         DELETE /api/content/posts/{id}/
         """
         try:
-            content_post = ContentPostService.get_content_post(
+            content_post = ContentPostSelector.get_content_post(
                 post_id=pk, user=request.user
             )
         except ContentPost.DoesNotExist:
