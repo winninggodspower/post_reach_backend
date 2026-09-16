@@ -226,13 +226,6 @@ class R2StorageService:
         Returns a dict containing 'key' and 'url', or None on failure.
         """
         key = cls.generate_key(content_type, extension)
-        info = CONTENT_TYPE_MAP.get(content_type, CONTENT_TYPE_MAP["video"])
-        mime_type = info["mime"]
-        if extension:
-            guessed_mime = mimetypes.guess_type(f"file.{extension}")[0]
-            if guessed_mime:
-                mime_type = guessed_mime
-
         client = cls._get_client()
 
         try:
@@ -241,7 +234,6 @@ class R2StorageService:
                 Params={
                     "Bucket": settings.CLOUDFLARE_R2_BUCKET,
                     "Key": key,
-                    "ContentType": mime_type,
                 },
                 ExpiresIn=expiration,
             )

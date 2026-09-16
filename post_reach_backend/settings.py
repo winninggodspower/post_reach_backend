@@ -304,6 +304,9 @@ CELERY_WORKER_CONCURRENCY = 2
 FAILED_POST_MEDIA_RETENTION_DAYS = env.int(
     "FAILED_POST_MEDIA_RETENTION_DAYS", default=7
 )
+ABANDONED_UPLOAD_RETENTION_HOURS = env.int(
+    "ABANDONED_UPLOAD_RETENTION_HOURS", default=24
+)
 
 CELERY_BEAT_SCHEDULE = {
     "refresh_social_tokens": {
@@ -320,6 +323,10 @@ CELERY_BEAT_SCHEDULE = {
     },
     "cleanup_expired_failed_post_media": {
         "task": "content.tasks.cleanup_expired_failed_post_media",
+        "schedule": 86400,  # 24 hours in seconds
+    },
+    "cleanup_abandoned_pending_uploads": {
+        "task": "content.tasks.cleanup_abandoned_pending_uploads",
         "schedule": 86400,  # 24 hours in seconds
     },
 }

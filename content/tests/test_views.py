@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from content.enums import PostStatus
-from content.models import ContentMedia, ContentPost, ContentPostPlatform
+from content.models import ContentMedia, ContentPost, ContentPostPlatform, PendingUpload
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
 
@@ -136,6 +136,9 @@ class TestPresignedUrlEndpoint:
         assert len(data["data"]) == 1
         assert data["data"][0]["key"] == "videos/test.mp4"
         assert data["data"][0]["url"] == "https://fake-url.com/"
+        assert PendingUpload.objects.filter(
+            r2_key="videos/test.mp4", is_claimed=False
+        ).exists()
 
     def test_success_multiple_files(self, db, authenticated_client, mocker):
         mocker.patch(
@@ -326,6 +329,13 @@ class TestVideoEndpoint:
             token_expires_at=expires,
         )
 
+        PendingUpload.objects.create(
+            user=user, r2_key="videos/abc.mp4", content_type="video", is_claimed=False
+        )
+        PendingUpload.objects.create(
+            user=user, r2_key="photos/thumb.jpg", content_type="photo", is_claimed=False
+        )
+
         response = authenticated_client.post(
             reverse(self.URL),
             {
@@ -349,6 +359,8 @@ class TestVideoEndpoint:
         post = ContentPost.objects.get(id=data["data"]["id"])
         assert post.thumbnail_r2_key == "photos/thumb.jpg"
         assert post.video_thumbnail_offset == 5000
+        assert PendingUpload.objects.get(r2_key="videos/abc.mp4").is_claimed is True
+        assert PendingUpload.objects.get(r2_key="photos/thumb.jpg").is_claimed is True
         mock_delay.assert_called_once()
 
     def test_unauthenticated(self, db):

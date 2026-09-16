@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 
-from content.models import ContentPost
+from content.models import ContentPost, PendingUpload
 from content.selectors import ContentPostSelector
 from content.serializers import (
     ContentPostCreateSerializer,
@@ -62,6 +62,7 @@ class ContentPostViewSet(viewsets.ViewSet):
         files = serializer.validated_data["files"]
 
         results = []
+        pending_uploads = []
         for file_req in files:
             result = R2StorageService.generate_presigned_upload_url(
                 content_type=file_req["content_type"],
@@ -73,6 +74,16 @@ class ContentPostViewSet(viewsets.ViewSet):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
             results.append(result)
+            pending_uploads.append(
+                PendingUpload(
+                    user=request.user,
+                    r2_key=result["key"],
+                    content_type=file_req["content_type"],
+                )
+            )
+
+        if pending_uploads:
+            PendingUpload.objects.bulk_create(pending_uploads)
 
         return CustomSuccessResponse(results)
 

@@ -5,8 +5,12 @@ from celery.exceptions import Retry
 from django.utils import timezone
 
 from content.enums import PostStatus
-from content.models import ContentPost, ContentPostPlatform
-from content.tasks import check_instagram_container_status, publish_platform_entry
+from content.models import ContentPost, ContentPostPlatform, PendingUpload
+from content.tasks import (
+    check_instagram_container_status,
+    cleanup_abandoned_pending_uploads,
+    publish_platform_entry,
+)
 from integrations.providers.instagram_service import InstagramService
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
@@ -163,3 +167,46 @@ class TestCheckInstagramContainerStatusTask:
             container_id="container_123",
         )
         mock_cleanup.assert_called_once_with(cp)
+
+
+class TestCleanupAbandonedPendingUploadsTask:
+    def test_cleanup_abandoned_uploads(self, mocker, user):
+        """Should delete unclaimed uploads older than 24h, keep claimed and recent uploads."""
+        mock_delete_r2 = mocker.patch("utils.r2_storage.R2StorageService.delete_file")
+
+        # 1. Unclaimed and older than 24 hours -> Should be deleted
+        old_time = timezone.now() - timezone.timedelta(hours=25)
+        abandoned = PendingUpload.objects.create(
+            user=user,
+            r2_key="videos/abandoned.mp4",
+            content_type="video",
+            is_claimed=False,
+        )
+        PendingUpload.objects.filter(id=abandoned.id).update(created_at=old_time)
+
+        # 2. Claimed and older than 24 hours (e.g. scheduled post) -> Should NOT be deleted
+        claimed_old = PendingUpload.objects.create(
+            user=user,
+            r2_key="videos/scheduled.mp4",
+            content_type="video",
+            is_claimed=True,
+        )
+        PendingUpload.objects.filter(id=claimed_old.id).update(created_at=old_time)
+
+        # 3. Unclaimed but recent (<24h) -> Should NOT be deleted
+        recent = PendingUpload.objects.create(
+            user=user,
+            r2_key="videos/recent.mp4",
+            content_type="video",
+            is_claimed=False,
+        )
+
+        cleanup_abandoned_pending_uploads()
+
+        # R2 delete called only for abandoned
+        mock_delete_r2.assert_called_once_with("videos/abandoned.mp4")
+
+        # DB checks
+        assert not PendingUpload.objects.filter(id=abandoned.id).exists()
+        assert PendingUpload.objects.filter(id=claimed_old.id).exists()
+        assert PendingUpload.objects.filter(id=recent.id).exists()

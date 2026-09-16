@@ -163,3 +163,30 @@ class ContentPostPlatform(UUIDTimestampedModel):
 
     def __str__(self):
         return f"{self.content_post} → {self.platform} ({self.status})"
+
+
+class PendingUpload(UUIDTimestampedModel):
+    """
+    Tracks media uploaded to R2 via presigned URLs before a ContentPost is created.
+    If the user completes post creation, is_claimed is set to True.
+    If abandoned, a periodic task deletes the orphaned R2 file after 24 hours.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="pending_uploads",
+    )
+    r2_key = models.CharField(max_length=512, unique=True, db_index=True)
+    content_type = models.CharField(max_length=50)
+    is_claimed = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["is_claimed", "created_at"]),
+        ]
+
+    def __str__(self):
+        status = "claimed" if self.is_claimed else "pending"
+        return f"{self.r2_key} ({status})"

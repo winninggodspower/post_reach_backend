@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from content.enums import FileTypeChoice, PostStatus
-from content.models import ContentPostPlatform
+from content.models import ContentPostPlatform, PendingUpload
 from content.selectors import ContentPostSelector
 from content.services.posting_service import PostingService
 from integrations.providers.instagram_service import InstagramService
@@ -503,3 +503,46 @@ def cleanup_expired_failed_post_media():
         f"Cleaned up expired media for {cleaned_count} failed posts older than {retention_days} days."
     )
     return f"Cleaned up {cleaned_count} expired posts"
+
+
+@shared_task
+def cleanup_abandoned_pending_uploads():
+    """
+    Periodic task to clean up R2 objects for pending uploads that were never
+    claimed (i.e. post creation was abandoned) and have exceeded the retention
+    window (default 24 hours). Also prunes old claimed records.
+    """
+    retention_hours = getattr(settings, "ABANDONED_UPLOAD_RETENTION_HOURS", 24)
+    cutoff = timezone.now() - timedelta(hours=retention_hours)
+
+    abandoned_uploads = PendingUpload.objects.filter(
+        is_claimed=False, created_at__lt=cutoff
+    )
+
+    deleted_count = 0
+    for upload in abandoned_uploads:
+        try:
+            R2StorageService.delete_file(upload.r2_key)
+            upload.delete()
+            deleted_count += 1
+        except Exception as e:
+            CustomLogger.exception(
+                "Error deleting abandoned pending upload from R2",
+                extra={
+                    "pending_upload_id": str(upload.id),
+                    "r2_key": upload.r2_key,
+                    "error": str(e),
+                },
+            )
+
+    # Prune old claimed records older than 7 days to keep the table compact
+    claimed_cutoff = timezone.now() - timedelta(days=7)
+    pruned_count, _ = PendingUpload.objects.filter(
+        is_claimed=True, created_at__lt=claimed_cutoff
+    ).delete()
+
+    CustomLogger.info(
+        f"Cleaned up {deleted_count} abandoned pending uploads (older than {retention_hours}h) "
+        f"and pruned {pruned_count} old claimed records."
+    )
+    return f"Cleaned up {deleted_count} abandoned uploads, pruned {pruned_count} claimed records"

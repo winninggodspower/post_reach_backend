@@ -8,7 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from content.enums import FileTypeChoice, PostStatus
-from content.models import ContentMedia, ContentPost, ContentPostPlatform
+from content.models import ContentMedia, ContentPost, ContentPostPlatform, PendingUpload
 from content.selectors import ContentPostSelector
 from social_accounts.services.social_account_validation_service import (
     SocialAccountValidationService,
@@ -91,6 +91,15 @@ class ContentPostService:
                             )
                             for idx, r2_key in enumerate(media_keys)
                         ]
+                    )
+
+                # Mark pending upload records as claimed so they are not treated as abandoned
+                claimed_keys = list(media_keys)
+                if thumbnail_key:
+                    claimed_keys.append(thumbnail_key)
+                if claimed_keys:
+                    PendingUpload.objects.filter(r2_key__in=claimed_keys).update(
+                        is_claimed=True
                     )
 
                 platform_entries = []
