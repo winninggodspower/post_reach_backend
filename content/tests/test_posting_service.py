@@ -216,6 +216,35 @@ class TestContentPostService:
                 platform_settings={"youtube": {"title": "YouTube Title"}},
             )
 
+    def test_create_with_active_brand_non_default(self, db, user, brand, mocker):
+        """When user has a non-default active_brand with connected accounts, it should be used."""
+        from users.models import Brand
+
+        mocker.patch(
+            "content.services.content_post_service.transaction.on_commit",
+            side_effect=lambda f: f(),
+        )
+        mocker.patch(
+            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+        )
+
+        # brand fixture is default brand without instagram
+        new_brand = Brand.objects.create(user=user, name="New Brand", is_default=False)
+        self._setup_accounts(new_brand, [PlatformChoices.INSTAGRAM])
+
+        user.active_brand = new_brand
+        user.save(update_fields=["active_brand"])
+
+        post = ContentPostService.create_content_post(
+            user=user,
+            media_keys=["videos/test.mp4"],
+            caption="Posting from new brand",
+            platforms=[PlatformChoices.INSTAGRAM],
+        )
+
+        assert post.brand == new_brand
+        assert post.brand != brand
+
 
 class TestPostingService:
     """Tests for PostingService.publish_platform_entry() (video + photo)."""

@@ -13,7 +13,7 @@ from content.selectors import ContentPostSelector
 from social_accounts.services.social_account_validation_service import (
     SocialAccountValidationService,
 )
-from users.services.brand_service import BrandService
+from users.services.user_service import UserService
 from utils.custom_logger import CustomLogger, log_exceptions
 from utils.r2_storage import R2StorageService
 
@@ -41,7 +41,7 @@ class ContentPostService:
     ) -> ContentPost:
         """
         Full creation + dispatch pipeline:
-        1. Resolve the user's default brand (via BrandService)
+        1. Resolve the user's active brand (via UserService)
         2. Validate every requested platform has a connected SocialAccount
         3. Upload each media file to R2 (videos go to videos/ folder, photos to photos/)
         4. Create ContentPost + ContentMedia + ContentPostPlatform entries
@@ -54,7 +54,7 @@ class ContentPostService:
         platform_settings = platform_settings or {}
 
         # 1. Resolve brand via domain service
-        brand = BrandService.get_default_brand(user)
+        brand = UserService.get_active_brand(user)
 
         # 2. Validate platform connections via domain service
         SocialAccountValidationService.ensure_platforms_connected(brand, platforms)
