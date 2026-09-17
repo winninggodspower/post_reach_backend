@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "social_accounts.apps.SocialAccountsConfig",
     "integrations",
     "content.apps.ContentConfig",
+    "analytics.apps.AnalyticsConfig",
     # Third-party apps
     "rest_framework",
     "corsheaders",

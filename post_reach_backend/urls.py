@@ -9,6 +9,7 @@ urlpatterns = [
     path("api/auth/", include("users.urls")),
     path("api/social_accounts/", include("social_accounts.urls")),
     path("api/content/", include("content.urls")),
+    path("api/admin/analytics/", include("analytics.urls")),
     # swagger urls
     path(
         "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
