@@ -441,9 +441,7 @@ class PostingService:
 
                 if content_post.thumbnail_r2_key == old_key:
                     content_post.thumbnail_r2_key = new_key
-                    content_post.save(
-                        update_fields=["thumbnail_r2_key", "updated_at"]
-                    )
+                    content_post.save(update_fields=["thumbnail_r2_key", "updated_at"])
 
             # Clean up obsolete file from R2
             if old_key != new_key:

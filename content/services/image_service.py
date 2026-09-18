@@ -16,7 +16,7 @@ class ImageService:
     INSTAGRAM_SUPPORTED_EXTS = {".jpg", ".jpeg"}
 
     # TikTok Direct Post hard limits: max 1080p
-    TIKTOK_MAX_PORTRAIT = (1080, 1920)   # max width 1080, max height 1920
+    TIKTOK_MAX_PORTRAIT = (1080, 1920)  # max width 1080, max height 1920
     TIKTOK_MAX_LANDSCAPE = (1920, 1080)  # max width 1920, max height 1080
 
     @classmethod
@@ -156,4 +156,3 @@ class ImageService:
         except Exception:
             CustomLogger.exception("Failed to transcode image to JPEG")
             raise
-

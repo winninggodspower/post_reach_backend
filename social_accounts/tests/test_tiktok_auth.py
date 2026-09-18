@@ -158,6 +158,7 @@ class TestTiktokCreatorInfoEndpoint:
 
     def test_creator_info_success(self, authenticated_client, user, brand, mocker):
         from django.utils import timezone
+
         from social_accounts.enums import PlatformChoices
         from social_accounts.models import SocialAccount
 
@@ -178,7 +179,11 @@ class TestTiktokCreatorInfoEndpoint:
             "creator_avatar_url": "https://p16.tiktokcdn.com/avatar.jpg",
             "creator_nickname": "Test Creator",
             "creator_username": "test_creator",
-            "privacy_level_options": ["PUBLIC_TO_EVERYONE", "MUTUAL_FOLLOW_FRIENDS", "SELF_ONLY"],
+            "privacy_level_options": [
+                "PUBLIC_TO_EVERYONE",
+                "MUTUAL_FOLLOW_FRIENDS",
+                "SELF_ONLY",
+            ],
             "comment_disabled": False,
             "duet_disabled": False,
             "stitch_disabled": True,

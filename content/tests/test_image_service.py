@@ -91,7 +91,9 @@ class TestImageService:
     def test_does_not_downscale_for_other_platforms(self):
         # 1920x2560 for Facebook should remain 1920x2560
         img = Image.new("RGB", (1920, 2560), (0, 128, 255))
-        resized, was_resized = ImageService.downscale_if_needed(img, ["facebook", "linkedin"])
+        resized, was_resized = ImageService.downscale_if_needed(
+            img, ["facebook", "linkedin"]
+        )
         assert was_resized is False
         assert resized.size == (1920, 2560)
 
