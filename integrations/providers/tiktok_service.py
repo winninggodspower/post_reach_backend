@@ -338,3 +338,30 @@ class TiktokService(SocialAccountService):
             raise ValueError("Error while refreshing access token from TikTok")
 
         return response
+
+    @classmethod
+    def get_creator_info(cls, access_token: str) -> dict:
+        """
+        Query TikTok Creator Info endpoint.
+        Returns creator profile details, privacy options, interaction toggles, and video constraints.
+        See: https://developers.tiktok.com/docs/en/content-posting-api-get-started#query_creator_info
+        """
+        try:
+            response = cls().post(
+                "/v2/post/publish/creator_info/query/",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json; charset=UTF-8",
+                },
+            )
+        except APIError as e:
+            CustomLogger.exception(
+                "TikTok query creator info failed",
+                extra={"operation": "get_creator_info"},
+            )
+            raise ValueError(f"TikTok query creator info failed: {str(e)}") from e
+
+        if not response or "data" not in response:
+            raise ValueError("TikTok creator info returned unexpected response")
+
+        return response["data"]

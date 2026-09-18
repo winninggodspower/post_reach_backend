@@ -148,3 +148,67 @@ class TestTiktokConnectEndpoint:
         )
 
         assert response.status_code == 401
+
+
+TIKTOK_CREATOR_INFO_PATH = "/api/social_accounts/tiktok/creator-info/"
+
+
+class TestTiktokCreatorInfoEndpoint:
+    """Tests for GET /api/social_accounts/tiktok/creator-info/"""
+
+    def test_creator_info_success(self, authenticated_client, user, brand, mocker):
+        from django.utils import timezone
+        from social_accounts.enums import PlatformChoices
+        from social_accounts.models import SocialAccount
+
+        user.active_brand = brand
+        user.save(update_fields=["active_brand"])
+
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.TIKTOK,
+            account_name="tiktok_user",
+            external_id="tt_123",
+            access_token="valid_token",
+            token_type="Bearer",
+            token_expires_at=timezone.now() + timezone.timedelta(days=1),
+        )
+
+        mock_info = {
+            "creator_avatar_url": "https://p16.tiktokcdn.com/avatar.jpg",
+            "creator_nickname": "Test Creator",
+            "creator_username": "test_creator",
+            "privacy_level_options": ["PUBLIC_TO_EVERYONE", "MUTUAL_FOLLOW_FRIENDS", "SELF_ONLY"],
+            "comment_disabled": False,
+            "duet_disabled": False,
+            "stitch_disabled": True,
+            "max_video_post_duration_sec": 600,
+        }
+        mocker.patch(
+            "integrations.providers.tiktok_service.TiktokService.get_creator_info",
+            return_value=mock_info,
+        )
+
+        response = authenticated_client.get(TIKTOK_CREATOR_INFO_PATH)
+
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["data"]["creator_nickname"] == "Test Creator"
+        assert response.data["data"]["privacy_level_options"] == [
+            "PUBLIC_TO_EVERYONE",
+            "MUTUAL_FOLLOW_FRIENDS",
+            "SELF_ONLY",
+        ]
+
+    def test_creator_info_no_account_found(self, authenticated_client, user, brand):
+        user.active_brand = brand
+        user.save(update_fields=["active_brand"])
+
+        response = authenticated_client.get(TIKTOK_CREATOR_INFO_PATH)
+
+        assert response.status_code == 404
+        assert response.data["success"] is False
+
+    def test_creator_info_unauthenticated(self, api_client):
+        response = api_client.get(TIKTOK_CREATOR_INFO_PATH)
+        assert response.status_code == 401

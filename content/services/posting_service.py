@@ -410,27 +410,41 @@ class PostingService:
             )
         )
 
+        needs_transcode = any(
+            ImageService.is_transcode_needed(item.r2_key, target_platforms)
+            for item in image_items
+        )
+        needs_tiktok_check = "tiktok" in target_platforms
+
+        if not needs_transcode and not needs_tiktok_check:
+            return
+
         for item in image_items:
-            if ImageService.is_transcode_needed(item.r2_key, target_platforms):
-                old_key = item.r2_key
-                new_key = old_key.rsplit(".", 1)[0] + ".jpg"
+            old_key = item.r2_key
+            raw_bytes = R2StorageService.download_file(old_key)
+            processed_bytes, new_key, was_modified = (
+                ImageService.process_image_for_platforms(
+                    raw_bytes, old_key, target_platforms
+                )
+            )
 
-                # Network I/O (R2 download, transcode, R2 upload)
-                raw_bytes = R2StorageService.download_file(old_key)
-                jpeg_bytes = ImageService.transcode_to_jpeg(raw_bytes)
-                R2StorageService.upload_file(jpeg_bytes, new_key, content_type="photo")
+            if not was_modified:
+                continue
 
-                # Fast DB update
-                with transaction.atomic():
-                    item.r2_key = new_key
-                    item.save(update_fields=["r2_key", "updated_at"])
+            # Network I/O (R2 upload of normalized JPEG)
+            R2StorageService.upload_file(processed_bytes, new_key, content_type="photo")
 
-                    if content_post.thumbnail_r2_key == old_key:
-                        content_post.thumbnail_r2_key = new_key
-                        content_post.save(
-                            update_fields=["thumbnail_r2_key", "updated_at"]
-                        )
+            # Fast DB update
+            with transaction.atomic():
+                item.r2_key = new_key
+                item.save(update_fields=["r2_key", "updated_at"])
 
-                # Clean up obsolete file from R2
-                if old_key != new_key:
-                    R2StorageService.delete_file(old_key)
+                if content_post.thumbnail_r2_key == old_key:
+                    content_post.thumbnail_r2_key = new_key
+                    content_post.save(
+                        update_fields=["thumbnail_r2_key", "updated_at"]
+                    )
+
+            # Clean up obsolete file from R2
+            if old_key != new_key:
+                R2StorageService.delete_file(old_key)

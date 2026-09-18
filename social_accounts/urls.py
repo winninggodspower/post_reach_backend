@@ -58,6 +58,11 @@ urlpatterns = [
         TiktokAuthViewSet.as_view({"post": "connect"}),
         name="tiktok-auth-connect",
     ),
+    path(
+        "tiktok/creator-info/",
+        TiktokAuthViewSet.as_view({"get": "creator_info"}),
+        name="tiktok-creator-info",
+    ),
     # LinkedIn uses a ViewSet with auth-url and connect actions (same pattern as the others)
     path(
         "linkedin/auth-url/",

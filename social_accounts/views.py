@@ -6,7 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
+from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
+from social_accounts.enums import PlatformChoices
+from social_accounts.models import SocialAccount
 from social_accounts.serializers import (
     ConnectAccountResponseSerializer,
     FacebookAuthCodeSerializer,
@@ -25,6 +28,7 @@ from social_accounts.serializers import (
 from social_accounts.services.social_account_connection_service import (
     SocialAccountConnectionService,
 )
+from users.services.user_service import UserService
 from utils.cache_keys import CacheKeys
 from utils.custom_logger import CustomLogger
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
@@ -314,8 +318,6 @@ class TiktokAuthViewSet(viewsets.ViewSet):
         Returns the TikTok OAuth URL for the user to authorize the app.
         The redirect URI is resolved from backend settings automatically.
         """
-        from integrations.providers.tiktok_service import TiktokService
-
         try:
             auth_url = TiktokService.generate_auth_url(
                 user_id=request.user.id,
@@ -365,6 +367,55 @@ class TiktokAuthViewSet(viewsets.ViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=False, methods=["get"], url_path="creator-info")
+    @swagger_auto_schema(
+        operation_summary="Get TikTok Creator Info",
+        operation_description="Fetches creator settings from TikTok (available privacy levels, comment/duet/stitch disabled status, and max video duration).",
+    )
+    def creator_info(self, request):
+        """
+        GET /social-accounts/tiktok/creator-info/
+        Query params:
+        - account_id (optional): Specific SocialAccount ID. If omitted, uses active brand's TikTok account.
+        """
+        account_id = request.query_params.get("account_id")
+        if account_id:
+            account = SocialAccount.objects.filter(
+                id=account_id, brand__user=request.user, platform=PlatformChoices.TIKTOK
+            ).first()
+        else:
+            brand = UserService.get_active_brand(request.user)
+            account = (
+                SocialAccount.objects.filter(
+                    brand=brand, platform=PlatformChoices.TIKTOK
+                ).first()
+                if brand
+                else None
+            )
+
+        if not account:
+            return CustomErrorResponse(
+                {"message": "No connected TikTok account found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        access_token = account.get_access_token()
+        if not access_token:
+            return CustomErrorResponse(
+                {"message": "TikTok account authorization expired. Please reconnect."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        try:
+            info = TiktokService.get_creator_info(access_token)
+        except Exception as e:
+            return CustomErrorResponse(
+                {"message": f"Failed to fetch TikTok creator info: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return CustomSuccessResponse(info, status=status.HTTP_200_OK)
 
 
 # --- LinkedIn Auth ViewSet ---
