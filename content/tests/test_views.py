@@ -195,7 +195,7 @@ class TestVideoEndpoint:
             return_value="videos/2026-06-15/abc.mp4",
         )
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+            "content.tasks.wait_for_media_accessibility_and_publish.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)
@@ -243,7 +243,7 @@ class TestVideoEndpoint:
             return_value="videos/2026-06-15/m.mp4",
         )
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+            "content.tasks.wait_for_media_accessibility_and_publish.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)
@@ -271,7 +271,7 @@ class TestVideoEndpoint:
 
         assert response.status_code == 201
         assert len(response.data["data"]["platforms"]) == 2
-        assert mock_delay.call_count == 2
+        assert mock_delay.call_count == 1
 
     def test_no_default_brand(self, db, api_client, mocker):
         from users.models import Brand, User
@@ -315,7 +315,7 @@ class TestVideoEndpoint:
             return_value="https://r2-presigned-url.com/thumb.jpg",
         )
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+            "content.tasks.wait_for_media_accessibility_and_publish.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)
@@ -386,7 +386,7 @@ class TestPhotoEndpoint:
             return_value="photos/2026-06-15/p.jpg",
         )
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+            "content.tasks.wait_for_media_accessibility_and_publish.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)
@@ -436,7 +436,7 @@ class TestPhotoEndpoint:
             ],
         )
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+            "content.tasks.wait_for_media_accessibility_and_publish.delay",
         )
 
         expires = timezone.now() + timezone.timedelta(days=30)

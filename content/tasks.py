@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from content.enums import FileTypeChoice, PostStatus
-from content.models import ContentPostPlatform, PendingUpload
+from content.models import ContentPost, ContentPostPlatform, PendingUpload
 from content.selectors import ContentPostSelector
 from content.services.posting_service import PostingService
 from integrations.providers.instagram_service import InstagramService
@@ -21,27 +21,27 @@ from utils.r2_storage import R2StorageService
 
 
 @shared_task(bind=True, max_retries=5, default_retry_delay=1, acks_late=True)
-def wait_for_media_and_publish_platform_entry(
-    self, platform_entry_id, content_type="video"
+def wait_for_media_accessibility_and_publish(
+    self, content_post_id, content_type="video", platform_entry_id=None
 ):
     """
-    Waits for R2 media to become accessible (with its own retry budget),
-    then hands off to publish_platform_entry.
+    Post-level task that:
+    1. Verifies all media files attached to the post are accessible in R2.
+    2. If photo post, normalizes any PNG/WebP to JPEG once for all target platforms.
+    3. Fans out: dispatches publish_platform_entry for target platform entries.
     """
     try:
-        entry = ContentPostPlatform.objects.select_related(
-            "content_post", "content_post__brand"
-        ).get(id=platform_entry_id)
-    except ContentPostPlatform.DoesNotExist:
+        content_post = ContentPost.objects.prefetch_related(
+            "media_items", "platform_entries"
+        ).get(id=content_post_id)
+    except ContentPost.DoesNotExist:
         CustomLogger.error(
-            "ContentPostPlatform not found for media availability check",
-            extra={"platform_entry_id": str(platform_entry_id)},
+            "ContentPost not found for media preparation task",
+            extra={"content_post_id": str(content_post_id)},
         )
         return
 
-    content_post = entry.content_post
     files_to_check = []
-
     if content_type == "photo":
         photos = ContentPostSelector.get_media_items(
             content_post, file_type=FileTypeChoice.IMAGE
@@ -59,12 +59,11 @@ def wait_for_media_and_publish_platform_entry(
 
     for r2_key in files_to_check:
         if not R2StorageService.is_file_accessible(r2_key):
-            # retry count as 1sec, 2sec etc
             countdown = self.request.retries + 1
             CustomLogger.info(
                 "Media file not yet accessible, retrying availability check",
                 extra={
-                    "platform_entry_id": str(entry.id),
+                    "content_post_id": str(content_post.id),
                     "r2_key": r2_key,
                     "attempt": self.request.retries + 1,
                     "max_retries": self.max_retries,
@@ -74,10 +73,22 @@ def wait_for_media_and_publish_platform_entry(
             raise self.retry(countdown=countdown)
 
     CustomLogger.info(
-        "Media confirmed accessible, triggering publish",
-        extra={"platform_entry_id": str(entry.id)},
+        "Media confirmed accessible in R2",
+        extra={"content_post_id": str(content_post.id)},
     )
-    publish_platform_entry.delay(str(entry.id), content_type=content_type)
+
+    # If photo, prepare and normalize images once for all target platforms
+    if content_type == "photo":
+        PostingService.prepare_post_photos(content_post)
+
+    # Fan out to platform publish tasks
+    if platform_entry_id:
+        publish_platform_entry.delay(str(platform_entry_id), content_type=content_type)
+    else:
+        for entry in content_post.platform_entries.filter(
+            status__in=[PostStatus.PENDING, PostStatus.SCHEDULED]
+        ):
+            publish_platform_entry.delay(str(entry.id), content_type=content_type)
 
 
 @shared_task(bind=True, max_retries=5, default_retry_delay=1, acks_late=True)
@@ -391,9 +402,10 @@ def publish_scheduled_posts():
                     locked_entry.status = PostStatus.PENDING
                     locked_entry.save(update_fields=["status", "updated_at"])
 
-                    wait_for_media_and_publish_platform_entry.delay(
-                        str(locked_entry.id),
+                    wait_for_media_accessibility_and_publish.delay(
+                        str(locked_entry.content_post_id),
                         content_type=locked_entry.content_post.content_type,
+                        platform_entry_id=str(locked_entry.id),
                     )
                     processed_count += 1
         except Exception as e:

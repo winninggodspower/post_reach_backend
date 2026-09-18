@@ -195,6 +195,8 @@ packaging==25.0
     #   drf-yasg
     #   gunicorn
     #   pytest
+pillow==12.3.0
+    # via post-reach-backend (pyproject.toml)
 platformdirs==4.3.7
     # via
     #   post-reach-backend (pyproject.toml)

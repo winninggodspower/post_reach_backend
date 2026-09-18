@@ -117,7 +117,7 @@ class TestContentPostService:
             side_effect=lambda f: f(),
         )
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+            "content.tasks.wait_for_media_accessibility_and_publish.delay",
         )
         self._setup_accounts(brand, [PlatformChoices.YOUTUBE])
 
@@ -143,7 +143,7 @@ class TestContentPostService:
             side_effect=lambda f: f(),
         )
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+            "content.tasks.wait_for_media_accessibility_and_publish.delay",
         )
         self._setup_accounts(
             brand, [PlatformChoices.FACEBOOK, PlatformChoices.INSTAGRAM]
@@ -168,9 +168,9 @@ class TestContentPostService:
         assert items[1].order == 1
         assert items[2].order == 2
         assert content_post.platform_entries.count() == 2
-        assert mock_delay.call_count == 2
+        assert mock_delay.call_count == 1
 
-    def test_create_multiple_dispatches_one_task_per_platform(
+    def test_create_multiple_dispatches_one_task_per_post(
         self, db, user, brand, mocker
     ):
         mocker.patch(
@@ -178,7 +178,7 @@ class TestContentPostService:
             side_effect=lambda f: f(),
         )
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+            "content.tasks.wait_for_media_accessibility_and_publish.delay",
         )
         self._setup_accounts(brand, [PlatformChoices.YOUTUBE, PlatformChoices.FACEBOOK])
 
@@ -191,7 +191,7 @@ class TestContentPostService:
         )
 
         assert content_post.platform_entries.count() == 2
-        assert mock_delay.call_count == 2
+        assert mock_delay.call_count == 1
 
     def test_raises_when_no_brand(self, db, user, mocker):
         from users.models import Brand
@@ -225,7 +225,7 @@ class TestContentPostService:
             side_effect=lambda f: f(),
         )
         mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay",
+            "content.tasks.wait_for_media_accessibility_and_publish.delay",
         )
 
         # brand fixture is default brand without instagram
@@ -357,6 +357,131 @@ class TestPostingService:
         assert mock_pub.call_count == 1
         call_args = mock_pub.call_args
         assert len(call_args.kwargs["photo_urls"]) == 3
+
+    def test_publish_photo_tiktok_converts_png_to_jpeg(self, db, user, brand, mocker):
+        """TikTok rejects PNG, so PNG must be converted to JPEG before publishing."""
+        import io
+
+        from PIL import Image
+
+        img = Image.new("RGBA", (100, 100), (255, 0, 0, 128))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        png_bytes = buf.getvalue()
+
+        mock_download = mocker.patch(
+            "content.services.posting_service.R2StorageService.download_file",
+            return_value=png_bytes,
+        )
+        mock_upload = mocker.patch(
+            "content.services.posting_service.R2StorageService.upload_file",
+        )
+        mock_delete = mocker.patch(
+            "content.services.posting_service.R2StorageService.delete_file",
+            return_value=True,
+        )
+        mocker.patch(
+            "content.services.posting_service.R2StorageService.generate_presigned_url",
+            side_effect=lambda key, **kwargs: f"https://r2/{key}",
+        )
+        mock_tiktok_pub = mocker.patch(
+            "content.services.posting_service.TiktokService.publish_photo",
+            return_value={"platform_post_id": "tok_123", "status": "processing"},
+        )
+
+        expires = timezone.now() + timezone.timedelta(days=30)
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.TIKTOK,
+            account_name="acct_tiktok",
+            external_id="ext_tiktok",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
+        )
+        content_post = ContentPost.objects.create(
+            user=user, brand=brand, caption="TikTok PNG", content_type="photo"
+        )
+        media = ContentMedia.objects.create(
+            content_post=content_post,
+            r2_key="photos/2026-09-18/test_image.png",
+            file_type="image",
+            order=0,
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=content_post,
+            platform=PlatformChoices.TIKTOK,
+            caption="TikTok PNG",
+        )
+
+        PostingService.prepare_post_photos(content_post)
+        result = PostingService.publish_platform_entry(entry, content_type="photo")
+        assert result.status == PostStatus.PROCESSING
+        assert result.platform_post_id == "tok_123"
+
+        mock_download.assert_called_once_with("photos/2026-09-18/test_image.png")
+        mock_upload.assert_called_once()
+        uploaded_key = mock_upload.call_args[0][1]
+        assert uploaded_key == "photos/2026-09-18/test_image.jpg"
+        mock_delete.assert_called_once_with("photos/2026-09-18/test_image.png")
+
+        media.refresh_from_db()
+        assert media.r2_key == "photos/2026-09-18/test_image.jpg"
+
+        call_kwargs = mock_tiktok_pub.call_args.kwargs
+        assert call_kwargs["photo_urls"] == [
+            "https://r2/photos/2026-09-18/test_image.jpg"
+        ]
+
+    def test_publish_photo_tiktok_webp_kept_unchanged(self, db, user, brand, mocker):
+        """TikTok supports WebP natively, so WebP is not converted."""
+        mock_download = mocker.patch(
+            "content.services.posting_service.R2StorageService.download_file",
+        )
+        mock_upload = mocker.patch(
+            "content.services.posting_service.R2StorageService.upload_file",
+        )
+        mocker.patch(
+            "content.services.posting_service.R2StorageService.generate_presigned_url",
+            return_value="https://r2/photos/test.webp",
+        )
+        mock_tiktok_pub = mocker.patch(
+            "content.services.posting_service.TiktokService.publish_photo",
+            return_value={"platform_post_id": "tok_456", "status": "processing"},
+        )
+
+        expires = timezone.now() + timezone.timedelta(days=30)
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.TIKTOK,
+            account_name="acct_tiktok",
+            external_id="ext_tiktok",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
+        )
+        content_post = ContentPost.objects.create(
+            user=user, brand=brand, caption="TikTok WebP", content_type="photo"
+        )
+        media = ContentMedia.objects.create(
+            content_post=content_post,
+            r2_key="photos/test.webp",
+            file_type="image",
+            order=0,
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=content_post,
+            platform=PlatformChoices.TIKTOK,
+            caption="TikTok WebP",
+        )
+
+        PostingService.prepare_post_photos(content_post)
+        result = PostingService.publish_platform_entry(entry, content_type="photo")
+        assert result.status == PostStatus.PROCESSING
+        mock_download.assert_not_called()
+        mock_upload.assert_not_called()
+        media.refresh_from_db()
+        assert media.r2_key == "photos/test.webp"
 
     def test_publish_failure(self, db, user, brand, mocker):
         mocker.patch(

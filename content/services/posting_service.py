@@ -6,8 +6,9 @@ Supports both video and photo content types.
 from django.db import transaction
 
 from content.enums import FileTypeChoice, PostStatus
-from content.models import ContentPost, ContentPostPlatform
+from content.models import ContentMedia, ContentPost, ContentPostPlatform
 from content.selectors import ContentPostSelector
+from content.services.image_service import ImageService
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
@@ -92,7 +93,6 @@ class PostingService:
                 )
 
                 if content_type == "photo":
-                    # Generate a presigned URL for each image
                     image_items = ContentPostSelector.get_media_items(
                         content_post, file_type=FileTypeChoice.IMAGE
                     )
@@ -392,3 +392,45 @@ class PostingService:
             return f"https://twitter.com/{username}/status/{platform_post_id}"
 
         return ""
+
+    @classmethod
+    def prepare_post_photos(cls, content_post) -> None:
+        """
+        Normalizes photos for a ContentPost before dispatching to platforms.
+        Checks if any target platform (e.g. TikTok, Instagram) requires JPEG.
+        If so, downloads PNG, transcodes to JPEG, uploads to R2, updates ContentMedia,
+        and deletes the obsolete PNG. Runs ONCE per post.
+        """
+        target_platforms = list(
+            content_post.platform_entries.values_list("platform", flat=True)
+        )
+        image_items = list(
+            ContentPostSelector.get_media_items(
+                content_post, file_type=FileTypeChoice.IMAGE
+            )
+        )
+
+        for item in image_items:
+            if ImageService.is_transcode_needed(item.r2_key, target_platforms):
+                old_key = item.r2_key
+                new_key = old_key.rsplit(".", 1)[0] + ".jpg"
+
+                # Network I/O (R2 download, transcode, R2 upload)
+                raw_bytes = R2StorageService.download_file(old_key)
+                jpeg_bytes = ImageService.transcode_to_jpeg(raw_bytes)
+                R2StorageService.upload_file(jpeg_bytes, new_key, content_type="photo")
+
+                # Fast DB update
+                with transaction.atomic():
+                    item.r2_key = new_key
+                    item.save(update_fields=["r2_key", "updated_at"])
+
+                    if content_post.thumbnail_r2_key == old_key:
+                        content_post.thumbnail_r2_key = new_key
+                        content_post.save(
+                            update_fields=["thumbnail_r2_key", "updated_at"]
+                        )
+
+                # Clean up obsolete file from R2
+                if old_key != new_key:
+                    R2StorageService.delete_file(old_key)

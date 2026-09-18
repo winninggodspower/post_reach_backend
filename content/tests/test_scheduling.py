@@ -39,7 +39,7 @@ class TestPostScheduling:
     def test_create_scheduled_post(self, user, brand, connected_accounts, mocker):
         # Mock Celery delay method to make sure it is not called
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay"
+            "content.tasks.wait_for_media_accessibility_and_publish.delay"
         )
 
         future_time = timezone.now() + timedelta(hours=2)
@@ -68,7 +68,7 @@ class TestPostScheduling:
         self, user, brand, connected_accounts, mocker
     ):
         mock_delay = mocker.patch(
-            "content.tasks.wait_for_media_and_publish_platform_entry.delay"
+            "content.tasks.wait_for_media_accessibility_and_publish.delay"
         )
 
         past_time = timezone.now() - timedelta(minutes=5)
@@ -100,7 +100,11 @@ class TestPostScheduling:
         # Check due post status updated to PENDING and dispatched
         due_entry = ContentPostPlatform.objects.get(content_post=due_post)
         assert due_entry.status == PostStatus.PENDING
-        mock_delay.assert_called_once_with(str(due_entry.id), content_type="text")
+        mock_delay.assert_called_once_with(
+            str(due_post.id),
+            content_type="text",
+            platform_entry_id=str(due_entry.id),
+        )
 
         # Check future post remains SCHEDULED
         future_entry = ContentPostPlatform.objects.get(content_post=future_post)
