@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import UTC
 
@@ -191,6 +192,11 @@ class YoutubeService(SocialAccountService):
                 scopes=cls.REQUIRED_SCOPES,
                 redirect_uri=redirect_uri,
             )
+
+            # Google may return different scopes (e.g. if the user unchecks optional scopes
+            # on the consent screen or previously granted extra scopes). Allow scope changes
+            # so oauthlib doesn't raise ScopeChangeWarning exceptions.
+            os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
             flow.fetch_token(code=auth_code)
 

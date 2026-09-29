@@ -34,6 +34,7 @@ class TestFetchChannelInfo:
         assert result == {
             "account_name": "My YouTube Channel",
             "external_id": "UC_test_channel_id_123",
+            "profile_picture_url": None,
         }
         mock_build.assert_called_once_with(
             "youtube", "v3", credentials=mock_credentials

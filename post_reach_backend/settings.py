@@ -16,6 +16,11 @@ env = environ.Env(
 # Take environment variables from .env file
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
+# Google and other OAuth providers may return differing scopes (e.g. user unchecks
+# optional permissions on consent screen, or extra scopes granted previously).
+# Relax scope checks so oauthlib doesn't raise ScopeChangeWarning exceptions.
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
