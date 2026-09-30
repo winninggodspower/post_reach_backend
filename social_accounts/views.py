@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
+from integrations.providers.threads_service import ThreadsService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.enums import PlatformChoices
@@ -21,6 +22,8 @@ from social_accounts.serializers import (
     InstagramAuthUrlResponseSerializer,
     LinkedinAuthCodeSerializer,
     LinkedinAuthUrlResponseSerializer,
+    ThreadsAuthCodeSerializer,
+    ThreadsAuthUrlResponseSerializer,
     TiktokAuthCodeSerializer,
     TiktokAuthUrlResponseSerializer,
     YoutubeAuthUrlResponseSerializer,
@@ -483,6 +486,83 @@ class LinkedinAuthViewSet(viewsets.ViewSet):
             {
                 "message": "LinkedIn account successfully connected",
                 "platform": "linkedin",
+                "is_connected": True,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+# --- Threads Auth ViewSet ---
+class ThreadsAuthViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=["get"], url_path="auth-url")
+    @swagger_auto_schema(
+        operation_summary="Get Threads OAuth URL",
+        operation_description="Generates a Threads OAuth authorization URL for connecting a Threads account. The redirect URI is automatically resolved from backend settings.",
+        responses={
+            200: ThreadsAuthUrlResponseSerializer,
+        },
+    )
+    def auth_url(self, request):
+        """
+        GET /social-accounts/threads/auth-url/
+        Returns the Threads OAuth URL for the user to authorize the app.
+        The redirect URI is resolved from backend settings automatically.
+        """
+        try:
+            auth_url = ThreadsService.generate_auth_url(
+                user_id=request.user.id,
+            )
+        except Exception as e:
+            CustomLogger.exception(
+                self.__class__.__name__,
+                f"Failed to generate Threads auth URL: {str(e)}",
+            )
+            return CustomErrorResponse(
+                {"message": f"Failed to generate auth URL: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return CustomSuccessResponse(
+            {"auth_url": auth_url},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"], url_path="connect")
+    @swagger_auto_schema(
+        request_body=ThreadsAuthCodeSerializer,
+        responses={200: ConnectAccountResponseSerializer},
+    )
+    def connect(self, request):
+        """
+        POST /social-accounts/threads/connect/
+        Exchanges the authorization code for tokens and saves the social account.
+        """
+        serializer = ThreadsAuthCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            SocialAccountConnectionService.connect_threads(
+                user=request.user,
+                brand=serializer.validated_data.get("brand"),
+                auth_code=serializer.validated_data["code"],
+                redirect_uri=serializer.validated_data["redirect_uri"],
+            )
+        except ValueError as e:
+            CustomLogger.exception(
+                self.__class__.__name__,
+                f"Failed to connect Threads account: {str(e)}",
+            )
+            return CustomErrorResponse(
+                {"message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return CustomSuccessResponse(
+            {
+                "message": "Threads account successfully connected",
+                "platform": "threads",
                 "is_connected": True,
             },
             status=status.HTTP_200_OK,

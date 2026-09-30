@@ -1,5 +1,5 @@
 """
-Central namespace for all frontend URL and route generation across PostReach.
+Central namespace for all frontend URL and route generation across Postglee.
 
 All frontend URL builders live here so there is a single source of truth,
 avoiding hardcoded URL strings and making routes easy to update.

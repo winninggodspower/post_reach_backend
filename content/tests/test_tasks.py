@@ -8,10 +8,12 @@ from content.enums import PostStatus
 from content.models import ContentPost, ContentPostPlatform, PendingUpload
 from content.tasks import (
     check_instagram_container_status,
+    check_threads_container_status,
     cleanup_abandoned_pending_uploads,
     publish_platform_entry,
 )
 from integrations.providers.instagram_service import InstagramService
+from integrations.providers.threads_service import ThreadsService
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
 
@@ -58,6 +60,46 @@ class TestPublishPlatformEntryTask:
         )
 
         result = publish_platform_entry(entry.id, content_type="video")
+
+        assert result["status"] == PostStatus.PROCESSING
+        mock_delay.assert_called_once_with(str(entry.id))
+
+    def test_publish_platform_entry_queues_threads_status_check(self, mocker, user, brand):
+        """Should queue check_threads_container_status if status is PROCESSING for Threads."""
+        expires = timezone.now() + timezone.timedelta(days=30)
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.THREADS,
+            account_name="acct_threads",
+            external_id="threads_123",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
+        )
+
+        cp = ContentPost.objects.create(
+            user=user, brand=brand, caption="Test", content_type="photo"
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=cp, platform=PlatformChoices.THREADS
+        )
+
+        mocker.patch(
+            "content.services.posting_service.PostingService.publish_platform_entry",
+            return_value=mocker.Mock(
+                id=entry.id,
+                status=PostStatus.PROCESSING,
+                platform=PlatformChoices.THREADS,
+                content_post=cp,
+                platform_post_id="container_threads_123",
+            ),
+        )
+
+        mock_delay = mocker.patch(
+            "content.tasks.check_threads_container_status.delay"
+        )
+
+        result = publish_platform_entry(entry.id, content_type="photo")
 
         assert result["status"] == PostStatus.PROCESSING
         mock_delay.assert_called_once_with(str(entry.id))
@@ -165,6 +207,110 @@ class TestCheckInstagramContainerStatusTask:
             access_token="token",
             instagram_account_id="17841400797787220",
             container_id="container_123",
+        )
+        mock_cleanup.assert_called_once_with(cp)
+
+
+class TestCheckThreadsContainerStatusTask:
+    """Tests for the check_threads_container_status Celery task."""
+
+    def test_check_status_in_progress_retries(self, mocker, user, brand):
+        """Should raise Retry when status is IN_PROGRESS."""
+        expires = timezone.now() + timezone.timedelta(days=30)
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.THREADS,
+            account_name="acct_threads",
+            external_id="threads_123",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
+        )
+
+        cp = ContentPost.objects.create(
+            user=user, brand=brand, caption="Test", content_type="photo"
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=cp,
+            platform=PlatformChoices.THREADS,
+            status=PostStatus.PROCESSING,
+            platform_post_id="container_threads_123",
+        )
+
+        mocker.patch.object(
+            ThreadsService,
+            "check_container_status",
+            return_value="IN_PROGRESS",
+        )
+
+        mock_retry = mocker.patch(
+            "content.tasks.check_threads_container_status.retry",
+            side_effect=Retry(),
+        )
+
+        with pytest.raises(Retry):
+            check_threads_container_status(entry.id)
+
+        mock_retry.assert_called_once()
+
+    def test_check_status_finished_publishes_container(self, mocker, user, brand):
+        """Should publish container, update status to POSTED, and trigger on_platform_entry_completed."""
+        expires = timezone.now() + timezone.timedelta(days=30)
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.THREADS,
+            account_name="acct_threads",
+            external_id="threads_123",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
+        )
+
+        cp = ContentPost.objects.create(
+            user=user, brand=brand, caption="Test", content_type="photo"
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=cp,
+            platform=PlatformChoices.THREADS,
+            status=PostStatus.PROCESSING,
+            platform_post_id="container_threads_123",
+        )
+
+        mocker.patch.object(
+            ThreadsService,
+            "check_container_status",
+            return_value="FINISHED",
+        )
+
+        mock_pub = mocker.patch.object(
+            ThreadsService,
+            "publish_container",
+            return_value={"platform_post_id": "threads_media_999", "status": "published"},
+        )
+        mocker.patch.object(
+            ThreadsService,
+            "get_permalink",
+            return_value="https://threads.net/@acct_threads/post/threads_media_999",
+        )
+
+        mock_cleanup = mocker.patch(
+            "content.services.posting_service.PostingService.on_platform_entry_completed"
+        )
+
+        result = check_threads_container_status(entry.id)
+
+        assert result["status"] == "posted"
+        assert result["platform_post_id"] == "threads_media_999"
+
+        entry.refresh_from_db()
+        assert entry.status == PostStatus.POSTED
+        assert entry.platform_post_id == "threads_media_999"
+        assert entry.post_url == "https://threads.net/@acct_threads/post/threads_media_999"
+
+        mock_pub.assert_called_once_with(
+            access_token="token",
+            threads_user_id="threads_123",
+            container_id="container_threads_123",
         )
         mock_cleanup.assert_called_once_with(cp)
 

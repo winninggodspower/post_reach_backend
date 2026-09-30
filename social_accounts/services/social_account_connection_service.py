@@ -8,6 +8,7 @@ from integrations.providers.base import SocialAccountService
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
+from integrations.providers.threads_service import ThreadsService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.models import SocialAccount
@@ -296,6 +297,42 @@ class SocialAccountConnectionService:
                 "scope": token_data.get("scope", ""),
                 "metadata": cls._base_metadata(
                     "linkedin",
+                    account_name=user_info["account_name"],
+                    profile_picture_url=user_info.get("profile_picture_url"),
+                ),
+            },
+        )
+
+    @classmethod
+    @log_exceptions()
+    def connect_threads(cls, *, user, brand, auth_code, redirect_uri):
+        resolved_brand = SocialAccountService._resolve_brand(user, brand)
+
+        token_data, missing_scopes = ThreadsService.exchange_code_for_token(
+            auth_code=auth_code,
+            redirect_uri=redirect_uri,
+        )
+
+        if missing_scopes:
+            raise ValueError(
+                f"Missing required permissions: {', '.join(sorted(missing_scopes))}"
+            )
+
+        # Fetch Threads user info for username and ID
+        user_info = ThreadsService.fetch_user_info(token_data["access_token"])
+
+        return cls._save_account(
+            brand=resolved_brand,
+            platform="threads",
+            defaults={
+                "account_name": user_info["account_name"],
+                "external_id": user_info["external_id"],
+                "profile_picture_url": user_info.get("profile_picture_url"),
+                "access_token": token_data["access_token"],
+                "token_expires_at": timezone.now()
+                + timedelta(seconds=token_data["expires_in"]),
+                "metadata": cls._base_metadata(
+                    "threads",
                     account_name=user_info["account_name"],
                     profile_picture_url=user_info.get("profile_picture_url"),
                 ),

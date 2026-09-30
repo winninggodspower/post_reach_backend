@@ -223,6 +223,9 @@ TIKTOK_CLIENT_SECRET = env("TIKTOK_CLIENT_SECRET")
 LINKEDIN_CLIENT_ID = env("LINKEDIN_CLIENT_ID")
 LINKEDIN_CLIENT_SECRET = env("LINKEDIN_CLIENT_SECRET")
 
+THREADS_APP_ID = env("THREADS_APP_ID", default="")
+THREADS_APP_SECRET = env("THREADS_APP_SECRET", default="")
+
 # Frontend URL
 FRONTEND_URL = env("FRONTEND_URL", default="https://postglee.com")
 
@@ -238,6 +241,7 @@ REDIRECT_URI = {
     "tiktok": f"{_REDIRECT_BASE}/social/oauth/tiktok/callback",
     "facebook": f"{_REDIRECT_BASE}/social/oauth/facebook/callback",
     "linkedin": f"{_REDIRECT_BASE}/social/oauth/linkedin/callback",
+    "threads": f"{_REDIRECT_BASE}/social/oauth/threads/callback",
 }
 
 # Email configuration (ZeptoMail via SMTP)

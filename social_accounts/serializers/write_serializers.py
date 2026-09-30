@@ -8,6 +8,7 @@ __all__ = [
     "GoogleAuthCodeSerializer",
     "InstagramAuthCodeSerializer",
     "LinkedinAuthCodeSerializer",
+    "ThreadsAuthCodeSerializer",
     "TiktokAuthCodeSerializer",
 ]
 
@@ -61,6 +62,16 @@ class LinkedinAuthCodeSerializer(serializers.Serializer):
 
 
 class TiktokAuthCodeSerializer(serializers.Serializer):
+    code = serializers.CharField(required=True)
+    redirect_uri = serializers.URLField(required=True)
+    brand = serializers.PrimaryKeyRelatedField(
+        queryset=Brand.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+
+class ThreadsAuthCodeSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
     redirect_uri = serializers.URLField(required=True)
     brand = serializers.PrimaryKeyRelatedField(

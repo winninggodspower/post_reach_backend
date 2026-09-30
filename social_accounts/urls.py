@@ -4,6 +4,7 @@ from .views import (
     FacebookAuthViewSet,
     InstagramAuthViewSet,
     LinkedinAuthViewSet,
+    ThreadsAuthViewSet,
     TiktokAuthViewSet,
     YoutubeAuthViewSet,
 )
@@ -73,5 +74,16 @@ urlpatterns = [
         "linkedin/connect/",
         LinkedinAuthViewSet.as_view({"post": "connect"}),
         name="linkedin-auth-connect",
+    ),
+    # Threads uses a ViewSet with auth-url and connect actions
+    path(
+        "threads/auth-url/",
+        ThreadsAuthViewSet.as_view({"get": "auth_url"}),
+        name="threads-auth-url",
+    ),
+    path(
+        "threads/connect/",
+        ThreadsAuthViewSet.as_view({"post": "connect"}),
+        name="threads-auth-connect",
     ),
 ]

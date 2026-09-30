@@ -25,7 +25,7 @@ PLATFORM_LABELS = {
 
 class NotificationService:
     """
-    Centralized service for dispatching email and system notifications across PostReach.
+    Centralized service for dispatching email and system notifications across Postglee.
     Stateless, reusable across content, users, social accounts, and billing.
     """
 

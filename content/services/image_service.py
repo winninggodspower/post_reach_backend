@@ -14,6 +14,7 @@ class ImageService:
     SUPPORTED_JPEG_EXTS = {".jpg", ".jpeg"}
     TIKTOK_SUPPORTED_EXTS = {".jpg", ".jpeg", ".webp"}
     INSTAGRAM_SUPPORTED_EXTS = {".jpg", ".jpeg"}
+    THREADS_SUPPORTED_EXTS = {".jpg", ".jpeg", ".png"}
 
     # TikTok Direct Post hard limits: max 1080p
     TIKTOK_MAX_PORTRAIT = (1080, 1920)  # max width 1080, max height 1920
@@ -26,7 +27,7 @@ class ImageService:
 
         - If already JPEG (.jpg, .jpeg): never needs transcoding.
         - If PNG: needs transcode if TikTok or Instagram is in platforms.
-        - If WebP: needs transcode if Instagram is in platforms (Instagram rejects WebP).
+        - If WebP: needs transcode if Instagram or Threads is in platforms (both reject WebP).
         - Other platforms (Facebook, LinkedIn) accept PNG, WebP, and JPEG.
         """
         lower = filename_or_key.lower()
@@ -37,6 +38,10 @@ class ImageService:
 
         # Instagram strictly requires JPEG
         if "instagram" in platforms and ext not in cls.INSTAGRAM_SUPPORTED_EXTS:
+            return True
+
+        # Threads requires JPEG or PNG (rejects WebP and others)
+        if "threads" in platforms and ext not in cls.THREADS_SUPPORTED_EXTS:
             return True
 
         # TikTok requires JPEG or WebP (rejects PNG and other formats)

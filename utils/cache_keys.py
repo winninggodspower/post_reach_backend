@@ -64,3 +64,8 @@ class CacheKeys:
     def linkedin_oauth_state(cls, user_id: int) -> str:
         """Cache key for storing LinkedIn OAuth state for a user."""
         return f"linkedin_oauth_state:{user_id}"
+
+    @classmethod
+    def threads_oauth_state(cls, user_id: int) -> str:
+        """Cache key for storing Threads OAuth state for a user."""
+        return f"threads_oauth_state:{user_id}"

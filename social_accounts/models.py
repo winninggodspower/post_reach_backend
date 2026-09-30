@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
+from integrations.providers.threads_service import ThreadsService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
 from post_reach_backend.models import UUIDTimestampedModel
@@ -134,6 +135,19 @@ class SocialAccount(UUIDTimestampedModel):
                 self.access_token = response["access_token"]
                 if response.get("refresh_token"):
                     self.refresh_token = response["refresh_token"]
+                self.token_expires_at = timezone.now() + timedelta(
+                    seconds=response["expires_in"]
+                )
+                self.save()
+                return True
+
+            elif self.platform == PlatformChoices.THREADS:
+                if not self.access_token:
+                    return False
+                response = ThreadsService.refresh_access_token(self.access_token)
+                if not response:
+                    return False
+                self.access_token = response["access_token"]
                 self.token_expires_at = timezone.now() + timedelta(
                     seconds=response["expires_in"]
                 )

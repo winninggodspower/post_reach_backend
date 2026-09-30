@@ -435,8 +435,16 @@ class TestPostingService:
 
     def test_publish_photo_tiktok_webp_kept_unchanged(self, db, user, brand, mocker):
         """TikTok supports WebP natively, so WebP is not converted."""
+        import io
+        from PIL import Image
+
+        buf = io.BytesIO()
+        Image.new("RGB", (500, 500), color="blue").save(buf, format="WEBP")
+        fake_webp = buf.getvalue()
+
         mock_download = mocker.patch(
             "content.services.posting_service.R2StorageService.download_file",
+            return_value=fake_webp,
         )
         mock_upload = mocker.patch(
             "content.services.posting_service.R2StorageService.upload_file",
@@ -478,10 +486,80 @@ class TestPostingService:
         PostingService.prepare_post_photos(content_post)
         result = PostingService.publish_platform_entry(entry, content_type="photo")
         assert result.status == PostStatus.PROCESSING
-        mock_download.assert_not_called()
         mock_upload.assert_not_called()
         media.refresh_from_db()
         assert media.r2_key == "photos/test.webp"
+
+    def test_publish_photo_threads_success(self, db, user, brand, mocker):
+        """Should publish photo to Threads via presigned URL."""
+        mock_pub = mocker.patch(
+            "content.services.posting_service.ThreadsService.publish_photo",
+            return_value={"platform_post_id": "th_123", "status": "processing"},
+        )
+        mocker.patch(
+            "content.services.posting_service.R2StorageService.generate_presigned_url",
+            return_value="https://r2/photos/test.jpg",
+        )
+
+        expires = timezone.now() + timezone.timedelta(days=60)
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.THREADS,
+            account_name="threads_user",
+            external_id="threads_ext_123",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
+        )
+        content_post = ContentPost.objects.create(
+            user=user, brand=brand, caption="Threads Photo", content_type="photo"
+        )
+        ContentMedia.objects.create(
+            content_post=content_post,
+            r2_key="photos/test.jpg",
+            file_type="image",
+            order=0,
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=content_post,
+            platform=PlatformChoices.THREADS,
+            caption="Threads Photo",
+        )
+
+        result = PostingService.publish_platform_entry(entry, content_type="photo")
+        assert result.status == PostStatus.PROCESSING
+        assert mock_pub.call_count == 1
+
+    def test_publish_text_threads_success(self, db, user, brand, mocker):
+        """Should publish text post to Threads."""
+        mock_pub = mocker.patch(
+            "content.services.posting_service.ThreadsService.publish_text",
+            return_value={"platform_post_id": "th_post_456", "status": "published"},
+        )
+
+        expires = timezone.now() + timezone.timedelta(days=60)
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.THREADS,
+            account_name="threads_user",
+            external_id="threads_ext_123",
+            access_token="token",
+            token_type="Bearer",
+            token_expires_at=expires,
+        )
+        content_post = ContentPost.objects.create(
+            user=user, brand=brand, caption="Hello Threads", content_type="text"
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=content_post,
+            platform=PlatformChoices.THREADS,
+            caption="Hello Threads",
+        )
+
+        result = PostingService.publish_platform_entry(entry, content_type="text")
+        assert result.status == PostStatus.POSTED
+        assert result.post_url == "https://www.threads.net/@threads_user/post/th_post_456"
+        assert mock_pub.call_count == 1
 
     def test_publish_failure(self, db, user, brand, mocker):
         mocker.patch(

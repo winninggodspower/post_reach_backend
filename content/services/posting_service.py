@@ -12,6 +12,7 @@ from content.services.image_service import ImageService
 from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
+from integrations.providers.threads_service import ThreadsService
 from integrations.providers.tiktok_service import TiktokService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.enums import PlatformChoices
@@ -30,6 +31,7 @@ URL_PLATFORMS = {
     PlatformChoices.FACEBOOK,
     PlatformChoices.INSTAGRAM,
     PlatformChoices.LINKEDIN,
+    PlatformChoices.THREADS,
 }
 # Platforms that support photo posting
 PHOTO_PLATFORMS = {
@@ -37,6 +39,7 @@ PHOTO_PLATFORMS = {
     PlatformChoices.INSTAGRAM,
     PlatformChoices.TIKTOK,
     PlatformChoices.LINKEDIN,
+    PlatformChoices.THREADS,
 }
 
 
@@ -322,6 +325,13 @@ class PostingService:
                 description=description,
                 thumbnail_bytes=thumbnail_bytes,
             )
+        if platform == PlatformChoices.THREADS:
+            return ThreadsService.publish_video(
+                access_token=access_token,
+                threads_user_id=social_account.external_id,
+                video_url=video_url,
+                text=description,
+            )
         raise ValueError(f"Video publishing not supported for: {platform}")
 
     @classmethod
@@ -356,6 +366,13 @@ class PostingService:
                 photo_urls=photo_urls,
                 text=text,
             )
+        if platform == PlatformChoices.THREADS:
+            return ThreadsService.publish_photo(
+                access_token=access_token,
+                threads_user_id=social_account.external_id,
+                photo_urls=photo_urls,
+                text=text,
+            )
         raise ValueError(f"Photo publishing not supported for: {platform}")
 
     @classmethod
@@ -370,6 +387,12 @@ class PostingService:
             return LinkedinService.publish_text(
                 access_token=access_token,
                 person_urn=f"urn:li:person:{social_account.external_id}",
+                text=text,
+            )
+        if platform == PlatformChoices.THREADS:
+            return ThreadsService.publish_text(
+                access_token=access_token,
+                threads_user_id=social_account.external_id,
                 text=text,
             )
         raise ValueError(f"Text publishing not supported for: {platform}")
@@ -390,6 +413,9 @@ class PostingService:
         elif platform == PlatformChoices.TWITTER:
             username = social_account.account_name or social_account.external_id
             return f"https://twitter.com/{username}/status/{platform_post_id}"
+        elif platform == PlatformChoices.THREADS:
+            username = social_account.account_name or social_account.external_id
+            return f"https://www.threads.net/@{username}/post/{platform_post_id}"
 
         return ""
 

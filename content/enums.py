@@ -23,6 +23,7 @@ class PhotoPlatformOptions(models.TextChoices):
     TIKTOK = "tiktok", "TikTok"
     LINKEDIN = "linkedin", "LinkedIn"
     TWITTER = "twitter", "Twitter"
+    THREADS = "threads", "Threads"
 
 
 class TextPlatformOptions(models.TextChoices):
@@ -31,3 +32,4 @@ class TextPlatformOptions(models.TextChoices):
     FACEBOOK = "facebook", "Facebook"
     LINKEDIN = "linkedin", "LinkedIn"
     TWITTER = "twitter", "Twitter"
+    THREADS = "threads", "Threads"

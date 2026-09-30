@@ -10,6 +10,7 @@ from content.models import ContentPost, ContentPostPlatform, PendingUpload
 from content.selectors import ContentPostSelector
 from content.services.posting_service import PostingService
 from integrations.providers.instagram_service import InstagramService
+from integrations.providers.threads_service import ThreadsService
 from integrations.providers.tiktok_service import TiktokService
 from social_accounts.enums import PlatformChoices
 from social_accounts.services.social_account_validation_service import (
@@ -176,6 +177,12 @@ def publish_platform_entry(self, platform_entry_id, content_type="video"):
                 extra={"platform_entry_id": str(result_entry.id)},
             )
             check_tiktok_publish_status.delay(str(result_entry.id))
+        elif result_entry.platform == PlatformChoices.THREADS:
+            CustomLogger.info(
+                "Triggering check_threads_container_status",
+                extra={"platform_entry_id": str(result_entry.id)},
+            )
+            check_threads_container_status.delay(str(result_entry.id))
 
     return {
         "status": result_entry.status,
@@ -282,6 +289,110 @@ def check_instagram_container_status(self, platform_entry_id):
         if self.request.retries >= self.max_retries:
             entry.status = PostStatus.FAILED
             entry.error_message = f"Instagram processing timed out or failed: {str(e)}"
+            entry.save(update_fields=["status", "error_message", "updated_at"])
+            PostingService.on_platform_entry_completed(entry.content_post)
+            raise e
+        else:
+            raise self.retry(exc=e)
+
+
+@shared_task(bind=True, max_retries=30, default_retry_delay=10, acks_late=True)
+def check_threads_container_status(self, platform_entry_id):
+    """
+    Celery task that polls the Threads container status in a non-blocking way.
+    Retries itself if processing is still in progress.
+    """
+    try:
+        entry = ContentPostPlatform.objects.select_related(
+            "content_post", "content_post__brand"
+        ).get(id=platform_entry_id)
+    except ContentPostPlatform.DoesNotExist:
+        CustomLogger.error(
+            "ContentPostPlatform not found for status check",
+            extra={"platform_entry_id": str(platform_entry_id)},
+        )
+        return {"status": "error", "message": "ContentPostPlatform not found"}
+
+    try:
+        social_account = SocialAccountValidationService.get_account(
+            brand=entry.content_post.brand,
+            platform=entry.platform,
+        )
+        access_token = social_account.get_access_token()
+        if not access_token:
+            raise ValueError("Unable to obtain a valid access token.")
+
+        status_code = ThreadsService.check_container_status(
+            access_token=access_token,
+            container_id=entry.platform_post_id,
+        )
+
+        if status_code == "FINISHED":
+            # Publish the container
+            publish_result = ThreadsService.publish_container(
+                access_token=access_token,
+                threads_user_id=social_account.external_id,
+                container_id=entry.platform_post_id,
+            )
+            # Update the entry to POSTED
+            entry.status = PostStatus.POSTED
+            final_id = publish_result.get("platform_post_id", entry.platform_post_id)
+            entry.platform_post_id = final_id
+
+            # Fetch the permalink
+            try:
+                entry.post_url = ThreadsService.get_permalink(
+                    access_token=access_token, media_id=final_id
+                )
+            except Exception as e:
+                CustomLogger.warning(
+                    "Failed to fetch permalink for newly published media",
+                    extra={"media_id": final_id, "error": str(e)},
+                )
+
+            entry.save(
+                update_fields=["status", "platform_post_id", "post_url", "updated_at"]
+            )
+
+            # Clean up R2 media and notify if everything is posted
+            PostingService.on_platform_entry_completed(entry.content_post)
+
+            return {
+                "status": "posted",
+                "platform_post_id": entry.platform_post_id,
+            }
+
+        elif status_code == "PUBLISHED":
+            # The container was already published
+            entry.status = PostStatus.POSTED
+            entry.save(update_fields=["status", "updated_at"])
+            PostingService.on_platform_entry_completed(entry.content_post)
+            return {
+                "status": "posted",
+                "platform_post_id": entry.platform_post_id,
+            }
+
+        elif status_code == "IN_PROGRESS":
+            # Queue a retry of this task
+            raise self.retry()
+
+        else:
+            raise ValueError(f"Unexpected status code: {status_code}")
+
+    except Exception as e:
+        from celery.exceptions import Retry
+
+        if isinstance(e, Retry):
+            raise e
+
+        CustomLogger.exception(
+            "Threads status check failed",
+            extra={"platform_entry_id": str(platform_entry_id)},
+        )
+
+        if self.request.retries >= self.max_retries:
+            entry.status = PostStatus.FAILED
+            entry.error_message = f"Threads processing timed out or failed: {str(e)}"
             entry.save(update_fields=["status", "error_message", "updated_at"])
             PostingService.on_platform_entry_completed(entry.content_post)
             raise e
