@@ -33,26 +33,44 @@ DISCORD_LEVEL_COLORS = {
 }
 
 _DEFAULT_REDACT_KEYS = {
+    "access_token",
+    "api_key",
+    "apikey",
     "authorization",
+    "bearer",
+    "client_secret",
     "cookie",
+    "csrf_token",
+    "csrftoken",
     "current_password",
+    "id_token",
     "new_password",
     "password",
+    "private_key",
     "refresh",
+    "refresh_token",
     "secret",
+    "sessionid",
     "token",
+    "webhook_url",
     "x-api-key",
 }
 
 __all__ = [
     "CustomLogger",
     "DiscordForwardingHandler",
+    "REDACTED_VALUE",
     "RequestLoggingMiddleware",
     "SKIP_DISCORD_BRIDGE_ATTR",
     "dispatch_stdlib_record_to_discord",
     "get_logger",
     "log_exceptions",
     "skip_request_logging",
+    "_DEFAULT_REDACT_KEYS",
+    "_get_redact_keys",
+    "_is_sensitive_key",
+    "_sanitize_headers",
+    "_sanitize_value",
 ]
 
 
@@ -135,26 +153,53 @@ def log_exceptions(func_or_logger: Any = None):
     return decorator
 
 
-def _sanitize_value(value: Any, redact_keys: set[str], depth: int = 0) -> Any:
+def _is_sensitive_key(key: Any, redact_keys: set[str] | None = None) -> bool:
+    key_str = str(key).lower().strip()
+    keys = redact_keys if redact_keys is not None else _get_redact_keys()
+    if key_str in keys:
+        return True
+    sensitive_substrings = (
+        "token",
+        "secret",
+        "password",
+        "passwd",
+        "api_key",
+        "apikey",
+        "cookie",
+    )
+    if any(s in key_str for s in sensitive_substrings):
+        if "token" in key_str and any(
+            exempt in key_str
+            for exempt in ("count", "total", "usage", "prompt", "completion", "length")
+        ):
+            return False
+        return True
+    return False
+
+
+def _sanitize_value(
+    value: Any, redact_keys: set[str] | None = None, depth: int = 0
+) -> Any:
     if depth > 6:
         return "<max-depth>"
+
+    keys = redact_keys if redact_keys is not None else _get_redact_keys()
 
     if isinstance(value, Mapping):
         sanitized: dict[str, Any] = {}
         for key, nested_value in value.items():
             key_str = str(key)
-            if key_str.lower() in redact_keys:
+            if _is_sensitive_key(key_str, keys):
                 sanitized[key_str] = REDACTED_VALUE
             else:
                 sanitized[key_str] = _sanitize_value(
-                    nested_value, redact_keys=redact_keys, depth=depth + 1
+                    nested_value, redact_keys=keys, depth=depth + 1
                 )
         return sanitized
 
     if isinstance(value, (list, tuple, set)):
         return [
-            _sanitize_value(item, redact_keys=redact_keys, depth=depth + 1)
-            for item in value
+            _sanitize_value(item, redact_keys=keys, depth=depth + 1) for item in value
         ]
 
     if isinstance(value, (str, int, float, bool)) or value is None:
@@ -703,11 +748,12 @@ def _parse_request_body(raw_body: bytes) -> Any:
 
 
 def _sanitize_headers(
-    headers: Mapping[str, str], redact_keys: set[str]
+    headers: Mapping[str, str], redact_keys: set[str] | None = None
 ) -> dict[str, str]:
+    keys = redact_keys if redact_keys is not None else _get_redact_keys()
     sanitized: dict[str, str] = {}
     for key, value in headers.items():
-        if key.lower() in redact_keys:
+        if _is_sensitive_key(key, keys):
             sanitized[key] = REDACTED_VALUE
         else:
             sanitized[key] = value

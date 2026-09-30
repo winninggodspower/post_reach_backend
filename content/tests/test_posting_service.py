@@ -436,6 +436,7 @@ class TestPostingService:
     def test_publish_photo_tiktok_webp_kept_unchanged(self, db, user, brand, mocker):
         """TikTok supports WebP natively, so WebP is not converted."""
         import io
+
         from PIL import Image
 
         buf = io.BytesIO()
@@ -558,7 +559,9 @@ class TestPostingService:
 
         result = PostingService.publish_platform_entry(entry, content_type="text")
         assert result.status == PostStatus.POSTED
-        assert result.post_url == "https://www.threads.net/@threads_user/post/th_post_456"
+        assert (
+            result.post_url == "https://www.threads.net/@threads_user/post/th_post_456"
+        )
         assert mock_pub.call_count == 1
 
     def test_publish_failure(self, db, user, brand, mocker):

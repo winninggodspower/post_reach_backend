@@ -5,12 +5,20 @@ HTTP client utilities for shared service code.
 import asyncio
 import json
 import time
+import urllib.parse
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
 import httpx
 
-from utils.custom_logger import CustomLogger
+from utils.custom_logger import (
+    REDACTED_VALUE,
+    CustomLogger,
+    _get_redact_keys,
+    _is_sensitive_key,
+    _sanitize_headers,
+    _sanitize_value,
+)
 
 T = TypeVar("T")
 
@@ -21,7 +29,32 @@ __all__ = [
     "RateLimitError",
     "TimeoutError",
     "ValidationError",
+    "_sanitize_url",
 ]
+
+
+def _sanitize_url(url: str | None) -> str:
+    if not url:
+        return ""
+    url_str = str(url)
+    if "?" not in url_str:
+        return url_str
+    try:
+        parsed = urllib.parse.urlsplit(url_str)
+        if not parsed.query:
+            return url_str
+        query_pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        redact_keys = _get_redact_keys()
+        sanitized_pairs = []
+        for key, val in query_pairs:
+            if _is_sensitive_key(key, redact_keys):
+                sanitized_pairs.append((key, "*****"))
+            else:
+                sanitized_pairs.append((key, val))
+        new_query = urllib.parse.urlencode(sanitized_pairs)
+        return urllib.parse.urlunsplit(parsed._replace(query=new_query))
+    except Exception:
+        return url_str
 
 
 class HTTPError(Exception):
@@ -34,13 +67,14 @@ class HTTPError(Exception):
         method: str | None = None,
         request_id: str | None = None,
     ):
+        sanitized_url = _sanitize_url(url) if url else url
         self.status_code = status_code
         self.response_text = response_text
-        self.url = url
+        self.url = sanitized_url
         self.method = method
         self.request_id = request_id
         super().__init__(
-            f"{message} (Status: {status_code}, URL: {url}, Method: {method})"
+            f"{message} (Status: {status_code}, URL: {sanitized_url}, Method: {method})"
         )
 
 
@@ -160,35 +194,53 @@ class BaseHTTPClient:
         params: dict[str, Any] | None = None,
         json_data: Any | None = None,
         headers: dict[str, str] | None = None,
+        data: Any | None = None,
     ) -> None:
+        redact_keys = _get_redact_keys()
         log_data: dict[str, Any] = {
             "method": method.upper(),
-            "url": str(url),
+            "url": _sanitize_url(str(url)),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         if params:
-            log_data["params"] = params
+            log_data["params"] = _sanitize_value(params, redact_keys=redact_keys)
         if headers:
-            log_data["headers"] = {
-                k: v if k.lower() != "authorization" else "*****"
-                for k, v in headers.items()
-            }
+            log_data["headers"] = _sanitize_headers(headers, redact_keys=redact_keys)
         if json_data is not None:
-            log_data["json"] = json_data
+            log_data["json"] = _sanitize_value(json_data, redact_keys=redact_keys)
+        if data is not None:
+            log_data["data"] = _sanitize_value(data, redact_keys=redact_keys)
         CustomLogger.debug(f"Outgoing request: {json.dumps(log_data, indent=2)}")
 
     def _log_response(self, response: httpx.Response, duration: float) -> None:
+        redact_keys = _get_redact_keys()
         log_data = {
             "method": response.request.method,
-            "url": str(response.url),
+            "url": _sanitize_url(str(response.url)),
             "status_code": response.status_code,
             "duration_seconds": round(duration, 3),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         max_length = 1000
         response_text = response.text
-        if response_text and len(response_text) > max_length:
-            log_data["response_body"] = response_text[:max_length] + "... (truncated)"
+        if response_text:
+            try:
+                parsed_json = json.loads(response_text)
+                sanitized_json = _sanitize_value(parsed_json, redact_keys=redact_keys)
+                sanitized_text = json.dumps(sanitized_json)
+                if len(sanitized_text) > max_length:
+                    log_data["response_body"] = (
+                        sanitized_text[:max_length] + "... (truncated)"
+                    )
+                else:
+                    log_data["response_body"] = sanitized_text
+            except (json.JSONDecodeError, ValueError):
+                if len(response_text) > max_length:
+                    log_data["response_body"] = (
+                        response_text[:max_length] + "... (truncated)"
+                    )
+                else:
+                    log_data["response_body"] = response_text
         else:
             log_data["response_body"] = response_text
         CustomLogger.debug(f"Incoming response: {json.dumps(log_data, indent=2)}")
@@ -213,7 +265,7 @@ class BaseHTTPClient:
         last_exception = None
         for attempt in range(self.max_retries + 1):
             try:
-                self._log_request(method, url, params, json_data, headers)
+                self._log_request(method, url, params, json_data, headers, data=data)
                 start_time = time.time()
                 with httpx.Client(
                     timeout=self.timeout, verify=self.verify_ssl
@@ -300,7 +352,7 @@ class BaseHTTPClient:
         last_exception = None
         for attempt in range(self.max_retries + 1):
             try:
-                self._log_request(method, url, params, json_data, headers)
+                self._log_request(method, url, params, json_data, headers, data=data)
                 start_time = time.time()
                 async with httpx.AsyncClient(
                     timeout=self.timeout, verify=self.verify_ssl

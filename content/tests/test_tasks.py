@@ -64,7 +64,9 @@ class TestPublishPlatformEntryTask:
         assert result["status"] == PostStatus.PROCESSING
         mock_delay.assert_called_once_with(str(entry.id))
 
-    def test_publish_platform_entry_queues_threads_status_check(self, mocker, user, brand):
+    def test_publish_platform_entry_queues_threads_status_check(
+        self, mocker, user, brand
+    ):
         """Should queue check_threads_container_status if status is PROCESSING for Threads."""
         expires = timezone.now() + timezone.timedelta(days=30)
         SocialAccount.objects.create(
@@ -95,9 +97,7 @@ class TestPublishPlatformEntryTask:
             ),
         )
 
-        mock_delay = mocker.patch(
-            "content.tasks.check_threads_container_status.delay"
-        )
+        mock_delay = mocker.patch("content.tasks.check_threads_container_status.delay")
 
         result = publish_platform_entry(entry.id, content_type="photo")
 
@@ -285,7 +285,10 @@ class TestCheckThreadsContainerStatusTask:
         mock_pub = mocker.patch.object(
             ThreadsService,
             "publish_container",
-            return_value={"platform_post_id": "threads_media_999", "status": "published"},
+            return_value={
+                "platform_post_id": "threads_media_999",
+                "status": "published",
+            },
         )
         mocker.patch.object(
             ThreadsService,
@@ -305,7 +308,9 @@ class TestCheckThreadsContainerStatusTask:
         entry.refresh_from_db()
         assert entry.status == PostStatus.POSTED
         assert entry.platform_post_id == "threads_media_999"
-        assert entry.post_url == "https://threads.net/@acct_threads/post/threads_media_999"
+        assert (
+            entry.post_url == "https://threads.net/@acct_threads/post/threads_media_999"
+        )
 
         mock_pub.assert_called_once_with(
             access_token="token",

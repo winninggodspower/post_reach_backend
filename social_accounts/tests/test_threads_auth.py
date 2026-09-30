@@ -64,8 +64,7 @@ class TestThreadsConnectEndpoint:
         assert response.status_code == 200
         assert response.data["success"] is True
         assert (
-            response.data["data"]["message"]
-            == "Threads account successfully connected"
+            response.data["data"]["message"] == "Threads account successfully connected"
         )
         assert response.data["data"]["platform"] == "threads"
         assert response.data["data"]["is_connected"] is True

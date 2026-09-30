@@ -89,9 +89,7 @@ class TestThreadsServiceAuth:
 
     def test_fetch_user_info_failure(self, mocker):
         """Should raise ValueError if API call fails."""
-        mocker.patch.object(
-            ThreadsService, "get", side_effect=APIError("API error")
-        )
+        mocker.patch.object(ThreadsService, "get", side_effect=APIError("API error"))
 
         with pytest.raises(ValueError, match="Failed to fetch Threads user info"):
             ThreadsService.fetch_user_info("bad_token")
@@ -252,9 +250,7 @@ class TestThreadsServicePublishing:
 
     def test_check_container_status_finished(self, mocker):
         """Should return status when querying container status."""
-        mocker.patch.object(
-            ThreadsService, "get", return_value={"status": "FINISHED"}
-        )
+        mocker.patch.object(ThreadsService, "get", return_value={"status": "FINISHED"})
 
         status = ThreadsService.check_container_status("token", "container_123")
         assert status == "FINISHED"
@@ -267,7 +263,9 @@ class TestThreadsServicePublishing:
             return_value={"status": "ERROR", "error_message": "Media decode error"},
         )
 
-        with pytest.raises(ValueError, match="Threads container processing failed: Media decode error"):
+        with pytest.raises(
+            ValueError, match="Threads container processing failed: Media decode error"
+        ):
             ThreadsService.check_container_status("token", "container_123")
 
     def test_publish_container_success(self, mocker):
@@ -281,7 +279,10 @@ class TestThreadsServicePublishing:
             threads_user_id="123456789",
             container_id="container_123",
         )
-        assert result == {"platform_post_id": "published_media_123", "status": "published"}
+        assert result == {
+            "platform_post_id": "published_media_123",
+            "status": "published",
+        }
         mock_post.assert_called_once_with(
             "/v1.0/123456789/threads_publish",
             data={

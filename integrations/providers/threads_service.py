@@ -215,9 +215,7 @@ class ThreadsService(SocialAccountService):
             ) from e
 
     @classmethod
-    def publish_text(
-        cls, access_token: str, threads_user_id: str, text: str
-    ) -> dict:
+    def publish_text(cls, access_token: str, threads_user_id: str, text: str) -> dict:
         """
         Publish a text post to Threads.
         Text posts are limited to 500 characters.
@@ -241,9 +239,7 @@ class ThreadsService(SocialAccountService):
                 "Threads text container creation failed",
                 extra={"operation": "publish_text"},
             )
-            raise ValueError(
-                f"Threads text container creation failed: {str(e)}"
-            ) from e
+            raise ValueError(f"Threads text container creation failed: {str(e)}") from e
 
         container_id = container_response.get("id")
         if not container_id:
@@ -437,16 +433,11 @@ class ThreadsService(SocialAccountService):
                     "container_id": container_id,
                 },
             )
-            raise ValueError(
-                f"Failed to check container status: {str(e)}"
-            ) from e
+            raise ValueError(f"Failed to check container status: {str(e)}") from e
 
         status = response_data.get("status")
         if status == "ERROR":
-            status_desc = (
-                response_data.get("error_message")
-                or "Unknown error"
-            )
+            status_desc = response_data.get("error_message") or "Unknown error"
             raise ValueError(f"Threads container processing failed: {status_desc}")
 
         return status or ""
