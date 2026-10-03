@@ -226,6 +226,9 @@ LINKEDIN_CLIENT_SECRET = env("LINKEDIN_CLIENT_SECRET")
 THREADS_APP_ID = env("THREADS_APP_ID", default="")
 THREADS_APP_SECRET = env("THREADS_APP_SECRET", default="")
 
+TWITTER_API_KEY = env("TWITTER_API_KEY", default="")
+TWITTER_API_SECRET = env("TWITTER_API_SECRET", default="")
+
 # Frontend URL
 FRONTEND_URL = env("FRONTEND_URL", default="https://postglee.com")
 
@@ -242,6 +245,7 @@ REDIRECT_URI = {
     "facebook": f"{_REDIRECT_BASE}/social/oauth/facebook/callback",
     "linkedin": f"{_REDIRECT_BASE}/social/oauth/linkedin/callback",
     "threads": f"{_REDIRECT_BASE}/social/oauth/threads/callback",
+    "twitter": f"{_REDIRECT_BASE}/social/oauth/twitter/callback",
 }
 
 # Email configuration (ZeptoMail via SMTP)

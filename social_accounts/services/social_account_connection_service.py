@@ -10,6 +10,7 @@ from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.threads_service import ThreadsService
 from integrations.providers.tiktok_service import TiktokService
+from integrations.providers.twitter_service import TwitterService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.models import SocialAccount
 from utils.cache_keys import CacheKeys
@@ -334,6 +335,44 @@ class SocialAccountConnectionService:
                 "metadata": cls._base_metadata(
                     "threads",
                     account_name=user_info["account_name"],
+                    profile_picture_url=user_info.get("profile_picture_url"),
+                ),
+            },
+        )
+
+    @classmethod
+    @log_exceptions()
+    def connect_twitter(cls, *, user, brand, oauth_token, oauth_verifier):
+        resolved_brand = SocialAccountService._resolve_brand(user, brand)
+
+        token_data = TwitterService.exchange_tokens(
+            oauth_token=oauth_token,
+            oauth_verifier=oauth_verifier,
+        )
+
+        user_info = TwitterService.fetch_user_info(
+            access_token=token_data["access_token"],
+            access_token_secret=token_data["access_token_secret"],
+        )
+
+        # OAuth 1.0a access tokens do not expire; set far future to satisfy DB non-null requirement
+        far_future_expiry = timezone.now() + timedelta(days=365 * 100)
+
+        return cls._save_account(
+            brand=resolved_brand,
+            platform="twitter",
+            defaults={
+                "account_name": user_info["account_name"],
+                "external_id": user_info["external_id"],
+                "profile_picture_url": user_info.get("profile_picture_url"),
+                "access_token": token_data["access_token"],
+                "refresh_token": token_data["access_token_secret"],
+                "token_expires_at": far_future_expiry,
+                "token_type": "OAuth 1.0a",
+                "metadata": cls._base_metadata(
+                    "twitter",
+                    account_name=user_info["account_name"],
+                    username=user_info.get("username"),
                     profile_picture_url=user_info.get("profile_picture_url"),
                 ),
             },

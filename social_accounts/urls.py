@@ -6,6 +6,7 @@ from .views import (
     LinkedinAuthViewSet,
     ThreadsAuthViewSet,
     TiktokAuthViewSet,
+    TwitterAuthViewSet,
     YoutubeAuthViewSet,
 )
 
@@ -85,5 +86,16 @@ urlpatterns = [
         "threads/connect/",
         ThreadsAuthViewSet.as_view({"post": "connect"}),
         name="threads-auth-connect",
+    ),
+    # Twitter / X uses a ViewSet with auth-url and connect actions
+    path(
+        "twitter/auth-url/",
+        TwitterAuthViewSet.as_view({"get": "auth_url"}),
+        name="twitter-auth-url",
+    ),
+    path(
+        "twitter/connect/",
+        TwitterAuthViewSet.as_view({"post": "connect"}),
+        name="twitter-auth-connect",
     ),
 ]

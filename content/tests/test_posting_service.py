@@ -655,3 +655,165 @@ class TestPostingService:
         )
         PostingService.cleanup_r2_media(cp)
         mock_delete.assert_not_called()
+
+
+class TestPostingServiceTwitter:
+    """Tests for PostingService Twitter publishing (text, photos, video)."""
+
+    def test_publish_text_twitter_success(self, db, user, brand, mocker):
+        mock_post = mocker.patch(
+            "content.services.posting_service.TwitterService.post_tweet",
+            return_value={
+                "id": "tweet_12345",
+                "platform_post_id": "tweet_12345",
+                "text": "Hello X!",
+                "status": "published",
+            },
+        )
+
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.TWITTER,
+            account_name="@testbrand",
+            external_id="twitter_ext_id",
+            access_token="test_oauth_token",
+            refresh_token="test_oauth_token_secret",
+            token_expires_at=timezone.now() + timezone.timedelta(days=3650),
+        )
+
+        cp = ContentPost.objects.create(
+            user=user, brand=brand, caption="Hello X!", content_type="text"
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=cp,
+            platform=PlatformChoices.TWITTER,
+            caption="Hello X!",
+            status=PostStatus.PENDING,
+        )
+
+        result = PostingService.publish_platform_entry(entry, content_type="text")
+
+        assert result.status == PostStatus.POSTED
+        assert result.platform_post_id == "tweet_12345"
+        assert result.post_url == "https://twitter.com/@testbrand/status/tweet_12345"
+        mock_post.assert_called_once_with(
+            access_token="test_oauth_token",
+            access_token_secret="test_oauth_token_secret",
+            text="Hello X!",
+        )
+
+    def test_publish_photo_twitter_success(self, db, user, brand, mocker):
+        mocker.patch(
+            "content.services.posting_service.R2StorageService.generate_presigned_url",
+            return_value="https://r2.postreach.com/photo.jpg",
+        )
+        mock_upload_photo = mocker.patch(
+            "content.services.posting_service.TwitterService.upload_photo",
+            return_value="media_photo_999",
+        )
+        mock_post_tweet = mocker.patch(
+            "content.services.posting_service.TwitterService.post_tweet",
+            return_value={
+                "id": "tweet_photo_111",
+                "platform_post_id": "tweet_photo_111",
+                "text": "Photo tweet!",
+                "status": "published",
+            },
+        )
+
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.TWITTER,
+            account_name="@testbrand",
+            external_id="twitter_ext_id",
+            access_token="test_oauth_token",
+            refresh_token="test_oauth_token_secret",
+            token_expires_at=timezone.now() + timezone.timedelta(days=3650),
+        )
+
+        cp = ContentPost.objects.create(
+            user=user, brand=brand, caption="Photo tweet!", content_type="photo"
+        )
+        ContentMedia.objects.create(
+            content_post=cp,
+            r2_key="photos/photo.jpg",
+            file_type="image",
+            order=0,
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=cp,
+            platform=PlatformChoices.TWITTER,
+            caption="Photo tweet!",
+            status=PostStatus.PENDING,
+        )
+
+        result = PostingService.publish_platform_entry(entry, content_type="photo")
+
+        assert result.status == PostStatus.POSTED
+        assert result.platform_post_id == "tweet_photo_111"
+        assert result.post_url == "https://twitter.com/@testbrand/status/tweet_photo_111"
+        mock_upload_photo.assert_called_once()
+        mock_post_tweet.assert_called_once_with(
+            access_token="test_oauth_token",
+            access_token_secret="test_oauth_token_secret",
+            text="Photo tweet!",
+            media_ids=["media_photo_999"],
+        )
+
+    def test_publish_video_twitter_success(self, db, user, brand, mocker):
+        mocker.patch(
+            "content.services.posting_service.R2StorageService.generate_presigned_url",
+            return_value="https://r2.postreach.com/video.mp4",
+        )
+        mock_upload_video = mocker.patch(
+            "content.services.posting_service.TwitterService.upload_video",
+            return_value="media_video_888",
+        )
+        mock_post_tweet = mocker.patch(
+            "content.services.posting_service.TwitterService.post_tweet",
+            return_value={
+                "id": "tweet_vid_222",
+                "platform_post_id": "tweet_vid_222",
+                "text": "Video tweet!",
+                "status": "published",
+            },
+        )
+
+        SocialAccount.objects.create(
+            brand=brand,
+            platform=PlatformChoices.TWITTER,
+            account_name="@testbrand",
+            external_id="twitter_ext_id",
+            access_token="test_oauth_token",
+            refresh_token="test_oauth_token_secret",
+            token_expires_at=timezone.now() + timezone.timedelta(days=3650),
+        )
+
+        cp = ContentPost.objects.create(
+            user=user, brand=brand, caption="Video tweet!", content_type="video"
+        )
+        ContentMedia.objects.create(
+            content_post=cp,
+            r2_key="videos/video.mp4",
+            file_type="video",
+            order=0,
+        )
+        entry = ContentPostPlatform.objects.create(
+            content_post=cp,
+            platform=PlatformChoices.TWITTER,
+            caption="Video tweet!",
+            status=PostStatus.PENDING,
+        )
+
+        result = PostingService.publish_platform_entry(entry, content_type="video")
+
+        assert result.status == PostStatus.POSTED
+        assert result.platform_post_id == "tweet_vid_222"
+        assert result.post_url == "https://twitter.com/@testbrand/status/tweet_vid_222"
+        mock_upload_video.assert_called_once()
+        mock_post_tweet.assert_called_once_with(
+            access_token="test_oauth_token",
+            access_token_secret="test_oauth_token_secret",
+            text="Video tweet!",
+            media_ids=["media_video_888"],
+        )

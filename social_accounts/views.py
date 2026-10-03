@@ -8,6 +8,7 @@ from integrations.providers.facebook_service import FacebookService
 from integrations.providers.instagram_service import InstagramService
 from integrations.providers.threads_service import ThreadsService
 from integrations.providers.tiktok_service import TiktokService
+from integrations.providers.twitter_service import TwitterService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.enums import PlatformChoices
 from social_accounts.models import SocialAccount
@@ -26,6 +27,8 @@ from social_accounts.serializers import (
     ThreadsAuthUrlResponseSerializer,
     TiktokAuthCodeSerializer,
     TiktokAuthUrlResponseSerializer,
+    TwitterAuthCodeSerializer,
+    TwitterAuthUrlResponseSerializer,
     YoutubeAuthUrlResponseSerializer,
 )
 from social_accounts.services.social_account_connection_service import (
@@ -563,6 +566,82 @@ class ThreadsAuthViewSet(viewsets.ViewSet):
             {
                 "message": "Threads account successfully connected",
                 "platform": "threads",
+                "is_connected": True,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+# --- Twitter / X Auth ViewSet ---
+class TwitterAuthViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=["get"], url_path="auth-url")
+    @swagger_auto_schema(
+        operation_summary="Get Twitter / X OAuth URL",
+        operation_description="Generates an X (Twitter) OAuth 1.0a authorization URL for connecting a Twitter account.",
+        responses={
+            200: TwitterAuthUrlResponseSerializer,
+        },
+    )
+    def auth_url(self, request):
+        """
+        GET /social-accounts/twitter/auth-url/
+        Returns the Twitter authorization URL.
+        """
+        try:
+            auth_url = TwitterService.generate_auth_url(
+                user_id=request.user.id,
+            )
+        except Exception as e:
+            CustomLogger.exception(
+                self.__class__.__name__,
+                f"Failed to generate Twitter auth URL: {str(e)}",
+            )
+            return CustomErrorResponse(
+                {"message": f"Failed to generate auth URL: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return CustomSuccessResponse(
+            {"auth_url": auth_url},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"], url_path="connect")
+    @swagger_auto_schema(
+        request_body=TwitterAuthCodeSerializer,
+        responses={200: ConnectAccountResponseSerializer},
+    )
+    def connect(self, request):
+        """
+        POST /social-accounts/twitter/connect/
+        Exchanges oauth_token and oauth_verifier for permanent access tokens and saves the Twitter account.
+        """
+        serializer = TwitterAuthCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            SocialAccountConnectionService.connect_twitter(
+                user=request.user,
+                brand=serializer.validated_data.get("brand"),
+                oauth_token=serializer.validated_data["oauth_token"],
+                oauth_verifier=serializer.validated_data["oauth_verifier"],
+            )
+        except ValueError as e:
+            CustomLogger.exception(
+                self.__class__.__name__,
+                f"Failed to connect Twitter account: {str(e)}",
+            )
+            return CustomErrorResponse(
+                {"message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return CustomSuccessResponse(
+            {
+                "message": "Twitter account successfully connected",
+                "platform": "twitter",
                 "is_connected": True,
             },
             status=status.HTTP_200_OK,

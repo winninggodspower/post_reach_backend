@@ -14,6 +14,7 @@ from integrations.providers.instagram_service import InstagramService
 from integrations.providers.linkedin_service import LinkedinService
 from integrations.providers.threads_service import ThreadsService
 from integrations.providers.tiktok_service import TiktokService
+from integrations.providers.twitter_service import TwitterService
 from integrations.providers.youtube_service import YoutubeService
 from social_accounts.enums import PlatformChoices
 from social_accounts.services.social_account_validation_service import (
@@ -32,6 +33,7 @@ URL_PLATFORMS = {
     PlatformChoices.INSTAGRAM,
     PlatformChoices.LINKEDIN,
     PlatformChoices.THREADS,
+    PlatformChoices.TWITTER,
 }
 # Platforms that support photo posting
 PHOTO_PLATFORMS = {
@@ -40,6 +42,7 @@ PHOTO_PLATFORMS = {
     PlatformChoices.TIKTOK,
     PlatformChoices.LINKEDIN,
     PlatformChoices.THREADS,
+    PlatformChoices.TWITTER,
 }
 
 
@@ -332,6 +335,18 @@ class PostingService:
                 video_url=video_url,
                 text=description,
             )
+        if platform == PlatformChoices.TWITTER:
+            media_id = TwitterService.upload_video(
+                access_token=access_token,
+                access_token_secret=social_account.access_token_secret,
+                media_input=video_url or media_bytes,
+            )
+            return TwitterService.post_tweet(
+                access_token=access_token,
+                access_token_secret=social_account.access_token_secret,
+                text=description or title,
+                media_ids=[media_id],
+            )
         raise ValueError(f"Video publishing not supported for: {platform}")
 
     @classmethod
@@ -373,6 +388,21 @@ class PostingService:
                 photo_urls=photo_urls,
                 text=text,
             )
+        if platform == PlatformChoices.TWITTER:
+            media_ids = [
+                TwitterService.upload_photo(
+                    access_token=access_token,
+                    access_token_secret=social_account.access_token_secret,
+                    media_input=url,
+                )
+                for url in photo_urls[:4]  # Twitter supports up to 4 images per tweet
+            ]
+            return TwitterService.post_tweet(
+                access_token=access_token,
+                access_token_secret=social_account.access_token_secret,
+                text=text,
+                media_ids=media_ids,
+            )
         raise ValueError(f"Photo publishing not supported for: {platform}")
 
     @classmethod
@@ -393,6 +423,12 @@ class PostingService:
             return ThreadsService.publish_text(
                 access_token=access_token,
                 threads_user_id=social_account.external_id,
+                text=text,
+            )
+        if platform == PlatformChoices.TWITTER:
+            return TwitterService.post_tweet(
+                access_token=access_token,
+                access_token_secret=social_account.access_token_secret,
                 text=text,
             )
         raise ValueError(f"Text publishing not supported for: {platform}")

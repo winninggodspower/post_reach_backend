@@ -69,3 +69,13 @@ class CacheKeys:
     def threads_oauth_state(cls, user_id: int) -> str:
         """Cache key for storing Threads OAuth state for a user."""
         return f"threads_oauth_state:{user_id}"
+
+    @classmethod
+    def twitter_request_token_secret(cls, oauth_token: str) -> str:
+        """Cache key for storing Twitter OAuth 1.0a temporary request token secret."""
+        return f"twitter_req_secret:{oauth_token}"
+
+    @classmethod
+    def twitter_oauth_state(cls, user_id: int) -> str:
+        """Cache key for storing Twitter OAuth state/user association."""
+        return f"twitter_oauth_state:{user_id}"

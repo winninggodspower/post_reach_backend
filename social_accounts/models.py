@@ -75,6 +75,11 @@ class SocialAccount(UUIDTimestampedModel):
         self._refresh_token = encrypt_text(value) if value else None
 
     @property
+    def access_token_secret(self):
+        """Alias for OAuth 1.0a platforms (Twitter/X) where token secret is stored in _refresh_token."""
+        return self.refresh_token
+
+    @property
     def scopes_list(self):
         return self.scope.split() if self.scope else []
 

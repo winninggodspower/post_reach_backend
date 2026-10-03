@@ -327,3 +327,7 @@ wcwidth==0.2.13
     #   prompt-toolkit
 whitenoise==6.12.0
     # via post-reach-backend (pyproject.toml)
+pillow>=12.3.0
+    # via post-reach-backend (pyproject.toml)
+filetype>=1.2.0
+    # via post-reach-backend (pyproject.toml)
