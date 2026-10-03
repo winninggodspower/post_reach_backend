@@ -210,3 +210,40 @@ class TestTwitterServicePublishing:
 
         media_id = TwitterService.upload_video("token", "secret", b"fake_video_content")
         assert media_id == "vid_media_999"
+
+    def test_upload_video_streaming_url_success(self, mocker):
+        mock_oauth = MagicMock()
+
+        init_resp = MagicMock()
+        init_resp.status_code = 202
+        init_resp.json.return_value = {"media_id_string": "vid_media_stream_123"}
+
+        append_resp = MagicMock()
+        append_resp.status_code = 204
+
+        finalize_resp = MagicMock()
+        finalize_resp.status_code = 201
+        finalize_resp.json.return_value = {"media_id_string": "vid_media_stream_123"}
+
+        mock_oauth.post.side_effect = [init_resp, append_resp, finalize_resp]
+        mocker.patch.object(TwitterService, "_get_oauth_session", return_value=mock_oauth)
+
+        mock_stream_resp = MagicMock()
+        mock_stream_resp.headers = {"Content-Length": "100"}
+        mock_stream_resp.iter_bytes.return_value = [b"streamed_chunk_1", b"streamed_chunk_2"]
+        mock_stream_resp.raise_for_status = MagicMock()
+
+        mock_client = MagicMock()
+        mock_client.__enter__.return_value = mock_client
+        mock_client.__exit__.return_value = None
+        mock_client.stream.return_value.__enter__.return_value = mock_stream_resp
+        mock_client.stream.return_value.__exit__.return_value = None
+
+        mocker.patch("httpx.Client", return_value=mock_client)
+
+        media_id = TwitterService.upload_video(
+            "token", "secret", "https://r2.example.com/video.mp4"
+        )
+        assert media_id == "vid_media_stream_123"
+        assert mock_oauth.post.call_count == 3
+

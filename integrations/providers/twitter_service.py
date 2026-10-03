@@ -323,26 +323,9 @@ class TwitterService(SocialAccountService):
         return media_id
 
     @classmethod
-    def upload_video(
-        cls,
-        access_token: str,
-        access_token_secret: str,
-        media_input: bytes | str,
-        media_type: str = "video/mp4",
+    def _init_media_upload(
+        cls, oauth: OAuth1Session, total_bytes: int, media_type: str
     ) -> str:
-        """
-        Uploads a video to X using chunked upload (INIT, APPEND, FINALIZE, and STATUS checking).
-        Returns the media_id_string.
-        """
-        video_bytes = cls._download_media_bytes(media_input)
-        total_bytes = len(video_bytes)
-
-        oauth = cls._get_oauth_session(
-            resource_owner_key=access_token,
-            resource_owner_secret=access_token_secret,
-        )
-
-        # 1. INIT
         init_data = {
             "command": "INIT",
             "total_bytes": str(total_bytes),
@@ -355,36 +338,46 @@ class TwitterService(SocialAccountService):
             timeout=30.0,
         )
         if init_resp.status_code not in (200, 201, 202):
-            raise ValueError(f"Twitter video upload INIT failed: {init_resp.text}")
+            CustomLogger.error(
+                "Twitter video upload INIT failed",
+                extra={"status_code": init_resp.status_code, "response": init_resp.text},
+            )
+            raise ValueError(
+                f"Twitter video upload INIT failed ({init_resp.status_code}): {init_resp.text}"
+            )
 
         media_id = init_resp.json().get("media_id_string") or str(
             init_resp.json().get("media_id")
         )
+        return media_id
 
-        # 2. APPEND chunks (5MB chunks)
-        chunk_size = 5 * 1024 * 1024
-        segment_id = 0
-        for i in range(0, total_bytes, chunk_size):
-            chunk = video_bytes[i : i + chunk_size]
-            append_data = {
-                "command": "APPEND",
-                "media_id": media_id,
-                "segment_index": str(segment_id),
-            }
-            append_files = {"media": chunk}
-            append_resp = oauth.post(
-                f"{cls.UPLOAD_BASE_URL}/media/upload.json",
-                data=append_data,
-                files=append_files,
-                timeout=60.0,
+    @classmethod
+    def _append_media_chunk(
+        cls, oauth: OAuth1Session, media_id: str, segment_id: int, chunk: bytes
+    ) -> None:
+        append_data = {
+            "command": "APPEND",
+            "media_id": media_id,
+            "segment_index": str(segment_id),
+        }
+        append_files = {"media": chunk}
+        append_resp = oauth.post(
+            f"{cls.UPLOAD_BASE_URL}/media/upload.json",
+            data=append_data,
+            files=append_files,
+            timeout=60.0,
+        )
+        if append_resp.status_code not in (200, 204):
+            CustomLogger.error(
+                f"Twitter video upload APPEND segment {segment_id} failed",
+                extra={"status_code": append_resp.status_code, "response": append_resp.text},
             )
-            if append_resp.status_code not in (200, 204):
-                raise ValueError(
-                    f"Twitter video upload APPEND segment {segment_id} failed: {append_resp.text}"
-                )
-            segment_id += 1
+            raise ValueError(
+                f"Twitter video upload APPEND segment {segment_id} failed ({append_resp.status_code}): {append_resp.text}"
+            )
 
-        # 3. FINALIZE
+    @classmethod
+    def _finalize_media_upload(cls, oauth: OAuth1Session, media_id: str) -> str:
         finalize_data = {
             "command": "FINALIZE",
             "media_id": media_id,
@@ -395,16 +388,97 @@ class TwitterService(SocialAccountService):
             timeout=30.0,
         )
         if finalize_resp.status_code not in (200, 201):
-            raise ValueError(f"Twitter video upload FINALIZE failed: {finalize_resp.text}")
+            CustomLogger.error(
+                "Twitter video upload FINALIZE failed",
+                extra={"status_code": finalize_resp.status_code, "response": finalize_resp.text},
+            )
+            raise ValueError(
+                f"Twitter video upload FINALIZE failed ({finalize_resp.status_code}): {finalize_resp.text}"
+            )
 
         finalize_json = finalize_resp.json()
         processing_info = finalize_json.get("processing_info")
 
-        # 4. STATUS check if asynchronous processing is required
         if processing_info:
             cls._check_video_status(oauth, media_id, processing_info)
 
         return media_id
+
+    @classmethod
+    def _stream_chunks_from_response(
+        cls, stream_resp, chunk_size: int = 5 * 1024 * 1024
+    ):
+        buf = bytearray()
+        for chunk in stream_resp.iter_bytes(chunk_size=64 * 1024):
+            if not chunk:
+                continue
+            buf.extend(chunk)
+            while len(buf) >= chunk_size:
+                yield bytes(buf[:chunk_size])
+                del buf[:chunk_size]
+        if buf:
+            yield bytes(buf)
+
+    @classmethod
+    def _chunk_bytes(cls, data: bytes, chunk_size: int = 5 * 1024 * 1024):
+        for i in range(0, len(data), chunk_size):
+            yield data[i : i + chunk_size]
+
+    @classmethod
+    def upload_video(
+        cls,
+        access_token: str,
+        access_token_secret: str,
+        media_input: bytes | str,
+        media_type: str = "video/mp4",
+    ) -> str:
+        """
+        Uploads a video to X using chunked upload (INIT, APPEND, FINALIZE, and STATUS checking).
+        Streams directly from remote URL in 5MB chunks without buffering entire file in memory.
+        Returns the media_id_string.
+        """
+        oauth = cls._get_oauth_session(
+            resource_owner_key=access_token,
+            resource_owner_secret=access_token_secret,
+        )
+        chunk_size = 5 * 1024 * 1024  # 5 MB per chunk (X/Twitter recommended max segment size)
+
+        if isinstance(media_input, bytes):
+            total_bytes = len(media_input)
+            media_id = cls._init_media_upload(oauth, total_bytes, media_type)
+            for segment_id, chunk in enumerate(cls._chunk_bytes(media_input, chunk_size)):
+                cls._append_media_chunk(oauth, media_id, segment_id, chunk)
+            return cls._finalize_media_upload(oauth, media_id)
+
+        try:
+            with httpx.Client(timeout=60.0, follow_redirects=True) as client:
+                with client.stream("GET", media_input) as stream_resp:
+                    stream_resp.raise_for_status()
+                    content_length = stream_resp.headers.get("Content-Length")
+                    if content_length:
+                        total_bytes = int(content_length)
+                        media_id = cls._init_media_upload(oauth, total_bytes, media_type)
+                        for segment_id, chunk in enumerate(
+                            cls._stream_chunks_from_response(stream_resp, chunk_size)
+                        ):
+                            cls._append_media_chunk(oauth, media_id, segment_id, chunk)
+                        return cls._finalize_media_upload(oauth, media_id)
+                    else:
+                        # Fallback if Content-Length header is not provided by upstream server
+                        video_bytes = stream_resp.read()
+                        total_bytes = len(video_bytes)
+                        media_id = cls._init_media_upload(oauth, total_bytes, media_type)
+                        for segment_id, chunk in enumerate(
+                            cls._chunk_bytes(video_bytes, chunk_size)
+                        ):
+                            cls._append_media_chunk(oauth, media_id, segment_id, chunk)
+                        return cls._finalize_media_upload(oauth, media_id)
+        except Exception as e:
+            CustomLogger.exception(
+                "Failed to stream and upload video to X",
+                extra={"operation": "upload_video", "error": str(e)},
+            )
+            raise
 
     @classmethod
     def _check_video_status(
