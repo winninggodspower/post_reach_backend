@@ -24,7 +24,7 @@ from utils.custom_logger import CustomLogger
 from utils.r2_storage import R2StorageService
 
 # Platforms that need raw bytes (for video)
-BYTES_PLATFORMS = {PlatformChoices.YOUTUBE}
+BYTES_PLATFORMS = set()
 
 # Platforms that need a presigned URL
 URL_PLATFORMS = {
@@ -34,6 +34,7 @@ URL_PLATFORMS = {
     PlatformChoices.LINKEDIN,
     PlatformChoices.THREADS,
     PlatformChoices.TWITTER,
+    PlatformChoices.YOUTUBE,
 }
 # Platforms that support photo posting
 PHOTO_PLATFORMS = {
@@ -288,7 +289,7 @@ class PostingService:
         if platform == PlatformChoices.YOUTUBE:
             return YoutubeService.publish_video(
                 access_token=access_token,
-                video_bytes=media_bytes,
+                video_input=video_url or media_bytes,
                 title=title,
                 description=description,
                 thumbnail_bytes=thumbnail_bytes,

@@ -1,9 +1,11 @@
 import os
 import uuid
+from collections.abc import Iterable
 from datetime import UTC
 
 import google_auth_oauthlib
 import googleapiclient.discovery
+import httpx
 import oauthlib.oauth2.rfc6749.errors
 from django.conf import settings
 from django.core.cache import cache
@@ -20,6 +22,7 @@ OAUTH_STATE_TTL = 600  # 10 minutes
 class YoutubeService(SocialAccountService):
     CLIENT_ID = settings.GOOGLE_CLIENT_ID
     CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET
+    RESUMABLE_UPLOAD_URL = "https://www.googleapis.com/upload/youtube/v3/videos"
 
     REQUIRED_SCOPES = [
         "openid",
@@ -260,75 +263,270 @@ class YoutubeService(SocialAccountService):
         return googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
 
     @classmethod
-    def publish_video(
-        cls, access_token, video_bytes, title, description="", thumbnail_bytes=None
-    ):
+    def _initiate_resumable_upload(
+        cls,
+        access_token: str,
+        total_bytes: int,
+        title: str,
+        description: str = "",
+        privacy_status: str = "public",
+        media_type: str = "video/mp4",
+    ) -> str:
         """
-        Upload a video to YouTube.
-
-        :param access_token: Valid YouTube access token.
-        :param video_bytes: Raw video file bytes.
-        :param title: Video title (required by YouTube).
-        :param description: Video description (optional).
-        :param thumbnail_bytes: Raw thumbnail image bytes (optional).
-        :return: Dict with 'platform_post_id' (the YouTube video ID).
+        Initiates a resumable upload session with YouTube API.
+        Returns the resumable session URL (Location header).
         """
-        import io
-
-        from googleapiclient.http import MediaIoBaseUpload
-
-        youtube = cls.get_youtube_client(access_token)
-
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json; charset=UTF-8",
+            "X-Upload-Content-Length": str(total_bytes),
+            "X-Upload-Content-Type": media_type,
+        }
         body = {
             "snippet": {
-                "title": title[:100],  # YouTube title limit
+                "title": title[:100] if title else "Untitled Video",
                 "description": description or "",
             },
             "status": {
-                "privacyStatus": "public",
+                "privacyStatus": privacy_status,
             },
         }
+        params = {
+            "uploadType": "resumable",
+            "part": "snippet,status",
+        }
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(
+                cls.RESUMABLE_UPLOAD_URL,
+                params=params,
+                headers=headers,
+                json=body,
+            )
+            if resp.status_code not in (200, 201):
+                CustomLogger.error(
+                    "YouTube resumable upload INIT failed",
+                    extra={"status_code": resp.status_code, "response": resp.text},
+                )
+                raise ValueError(
+                    f"YouTube video upload INIT failed ({resp.status_code}): {resp.text}"
+                )
 
-        media = MediaIoBaseUpload(
-            io.BytesIO(video_bytes),
-            mimetype="video/*",
-            resumable=True,
-        )
+            upload_url = resp.headers.get("Location")
+            if not upload_url:
+                raise ValueError("YouTube resumable upload did not return a Location header")
+            return upload_url
+
+    @classmethod
+    def _upload_resumable_chunk(
+        cls,
+        upload_url: str,
+        chunk: bytes,
+        start_byte: int,
+        total_bytes: int,
+        media_type: str = "video/mp4",
+    ) -> dict | None:
+        """
+        Uploads a single chunk to the YouTube resumable upload URL.
+        Returns the video metadata dict on completion (HTTP 200/201),
+        None on intermediate chunk (HTTP 308 Resume Incomplete),
+        or raises ValueError on failure.
+        """
+        end_byte = start_byte + len(chunk) - 1
+        headers = {
+            "Content-Length": str(len(chunk)),
+            "Content-Range": f"bytes {start_byte}-{end_byte}/{total_bytes}",
+            "Content-Type": media_type,
+        }
+        with httpx.Client(timeout=60.0) as client:
+            resp = client.put(upload_url, headers=headers, content=chunk)
+
+            if resp.status_code in (200, 201):
+                return resp.json()
+            elif resp.status_code == 308:
+                return None
+            else:
+                CustomLogger.error(
+                    f"YouTube video chunk upload failed at bytes {start_byte}-{end_byte}",
+                    extra={"status_code": resp.status_code, "response": resp.text},
+                )
+                raise ValueError(
+                    f"YouTube video chunk upload failed ({resp.status_code}): {resp.text}"
+                )
+
+    @classmethod
+    def _stream_chunks_from_response(
+        cls, stream_resp, chunk_size: int = 5 * 1024 * 1024
+    ):
+        """
+        Buffers incoming network chunks from an httpx stream into chunks of chunk_size (5MB).
+        """
+        buf = bytearray()
+        for chunk in stream_resp.iter_bytes(chunk_size=64 * 1024):
+            if not chunk:
+                continue
+            buf.extend(chunk)
+            while len(buf) >= chunk_size:
+                yield bytes(buf[:chunk_size])
+                del buf[:chunk_size]
+        if buf:
+            yield bytes(buf)
+
+    @classmethod
+    def _chunk_bytes(cls, data: bytes, chunk_size: int = 5 * 1024 * 1024):
+        """
+        Yields chunk_size slices from raw bytes in memory.
+        """
+        for i in range(0, len(data), chunk_size):
+            yield data[i : i + chunk_size]
+
+    @classmethod
+    def _upload_thumbnail(
+        cls, access_token: str, video_id: str, thumbnail_bytes: bytes
+    ) -> None:
+        """
+        Uploads an image thumbnail to YouTube for the given video.
+        """
+        import io
+        from googleapiclient.http import MediaIoBaseUpload
 
         try:
-            request = youtube.videos().insert(
-                part="snippet,status",
-                body=body,
-                media_body=media,
+            youtube = cls.get_youtube_client(access_token)
+            thumb_media = MediaIoBaseUpload(
+                io.BytesIO(thumbnail_bytes),
+                mimetype="image/jpeg",
+                resumable=True,
             )
-            response = request.execute()
-            video_id = response["id"]
-
-            if thumbnail_bytes:
-                try:
-                    thumb_media = MediaIoBaseUpload(
-                        io.BytesIO(thumbnail_bytes),
-                        mimetype="image/jpeg",
-                        resumable=True,
-                    )
-                    youtube.thumbnails().set(
-                        videoId=video_id,
-                        media_body=thumb_media,
-                    ).execute()
-                except Exception as thumb_err:
-                    CustomLogger.warning(
-                        "YouTube video thumbnail upload failed",
-                        extra={
-                            "operation": "publish_video",
-                            "video_id": video_id,
-                            "error": str(thumb_err),
-                        },
-                    )
-
-            return {"platform_post_id": video_id}
-        except Exception as e:
-            CustomLogger.exception(
-                "YouTube video upload failed",
-                extra={"operation": "publish_video"},
+            youtube.thumbnails().set(
+                videoId=video_id,
+                media_body=thumb_media,
+            ).execute()
+        except Exception as thumb_err:
+            CustomLogger.warning(
+                "YouTube video thumbnail upload failed",
+                extra={
+                    "operation": "publish_video",
+                    "video_id": video_id,
+                    "error": str(thumb_err),
+                },
             )
-            raise ValueError(f"YouTube video upload failed: {str(e)}") from e
+
+    @classmethod
+    def publish_video(
+        cls,
+        access_token: str,
+        video_input: bytes | str | None = None,
+        title: str = "",
+        description: str = "",
+        thumbnail_bytes: bytes | None = None,
+        video_bytes: bytes | None = None,
+        privacy_status: str = "public",
+        media_type: str = "video/mp4",
+    ) -> dict:
+        """
+        Upload a video to YouTube using chunked resumable upload (5MB per chunk).
+        Streams directly from remote URL if video_input is a URL, avoiding high RAM usage.
+
+        :param access_token: Valid YouTube access token.
+        :param video_input: Presigned video URL (str) or raw bytes.
+        :param title: Video title (required by YouTube).
+        :param description: Video description (optional).
+        :param thumbnail_bytes: Raw thumbnail image bytes (optional).
+        :param video_bytes: Backward-compatible alias for video_input.
+        :param privacy_status: "public", "unlisted", or "private".
+        :param media_type: Video MIME type (default "video/mp4").
+        :return: Dict with 'platform_post_id' (the YouTube video ID).
+        """
+        raw_source = video_input if video_input is not None else video_bytes
+        if not raw_source:
+            raise ValueError("No video source provided to publish_video")
+
+        chunk_size = 5 * 1024 * 1024  # 5 MB per chunk (multiple of 256 KB)
+
+        if isinstance(raw_source, bytes):
+            video_id = cls._execute_chunked_upload(
+                access_token=access_token,
+                total_bytes=len(raw_source),
+                chunks_iter=cls._chunk_bytes(raw_source, chunk_size),
+                title=title,
+                description=description,
+                privacy_status=privacy_status,
+                media_type=media_type,
+            )
+        else:
+            # raw_source is a URL (str)
+            try:
+                with httpx.Client(timeout=60.0, follow_redirects=True) as client:
+                    with client.stream("GET", raw_source) as stream_resp:
+                        stream_resp.raise_for_status()
+                        content_length = stream_resp.headers.get("Content-Length")
+                        if content_length:
+                            total_bytes = int(content_length)
+                            chunks_iter = cls._stream_chunks_from_response(
+                                stream_resp, chunk_size
+                            )
+                        else:
+                            # Fallback if Content-Length header is missing from upstream
+                            downloaded = stream_resp.read()
+                            total_bytes = len(downloaded)
+                            chunks_iter = cls._chunk_bytes(downloaded, chunk_size)
+
+                        video_id = cls._execute_chunked_upload(
+                            access_token=access_token,
+                            total_bytes=total_bytes,
+                            chunks_iter=chunks_iter,
+                            title=title,
+                            description=description,
+                            privacy_status=privacy_status,
+                            media_type=media_type,
+                        )
+            except Exception as e:
+                CustomLogger.exception(
+                    "YouTube video upload failed",
+                    extra={"operation": "publish_video", "error": str(e)},
+                )
+                raise ValueError(f"YouTube video upload failed: {str(e)}") from e
+
+        if thumbnail_bytes:
+            cls._upload_thumbnail(access_token, video_id, thumbnail_bytes)
+
+        return {"platform_post_id": video_id}
+
+    @classmethod
+    def _execute_chunked_upload(
+        cls,
+        access_token: str,
+        total_bytes: int,
+        chunks_iter: Iterable[bytes],
+        title: str,
+        description: str,
+        privacy_status: str,
+        media_type: str,
+    ) -> str:
+        """
+        Executes the resumable upload: initiates session, iterates chunks, and returns the video ID.
+        """
+        upload_url = cls._initiate_resumable_upload(
+            access_token=access_token,
+            total_bytes=total_bytes,
+            title=title,
+            description=description,
+            privacy_status=privacy_status,
+            media_type=media_type,
+        )
+        video_id = None
+        start_byte = 0
+        for chunk in chunks_iter:
+            result = cls._upload_resumable_chunk(
+                upload_url=upload_url,
+                chunk=chunk,
+                start_byte=start_byte,
+                total_bytes=total_bytes,
+                media_type=media_type,
+            )
+            if result and "id" in result:
+                video_id = result["id"]
+            start_byte += len(chunk)
+
+        if not video_id:
+            raise ValueError("YouTube video upload completed without returning a video ID")
+        return video_id

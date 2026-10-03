@@ -1,4 +1,5 @@
 import time
+from collections.abc import Iterable
 from typing import Any
 import httpx
 from django.conf import settings
@@ -444,11 +445,12 @@ class TwitterService(SocialAccountService):
         chunk_size = 5 * 1024 * 1024  # 5 MB per chunk (X/Twitter recommended max segment size)
 
         if isinstance(media_input, bytes):
-            total_bytes = len(media_input)
-            media_id = cls._init_media_upload(oauth, total_bytes, media_type)
-            for segment_id, chunk in enumerate(cls._chunk_bytes(media_input, chunk_size)):
-                cls._append_media_chunk(oauth, media_id, segment_id, chunk)
-            return cls._finalize_media_upload(oauth, media_id)
+            return cls._execute_chunked_upload(
+                oauth=oauth,
+                total_bytes=len(media_input),
+                chunks_iter=cls._chunk_bytes(media_input, chunk_size),
+                media_type=media_type,
+            )
 
         try:
             with httpx.Client(timeout=60.0, follow_redirects=True) as client:
@@ -457,28 +459,43 @@ class TwitterService(SocialAccountService):
                     content_length = stream_resp.headers.get("Content-Length")
                     if content_length:
                         total_bytes = int(content_length)
-                        media_id = cls._init_media_upload(oauth, total_bytes, media_type)
-                        for segment_id, chunk in enumerate(
-                            cls._stream_chunks_from_response(stream_resp, chunk_size)
-                        ):
-                            cls._append_media_chunk(oauth, media_id, segment_id, chunk)
-                        return cls._finalize_media_upload(oauth, media_id)
+                        chunks_iter = cls._stream_chunks_from_response(
+                            stream_resp, chunk_size
+                        )
                     else:
                         # Fallback if Content-Length header is not provided by upstream server
                         video_bytes = stream_resp.read()
                         total_bytes = len(video_bytes)
-                        media_id = cls._init_media_upload(oauth, total_bytes, media_type)
-                        for segment_id, chunk in enumerate(
-                            cls._chunk_bytes(video_bytes, chunk_size)
-                        ):
-                            cls._append_media_chunk(oauth, media_id, segment_id, chunk)
-                        return cls._finalize_media_upload(oauth, media_id)
+                        chunks_iter = cls._chunk_bytes(video_bytes, chunk_size)
+
+                    return cls._execute_chunked_upload(
+                        oauth=oauth,
+                        total_bytes=total_bytes,
+                        chunks_iter=chunks_iter,
+                        media_type=media_type,
+                    )
         except Exception as e:
             CustomLogger.exception(
                 "Failed to stream and upload video to X",
                 extra={"operation": "upload_video", "error": str(e)},
             )
             raise
+
+    @classmethod
+    def _execute_chunked_upload(
+        cls,
+        oauth: OAuth1Session,
+        total_bytes: int,
+        chunks_iter: Iterable[bytes],
+        media_type: str,
+    ) -> str:
+        """
+        Executes INIT, iterates chunks for APPEND, and FINALIZE.
+        """
+        media_id = cls._init_media_upload(oauth, total_bytes, media_type)
+        for segment_id, chunk in enumerate(chunks_iter):
+            cls._append_media_chunk(oauth, media_id, segment_id, chunk)
+        return cls._finalize_media_upload(oauth, media_id)
 
     @classmethod
     def _check_video_status(
