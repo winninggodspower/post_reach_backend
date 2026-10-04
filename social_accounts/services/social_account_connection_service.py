@@ -374,6 +374,9 @@ class SocialAccountConnectionService:
                     account_name=user_info["account_name"],
                     username=user_info.get("username"),
                     profile_picture_url=user_info.get("profile_picture_url"),
+                    is_premium=user_info.get("is_premium", False),
+                    verified=user_info.get("verified", False),
+                    verified_type=user_info.get("verified_type"),
                 ),
             },
         )

@@ -313,7 +313,9 @@ class YoutubeService(SocialAccountService):
 
             upload_url = resp.headers.get("Location")
             if not upload_url:
-                raise ValueError("YouTube resumable upload did not return a Location header")
+                raise ValueError(
+                    "YouTube resumable upload did not return a Location header"
+                )
             return upload_url
 
     @classmethod
@@ -387,6 +389,7 @@ class YoutubeService(SocialAccountService):
         Uploads an image thumbnail to YouTube for the given video.
         """
         import io
+
         from googleapiclient.http import MediaIoBaseUpload
 
         try:
@@ -528,5 +531,7 @@ class YoutubeService(SocialAccountService):
             start_byte += len(chunk)
 
         if not video_id:
-            raise ValueError("YouTube video upload completed without returning a video ID")
+            raise ValueError(
+                "YouTube video upload completed without returning a video ID"
+            )
         return video_id

@@ -1,6 +1,7 @@
 import time
 from collections.abc import Iterable
 from typing import Any
+
 import httpx
 from django.conf import settings
 from django.core.cache import cache
@@ -64,7 +65,9 @@ class TwitterService(SocialAccountService):
         oauth_token_secret = fetch_response.get("oauth_token_secret")
 
         if not oauth_token or not oauth_token_secret:
-            raise ValueError("Twitter response missing oauth_token or oauth_token_secret.")
+            raise ValueError(
+                "Twitter response missing oauth_token or oauth_token_secret."
+            )
 
         # Cache the request token secret so connect() can sign the access token exchange
         cache.set(
@@ -110,7 +113,9 @@ class TwitterService(SocialAccountService):
         access_token_secret = tokens.get("oauth_token_secret")
 
         if not access_token or not access_token_secret:
-            raise ValueError("Twitter response missing permanent access token or secret.")
+            raise ValueError(
+                "Twitter response missing permanent access token or secret."
+            )
 
         return {
             "access_token": access_token,
@@ -136,7 +141,9 @@ class TwitterService(SocialAccountService):
         try:
             resp = oauth.get(
                 f"{cls.BASE_URL}/2/users/me",
-                params={"user.fields": "profile_image_url,name,username"},
+                params={
+                    "user.fields": "profile_image_url,name,username,verified,verified_type"
+                },
                 timeout=15.0,
             )
             if resp.status_code == 200:
@@ -148,6 +155,12 @@ class TwitterService(SocialAccountService):
                 username = user_data.get("username", "")
                 name = user_data.get("name", "")
                 display_name = f"@{username}" if username else name
+                verified = user_data.get("verified", False)
+                verified_type = user_data.get("verified_type")
+                is_premium = (
+                    verified_type in ("blue", "business", "government")
+                    or verified is True
+                )
 
                 return {
                     "account_name": display_name,
@@ -155,6 +168,9 @@ class TwitterService(SocialAccountService):
                     "profile_picture_url": profile_image or None,
                     "username": username,
                     "name": name,
+                    "is_premium": is_premium,
+                    "verified": verified,
+                    "verified_type": verified_type,
                 }
         except Exception as e:
             CustomLogger.warning(
@@ -170,21 +186,31 @@ class TwitterService(SocialAccountService):
             )
             if resp.status_code == 200:
                 user_data = resp.json()
-                profile_image = user_data.get("profile_image_url_https") or user_data.get(
-                    "profile_image_url", ""
-                )
+                profile_image = user_data.get(
+                    "profile_image_url_https"
+                ) or user_data.get("profile_image_url", "")
                 if profile_image:
                     profile_image = profile_image.replace("_normal", "")
 
                 screen_name = user_data.get("screen_name", "")
-                display_name = f"@{screen_name}" if screen_name else user_data.get("name", "")
+                display_name = (
+                    f"@{screen_name}" if screen_name else user_data.get("name", "")
+                )
+                verified = user_data.get("verified", False)
+                is_blue_verified = user_data.get("is_blue_verified", False)
+                is_premium = bool(is_blue_verified or verified)
 
                 return {
                     "account_name": display_name,
-                    "external_id": str(user_data.get("id_str") or user_data.get("id", "")),
+                    "external_id": str(
+                        user_data.get("id_str") or user_data.get("id", "")
+                    ),
                     "profile_picture_url": profile_image or None,
                     "username": screen_name,
                     "name": user_data.get("name", ""),
+                    "is_premium": is_premium,
+                    "verified": verified,
+                    "verified_type": "blue" if is_blue_verified else None,
                 }
             resp.raise_for_status()
         except Exception as e:
@@ -226,7 +252,9 @@ class TwitterService(SocialAccountService):
             payload["media"] = {"media_ids": [str(m) for m in media_ids]}
 
         if not payload:
-            raise ValueError("Cannot publish an empty tweet (no text or media provided).")
+            raise ValueError(
+                "Cannot publish an empty tweet (no text or media provided)."
+            )
 
         try:
             resp = oauth.post(
@@ -320,7 +348,9 @@ class TwitterService(SocialAccountService):
             )
             raise ValueError(f"X photo upload failed ({resp.status_code}): {resp.text}")
 
-        media_id = resp.json().get("media_id_string") or str(resp.json().get("media_id"))
+        media_id = resp.json().get("media_id_string") or str(
+            resp.json().get("media_id")
+        )
         return media_id
 
     @classmethod
@@ -341,7 +371,10 @@ class TwitterService(SocialAccountService):
         if init_resp.status_code not in (200, 201, 202):
             CustomLogger.error(
                 "Twitter video upload INIT failed",
-                extra={"status_code": init_resp.status_code, "response": init_resp.text},
+                extra={
+                    "status_code": init_resp.status_code,
+                    "response": init_resp.text,
+                },
             )
             raise ValueError(
                 f"Twitter video upload INIT failed ({init_resp.status_code}): {init_resp.text}"
@@ -371,7 +404,10 @@ class TwitterService(SocialAccountService):
         if append_resp.status_code not in (200, 204):
             CustomLogger.error(
                 f"Twitter video upload APPEND segment {segment_id} failed",
-                extra={"status_code": append_resp.status_code, "response": append_resp.text},
+                extra={
+                    "status_code": append_resp.status_code,
+                    "response": append_resp.text,
+                },
             )
             raise ValueError(
                 f"Twitter video upload APPEND segment {segment_id} failed ({append_resp.status_code}): {append_resp.text}"
@@ -391,7 +427,10 @@ class TwitterService(SocialAccountService):
         if finalize_resp.status_code not in (200, 201):
             CustomLogger.error(
                 "Twitter video upload FINALIZE failed",
-                extra={"status_code": finalize_resp.status_code, "response": finalize_resp.text},
+                extra={
+                    "status_code": finalize_resp.status_code,
+                    "response": finalize_resp.text,
+                },
             )
             raise ValueError(
                 f"Twitter video upload FINALIZE failed ({finalize_resp.status_code}): {finalize_resp.text}"
@@ -442,7 +481,9 @@ class TwitterService(SocialAccountService):
             resource_owner_key=access_token,
             resource_owner_secret=access_token_secret,
         )
-        chunk_size = 5 * 1024 * 1024  # 5 MB per chunk (X/Twitter recommended max segment size)
+        chunk_size = (
+            5 * 1024 * 1024
+        )  # 5 MB per chunk (X/Twitter recommended max segment size)
 
         if isinstance(media_input, bytes):
             return cls._execute_chunked_upload(

@@ -270,4 +270,3 @@ class TestPublishVideo:
         mock_upload_thumb.assert_called_once_with(
             "test_yt_token", "yt_thumb_123", b"fake_jpg_bytes"
         )
-

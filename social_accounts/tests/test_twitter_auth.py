@@ -60,7 +60,9 @@ class TestTwitterConnectEndpoint:
 
         assert response.status_code == 200
         assert response.data["success"] is True
-        assert response.data["data"]["message"] == "Twitter account successfully connected"
+        assert (
+            response.data["data"]["message"] == "Twitter account successfully connected"
+        )
         assert response.data["data"]["platform"] == "twitter"
         assert response.data["data"]["is_connected"] is True
 

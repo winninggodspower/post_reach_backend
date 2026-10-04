@@ -751,7 +751,9 @@ class TestPostingServiceTwitter:
 
         assert result.status == PostStatus.POSTED
         assert result.platform_post_id == "tweet_photo_111"
-        assert result.post_url == "https://twitter.com/@testbrand/status/tweet_photo_111"
+        assert (
+            result.post_url == "https://twitter.com/@testbrand/status/tweet_photo_111"
+        )
         mock_upload_photo.assert_called_once()
         mock_post_tweet.assert_called_once_with(
             access_token="test_oauth_token",

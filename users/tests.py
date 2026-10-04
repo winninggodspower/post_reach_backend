@@ -158,6 +158,7 @@ def test_me_includes_connected_accounts(authenticated_client, brand):
             "connected_at": dt_field.to_representation(account.last_connected_at),
             "is_expired": account.is_token_expired(),
             "expired_at": dt_field.to_representation(account.token_expires_at),
+            "is_premium": False,
         }
     ]
 

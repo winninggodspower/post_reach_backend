@@ -117,9 +117,13 @@ class ConnectedAccountSerializer(serializers.Serializer):
     connected_at = serializers.DateTimeField(source="last_connected_at")
     is_expired = serializers.SerializerMethodField()
     expired_at = serializers.DateTimeField(source="token_expires_at", allow_null=True)
+    is_premium = serializers.SerializerMethodField()
 
     def get_is_expired(self, obj):
         return obj.get_access_token() is None
+
+    def get_is_premium(self, obj):
+        return bool(obj.metadata.get("is_premium", False))
 
 
 class BrandSerializer(serializers.ModelSerializer):
