@@ -194,6 +194,55 @@ class TestPostScheduling:
         assert len(data["data"]) == 1
         assert data["data"][0]["id"] == str(post.id)
 
+    def test_calendar_endpoint_defaults_to_current_month(
+        self, authenticated_client, user, brand, connected_accounts
+    ):
+        user.active_brand = brand
+        user.save(update_fields=["active_brand"])
+
+        now = timezone.now()
+        post_this_month = ContentPostService.create_content_post(
+            user=user,
+            media_keys=[],
+            caption="This Month",
+            platforms=["facebook"],
+            content_type="text",
+            scheduled_at=now,
+        )
+
+        url = reverse("content-post-calendar")
+        response = authenticated_client.get(url)
+        assert response.status_code == 200
+        data = response.data
+        assert data["success"] is True
+        post_ids = [p["id"] for p in data["data"]]
+        assert str(post_this_month.id) in post_ids
+
+    def test_calendar_endpoint_validates_date_parameters(
+        self, authenticated_client, user, brand, connected_accounts
+    ):
+        user.active_brand = brand
+        user.save(update_fields=["active_brand"])
+
+        url = reverse("content-post-calendar")
+
+        # Invalid start_date format
+        res = authenticated_client.get(url, {"start_date": "invalid-date"})
+        assert res.status_code == 400
+        assert res.data["success"] is False
+
+        # Invalid end_date format
+        res = authenticated_client.get(url, {"end_date": "invalid-date"})
+        assert res.status_code == 400
+        assert res.data["success"] is False
+
+        # start_date > end_date
+        res = authenticated_client.get(
+            url, {"start_date": "2026-10-15", "end_date": "2026-10-10"}
+        )
+        assert res.status_code == 400
+        assert res.data["success"] is False
+
     def test_scheduled_endpoint_returns_only_future_scheduled_posts_in_order(
         self, authenticated_client, user, brand, connected_accounts
     ):

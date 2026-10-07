@@ -6,11 +6,13 @@ keeping query logic decoupled from mutation/business logic services.
 All public methods are classmethods or staticmethods and have zero side-effects.
 """
 
+from datetime import date, datetime, time
 from typing import Optional
 from uuid import UUID
 
 from django.db.models import Prefetch, Q, QuerySet
 from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 
 from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
@@ -105,6 +107,22 @@ class ContentPostSelector:
         return qs
 
     @classmethod
+    def _normalize_to_aware_datetime(
+        cls, val: str | date | datetime | None, is_end_of_day: bool = False
+    ) -> datetime | None:
+        """Normalize a date, datetime, or date-string to a timezone-aware datetime."""
+        if not val:
+            return None
+        if isinstance(val, str):
+            val = parse_datetime(val) or parse_date(val) or val
+        if isinstance(val, datetime):
+            return val if timezone.is_aware(val) else timezone.make_aware(val)
+        if isinstance(val, date):
+            boundary_time = time.max if is_end_of_day else time.min
+            return timezone.make_aware(datetime.combine(val, boundary_time))
+        return val
+
+    @classmethod
     def get_calendar_posts(
         cls,
         *,
@@ -121,15 +139,17 @@ class ContentPostSelector:
         )
 
         if start_date:
+            start_dt = cls._normalize_to_aware_datetime(start_date, is_end_of_day=False)
             posts = posts.filter(
-                Q(scheduled_at__date__gte=start_date)
-                | Q(scheduled_at__isnull=True, created_at__date__gte=start_date)
+                Q(scheduled_at__gte=start_dt)
+                | Q(scheduled_at__isnull=True, created_at__gte=start_dt)
             )
 
         if end_date:
+            end_dt = cls._normalize_to_aware_datetime(end_date, is_end_of_day=True)
             posts = posts.filter(
-                Q(scheduled_at__date__lte=end_date)
-                | Q(scheduled_at__isnull=True, created_at__date__lte=end_date)
+                Q(scheduled_at__lte=end_dt)
+                | Q(scheduled_at__isnull=True, created_at__lte=end_dt)
             )
 
         return posts.order_by("scheduled_at", "created_at")

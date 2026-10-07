@@ -57,9 +57,10 @@ class ContentPost(UUIDTimestampedModel):
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["user"]),
-            models.Index(fields=["brand"]),
+            models.Index(fields=["brand", "scheduled_at"]),
+            models.Index(fields=["brand", "created_at"]),
             models.Index(fields=["scheduled_at"]),
+            models.Index(fields=["user"]),
         ]
 
     def __str__(self):

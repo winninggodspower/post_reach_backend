@@ -1,3 +1,6 @@
+import calendar
+
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -200,7 +203,8 @@ class ContentPostViewSet(viewsets.ViewSet):
         operation_summary="Get calendar posts within a date range",
         operation_description=(
             "Returns a list of posts for the active brand that are either scheduled or created "
-            "within the specified start_date and end_date range."
+            "within the specified start_date and end_date range. "
+            "If dates are not specified, defaults to the current calendar month."
         ),
         manual_parameters=[
             openapi.Parameter(
@@ -208,14 +212,14 @@ class ContentPostViewSet(viewsets.ViewSet):
                 openapi.IN_QUERY,
                 type=openapi.TYPE_STRING,
                 required=False,
-                description="YYYY-MM-DD format",
+                description="YYYY-MM-DD format (defaults to the 1st of the current month)",
             ),
             openapi.Parameter(
                 "end_date",
                 openapi.IN_QUERY,
                 type=openapi.TYPE_STRING,
                 required=False,
-                description="YYYY-MM-DD format",
+                description="YYYY-MM-DD format (defaults to the last day of the current month)",
             ),
         ],
         responses={
@@ -235,6 +239,35 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         start_date = parse_date(start_date_str) if start_date_str else None
         end_date = parse_date(end_date_str) if end_date_str else None
+
+        if start_date_str and not start_date:
+            return CustomErrorResponse(
+                "Invalid start_date format. Please use YYYY-MM-DD.",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if end_date_str and not end_date:
+            return CustomErrorResponse(
+                "Invalid end_date format. Please use YYYY-MM-DD.",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Default date bounds to current month if omitted
+        today = timezone.now().date()
+        if not start_date and not end_date:
+            start_date = today.replace(day=1)
+            _, last_day = calendar.monthrange(today.year, today.month)
+            end_date = today.replace(day=last_day)
+        elif not start_date and end_date:
+            start_date = end_date.replace(day=1)
+        elif start_date and not end_date:
+            _, last_day = calendar.monthrange(start_date.year, start_date.month)
+            end_date = start_date.replace(day=last_day)
+
+        if start_date > end_date:
+            return CustomErrorResponse(
+                "start_date cannot be after end_date.",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         posts = ContentPostSelector.get_calendar_posts(
             brand=brand,
