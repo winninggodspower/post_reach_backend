@@ -6,7 +6,9 @@ from rest_framework import serializers
 
 from content.enums import PhotoPlatformOptions, PostStatus, TextPlatformOptions
 from content.models import ContentMedia, ContentPost, ContentPostPlatform
+from content.validators import validate_platform_captions
 from social_accounts.enums import PlatformChoices
+from users.services.user_service import UserService
 from utils.r2_storage import R2StorageService
 
 # Used by the swagger_auto_schema in views.py for the platforms enum dropdown
@@ -65,6 +67,7 @@ class ContentPostCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         platforms = attrs.get("platforms", set())
         platform_settings = attrs.get("platform_settings", {})
+        caption = attrs.get("caption", "")
 
         # If youtube is selected, we require a YouTube title
         if "youtube" in platforms:
@@ -75,6 +78,24 @@ class ContentPostCreateSerializer(serializers.Serializer):
                         "platform_settings": "YouTube requires a title in platform_settings.youtube.title"
                     }
                 )
+
+        brand = None
+        request = self.context.get("request")
+        if request and hasattr(request, "user") and request.user.is_authenticated:
+            try:
+                brand = UserService.get_active_brand(request.user)
+            except Exception:
+                brand = None
+
+        caption_errors = validate_platform_captions(
+            platforms=platforms,
+            caption=caption,
+            platform_settings=platform_settings,
+            brand=brand,
+        )
+        if caption_errors:
+            raise serializers.ValidationError(caption_errors)
+
         return attrs
 
 
@@ -112,6 +133,7 @@ class PhotoPostCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         platforms = attrs.get("platforms", set())
         platform_settings = attrs.get("platform_settings", {})
+        caption = attrs.get("caption", "")
 
         if "youtube" in platforms:
             yt_settings = platform_settings.get("youtube", {})
@@ -121,6 +143,24 @@ class PhotoPostCreateSerializer(serializers.Serializer):
                         "platform_settings": "YouTube requires a title in platform_settings.youtube.title"
                     }
                 )
+
+        brand = None
+        request = self.context.get("request")
+        if request and hasattr(request, "user") and request.user.is_authenticated:
+            try:
+                brand = UserService.get_active_brand(request.user)
+            except Exception:
+                brand = None
+
+        caption_errors = validate_platform_captions(
+            platforms=platforms,
+            caption=caption,
+            platform_settings=platform_settings,
+            brand=brand,
+        )
+        if caption_errors:
+            raise serializers.ValidationError(caption_errors)
+
         return attrs
 
 
@@ -135,7 +175,27 @@ class TextPostCreateSerializer(serializers.Serializer):
     platform_settings = serializers.JSONField(required=False, default=dict)
 
     def validate(self, attrs):
-        # Validation is handled by TextPlatformOptions choices in platforms MultipleChoiceField
+        platforms = attrs.get("platforms", set())
+        platform_settings = attrs.get("platform_settings", {})
+        caption = attrs.get("caption", "")
+
+        brand = None
+        request = self.context.get("request")
+        if request and hasattr(request, "user") and request.user.is_authenticated:
+            try:
+                brand = UserService.get_active_brand(request.user)
+            except Exception:
+                brand = None
+
+        caption_errors = validate_platform_captions(
+            platforms=platforms,
+            caption=caption,
+            platform_settings=platform_settings,
+            brand=brand,
+        )
+        if caption_errors:
+            raise serializers.ValidationError(caption_errors)
+
         return attrs
 
 
@@ -158,7 +218,53 @@ class ContentPostUpdateSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
-        # We can add platform-specific validation here if needed
+        caption = attrs.get("caption")
+        platform_settings = attrs.get("platform_settings")
+        platforms = attrs.get("platforms")
+
+        brand = None
+        effective_platforms = []
+        effective_caption = ""
+        effective_settings = {}
+
+        if getattr(self, "instance", None):
+            brand = self.instance.brand
+            effective_platforms = list(
+                platforms
+                if platforms is not None
+                else [entry.platform for entry in self.instance.platform_entries.all()]
+            )
+            effective_caption = (
+                caption if caption is not None else self.instance.caption
+            )
+            for entry in self.instance.platform_entries.all():
+                if entry.settings:
+                    effective_settings[entry.platform] = dict(entry.settings)
+            if platform_settings:
+                for k, v in platform_settings.items():
+                    if isinstance(v, dict):
+                        effective_settings.setdefault(k, {}).update(v)
+        else:
+            request = self.context.get("request")
+            if request and hasattr(request, "user") and request.user.is_authenticated:
+                try:
+                    brand = UserService.get_active_brand(request.user)
+                except Exception:
+                    brand = None
+            effective_platforms = list(platforms or [])
+            effective_caption = caption or ""
+            effective_settings = platform_settings or {}
+
+        if effective_platforms:
+            caption_errors = validate_platform_captions(
+                platforms=effective_platforms,
+                caption=effective_caption,
+                platform_settings=effective_settings,
+                brand=brand,
+            )
+            if caption_errors:
+                raise serializers.ValidationError(caption_errors)
+
         return attrs
 
 

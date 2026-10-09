@@ -111,7 +111,9 @@ class ContentPostViewSet(viewsets.ViewSet):
         """
         POST /api/content/posts/video/
         """
-        serializer = ContentPostCreateSerializer(data=request.data)
+        serializer = ContentPostCreateSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         validated = serializer.validated_data
 
@@ -148,7 +150,9 @@ class ContentPostViewSet(viewsets.ViewSet):
         """
         POST /api/content/posts/photo/
         """
-        serializer = PhotoPostCreateSerializer(data=request.data)
+        serializer = PhotoPostCreateSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         validated = serializer.validated_data
 
@@ -183,7 +187,9 @@ class ContentPostViewSet(viewsets.ViewSet):
         """
         POST /api/content/posts/text/
         """
-        serializer = TextPostCreateSerializer(data=request.data)
+        serializer = TextPostCreateSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         validated = serializer.validated_data
 
@@ -403,7 +409,11 @@ class ContentPostViewSet(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        serializer = ContentPostUpdateSerializer(data=request.data)
+        serializer = ContentPostUpdateSerializer(
+            instance=content_post,
+            data=request.data,
+            context={"request": request},
+        )
         serializer.is_valid(raise_exception=True)
 
         try:

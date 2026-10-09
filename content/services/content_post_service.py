@@ -10,6 +10,7 @@ from django.utils import timezone
 from content.enums import FileTypeChoice, PostStatus
 from content.models import ContentMedia, ContentPost, ContentPostPlatform, PendingUpload
 from content.selectors import ContentPostSelector
+from content.validators import validate_platform_captions
 from social_accounts.services.social_account_validation_service import (
     SocialAccountValidationService,
 )
@@ -58,6 +59,16 @@ class ContentPostService:
 
         # 2. Validate platform connections via domain service
         SocialAccountValidationService.ensure_platforms_connected(brand, platforms)
+
+        # 3. Validate platform caption limits
+        caption_errors = validate_platform_captions(
+            platforms=platforms,
+            caption=caption,
+            platform_settings=platform_settings,
+            brand=brand,
+        )
+        if caption_errors:
+            raise ValueError("; ".join(caption_errors.values()))
 
         media_keys = media_keys or []
         thumbnail_key = thumbnail_key or ""
@@ -179,6 +190,31 @@ class ContentPostService:
                     f"Cannot update post because platform '{entry.platform}' is in status '{entry.status}'. "
                     "Only fully pending or scheduled posts can be updated."
                 )
+
+        # Validate caption limits across effective platforms before applying updates
+        effective_caption = validated_data.get("caption", content_post.caption)
+        effective_platforms = (
+            list(validated_data["platforms"])
+            if "platforms" in validated_data
+            else [entry.platform for entry in content_post.platform_entries.all()]
+        )
+        effective_settings = {}
+        for entry in content_post.platform_entries.all():
+            if entry.settings:
+                effective_settings[entry.platform] = dict(entry.settings)
+        if "platform_settings" in validated_data:
+            for k, v in validated_data["platform_settings"].items():
+                if isinstance(v, dict):
+                    effective_settings.setdefault(k, {}).update(v)
+
+        caption_errors = validate_platform_captions(
+            platforms=effective_platforms,
+            caption=effective_caption,
+            platform_settings=effective_settings,
+            brand=content_post.brand,
+        )
+        if caption_errors:
+            raise ValueError("; ".join(caption_errors.values()))
 
         save_post = False
         if "caption" in validated_data:
