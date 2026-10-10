@@ -1,3 +1,4 @@
+from drf_yasg.utils import swagger_serializer_method
 from rest_framework import serializers
 
 from social_accounts.enums import PlatformChoices as SocialPlatformChoices
@@ -17,6 +18,55 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         fields = ["email", "first_name", "last_name", "handle", "password"]
 
 
+class ConnectedAccountSerializer(serializers.Serializer):
+    platform = serializers.ChoiceField(choices=SocialPlatformChoices.choices)
+    external_id = serializers.CharField()
+    account_name = serializers.CharField()
+    profile_picture_url = serializers.URLField(allow_null=True, required=False)
+    connected_at = serializers.DateTimeField(source="last_connected_at")
+    is_expired = serializers.SerializerMethodField()
+    expired_at = serializers.DateTimeField(source="token_expires_at", allow_null=True)
+    is_premium = serializers.SerializerMethodField()
+
+    @swagger_serializer_method(serializer_or_field=serializers.BooleanField())
+    def get_is_expired(self, obj):
+        return obj.get_access_token() is None
+
+    @swagger_serializer_method(serializer_or_field=serializers.BooleanField())
+    def get_is_premium(self, obj):
+        return bool(obj.metadata.get("is_premium", False))
+
+
+class BrandSerializer(serializers.ModelSerializer):
+    connected_accounts = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Brand
+        fields = [
+            "id",
+            "name",
+            "logo_url",
+            "industry",
+            "posting_frequency",
+            "primary_platform",
+            "team_size",
+            "connected_accounts",
+        ]
+        read_only_fields = ["id", "logo_url", "connected_accounts"]
+
+    @swagger_serializer_method(
+        serializer_or_field=ConnectedAccountSerializer(many=True)
+    )
+    def get_connected_accounts(self, brand):
+        accounts = brand.social_accounts.all()
+        return [
+            ConnectedAccountSerializer(account).data
+            for account in sorted(
+                accounts, key=lambda account: account.last_connected_at
+            )
+        ]
+
+
 class BrandBriefSerializer(serializers.ModelSerializer):
     is_active = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
@@ -33,10 +83,12 @@ class BrandBriefSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    @swagger_serializer_method(serializer_or_field=serializers.BooleanField())
     def get_is_active(self, brand):
         active_brand_id = self.context.get("active_brand_id")
         return bool(active_brand_id and brand.id == active_brand_id)
 
+    @swagger_serializer_method(serializer_or_field=serializers.CharField())
     def get_role(self, brand):
         user = self.context.get("user")
         if user and brand.user_id == user.id:
@@ -65,6 +117,7 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    @swagger_serializer_method(serializer_or_field=serializers.BooleanField())
     def get_has_completed_onboarding(self, user):
         active_brand = UserService.get_active_brand(user)
         if not active_brand:
@@ -79,10 +132,12 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         return all(required_values)
 
+    @swagger_serializer_method(serializer_or_field=BrandSerializer)
     def get_brand(self, user):
         active_brand = UserService.get_active_brand(user)
         return BrandSerializer(active_brand).data
 
+    @swagger_serializer_method(serializer_or_field=BrandBriefSerializer(many=True))
     def get_brands(self, user):
         active_brand = UserService.get_active_brand(user)
         active_brand_id = active_brand.id if active_brand else None
@@ -143,50 +198,6 @@ class OnboardingSerializer(serializers.Serializer):
     primary_platform = serializers.ChoiceField(choices=PlatformChoices.choices)
     role = serializers.ChoiceField(choices=User.RoleChoices.choices)
     team_size = serializers.ChoiceField(choices=TeamSizeChoices.choices)
-
-
-class ConnectedAccountSerializer(serializers.Serializer):
-    platform = serializers.ChoiceField(choices=SocialPlatformChoices.choices)
-    external_id = serializers.CharField()
-    account_name = serializers.CharField()
-    profile_picture_url = serializers.URLField(allow_null=True, required=False)
-    connected_at = serializers.DateTimeField(source="last_connected_at")
-    is_expired = serializers.SerializerMethodField()
-    expired_at = serializers.DateTimeField(source="token_expires_at", allow_null=True)
-    is_premium = serializers.SerializerMethodField()
-
-    def get_is_expired(self, obj):
-        return obj.get_access_token() is None
-
-    def get_is_premium(self, obj):
-        return bool(obj.metadata.get("is_premium", False))
-
-
-class BrandSerializer(serializers.ModelSerializer):
-    connected_accounts = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Brand
-        fields = [
-            "id",
-            "name",
-            "logo_url",
-            "industry",
-            "posting_frequency",
-            "primary_platform",
-            "team_size",
-            "connected_accounts",
-        ]
-        read_only_fields = ["id", "logo_url", "connected_accounts"]
-
-    def get_connected_accounts(self, brand):
-        accounts = brand.social_accounts.all()
-        return [
-            ConnectedAccountSerializer(account).data
-            for account in sorted(
-                accounts, key=lambda account: account.last_connected_at
-            )
-        ]
 
 
 class OnboardingResponseDataSerializer(serializers.Serializer):
