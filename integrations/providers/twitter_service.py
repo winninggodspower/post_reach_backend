@@ -577,3 +577,47 @@ class TwitterService(SocialAccountService):
 
         if state not in ("succeeded", "completed"):
             raise TimeoutError("Twitter video processing timed out.")
+
+    @classmethod
+    def get_post_metrics(
+        cls, platform_post_id: str, access_token: str
+    ) -> dict[str, Any]:
+        """
+        Fetches live tweet metrics (views/impressions, likes, retweets, replies, bookmarks) from X/Twitter API v2.
+        """
+        views = 0
+        likes = 0
+        comments = 0
+        shares = 0
+        saves = 0
+        raw_data = {}
+
+        try:
+            resp = httpx.get(
+                f"{cls.BASE_URL}/2/tweets/{platform_post_id}",
+                params={"tweet.fields": "public_metrics"},
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=10.0,
+            )
+            if resp.status_code == 200:
+                raw_data = resp.json()
+                metrics = raw_data.get("data", {}).get("public_metrics", {})
+                views = int(metrics.get("impression_count", 0) or 0)
+                likes = int(metrics.get("like_count", 0) or 0)
+                comments = int(metrics.get("reply_count", 0) or 0)
+                shares = int(metrics.get("retweet_count", 0) or 0) + int(
+                    metrics.get("quote_count", 0) or 0
+                )
+                saves = int(metrics.get("bookmark_count", 0) or 0)
+        except Exception:
+            pass
+
+        return {
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "shares": shares,
+            "saves": saves,
+            "raw": raw_data,
+        }
+

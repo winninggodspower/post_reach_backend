@@ -1,6 +1,10 @@
 from django.urls import path, re_path
 
-from .views import ContentPostViewSet
+from .views import (
+    BrandContentAnalyticsView,
+    ContentPostAnalyticsView,
+    ContentPostViewSet,
+)
 
 urlpatterns = [
     path(
@@ -34,6 +38,16 @@ urlpatterns = [
         name="content-post-scheduled",
     ),
     path(
+        "posts/<uuid:post_id>/analytics/",
+        ContentPostAnalyticsView.as_view(),
+        name="content-post-analytics",
+    ),
+    path(
+        "brands/<uuid:brand_id>/analytics/",
+        BrandContentAnalyticsView.as_view(),
+        name="brand-content-analytics",
+    ),
+    path(
         "posts/<uuid:pk>/",
         ContentPostViewSet.as_view(
             {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
@@ -41,3 +55,4 @@ urlpatterns = [
         name="content-post-detail",
     ),
 ]
+

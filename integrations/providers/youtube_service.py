@@ -2,6 +2,7 @@ import os
 import uuid
 from collections.abc import Iterable
 from datetime import UTC
+from typing import Any
 
 import google_auth_oauthlib
 import googleapiclient.discovery
@@ -535,3 +536,39 @@ class YoutubeService(SocialAccountService):
                 "YouTube video upload completed without returning a video ID"
             )
         return video_id
+
+    @classmethod
+    def get_post_metrics(
+        cls, platform_post_id: str, access_token: str
+    ) -> dict[str, Any]:
+        """
+        Fetches live video statistics (views, likes, comments) from YouTube Data API v3.
+        """
+        credentials = Credentials(token=access_token)
+        youtube = googleapiclient.discovery.build(
+            "youtube", "v3", credentials=credentials
+        )
+        response = (
+            youtube.videos()
+            .list(part="statistics", id=platform_post_id)
+            .execute()
+        )
+        items = response.get("items", [])
+        if not items:
+            return {
+                "views": 0,
+                "likes": 0,
+                "comments": 0,
+                "shares": 0,
+                "raw": response,
+            }
+
+        stats = items[0].get("statistics", {})
+        return {
+            "views": int(stats.get("viewCount", 0)),
+            "likes": int(stats.get("likeCount", 0)),
+            "comments": int(stats.get("commentCount", 0)),
+            "shares": 0,
+            "raw": stats,
+        }
+

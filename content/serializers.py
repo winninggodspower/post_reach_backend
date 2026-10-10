@@ -328,3 +328,81 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
             if url:
                 urls.append(url)
         return urls
+
+
+# ==============================================================================
+# Content Analytics Serializers
+# ==============================================================================
+
+
+class PlatformPostMetricSerializer(serializers.Serializer):
+    platform = serializers.CharField()
+    status = serializers.CharField()
+    platform_post_id = serializers.CharField(allow_blank=True)
+    post_url = serializers.CharField(allow_blank=True)
+    views = serializers.IntegerField()
+    reach = serializers.IntegerField()
+    likes = serializers.IntegerField()
+    comments = serializers.IntegerField()
+    shares = serializers.IntegerField()
+    saves = serializers.IntegerField()
+    clicks = serializers.IntegerField()
+    engagement_rate = serializers.FloatField()
+    last_synced_at = serializers.DateTimeField()
+
+
+class PostAnalyticsResponseSerializer(serializers.Serializer):
+    post_id = serializers.UUIDField()
+    brand_id = serializers.UUIDField()
+    caption = serializers.CharField(allow_blank=True)
+    content_type = serializers.CharField()
+    scheduled_at = serializers.DateTimeField(allow_null=True)
+    created_at = serializers.DateTimeField()
+    total_views = serializers.IntegerField()
+    total_reach = serializers.IntegerField()
+    total_likes = serializers.IntegerField()
+    total_comments = serializers.IntegerField()
+    total_shares = serializers.IntegerField()
+    total_saves = serializers.IntegerField()
+    total_clicks = serializers.IntegerField()
+    overall_engagement_rate = serializers.FloatField()
+    platforms = PlatformPostMetricSerializer(many=True)
+
+
+class BrandPlatformBreakdownSerializer(serializers.Serializer):
+    platform = serializers.CharField()
+    views = serializers.IntegerField()
+    likes = serializers.IntegerField()
+    comments = serializers.IntegerField()
+    shares = serializers.IntegerField()
+    posts_count = serializers.IntegerField()
+
+
+class TopPerformingPostSerializer(serializers.Serializer):
+    post_id = serializers.UUIDField()
+    platform = serializers.CharField()
+    caption = serializers.CharField(allow_blank=True)
+    post_url = serializers.CharField(allow_blank=True)
+    views = serializers.IntegerField()
+    likes = serializers.IntegerField()
+    comments = serializers.IntegerField()
+    shares = serializers.IntegerField()
+    engagement_rate = serializers.FloatField()
+
+
+class BrandAnalyticsResponseSerializer(serializers.Serializer):
+    brand_id = serializers.UUIDField()
+    brand_name = serializers.CharField()
+    time_range_days = serializers.IntegerField()
+    total_posts = serializers.IntegerField()
+    total_views = serializers.IntegerField()
+    total_reach = serializers.IntegerField()
+    total_likes = serializers.IntegerField()
+    total_comments = serializers.IntegerField()
+    total_shares = serializers.IntegerField()
+    total_saves = serializers.IntegerField()
+    total_clicks = serializers.IntegerField()
+    average_engagement_rate = serializers.FloatField()
+    platforms = BrandPlatformBreakdownSerializer(many=True)
+    top_posts = TopPerformingPostSerializer(many=True)
+

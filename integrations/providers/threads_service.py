@@ -494,3 +494,51 @@ class ThreadsService(SocialAccountService):
             return ""
 
         return response_data.get("permalink", "")
+
+    @classmethod
+    def get_post_metrics(
+        cls, platform_post_id: str, access_token: str
+    ) -> dict:
+        """
+        Fetches live media statistics (views, likes, replies, reposts, quotes) from Threads Graph API.
+        """
+        views = 0
+        likes = 0
+        comments = 0
+        shares = 0
+        raw_data = {}
+
+        try:
+            insights_data = cls().get(
+                f"/v1.0/{platform_post_id}/insights",
+                params={
+                    "metric": "views,likes,replies,reposts,quotes",
+                    "access_token": access_token,
+                },
+            )
+            raw_data = insights_data or {}
+            for item in raw_data.get("data", []):
+                name = item.get("name")
+                val = item.get("total_value", {}).get("value", 0)
+                if not val and item.get("values"):
+                    val = item["values"][0].get("value", 0)
+                val_int = int(val or 0)
+                if name == "views":
+                    views = val_int
+                elif name == "likes":
+                    likes = val_int
+                elif name == "replies":
+                    comments = val_int
+                elif name in ("reposts", "quotes"):
+                    shares += val_int
+        except Exception:
+            pass
+
+        return {
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "shares": shares,
+            "raw": raw_data,
+        }
+

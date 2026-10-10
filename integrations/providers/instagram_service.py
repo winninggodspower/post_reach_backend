@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
@@ -399,3 +400,73 @@ class InstagramService(SocialAccountService):
             return ""
 
         return response_data.get("permalink", "")
+
+    @classmethod
+    def get_post_metrics(
+        cls, platform_post_id: str, access_token: str
+    ) -> dict[str, Any]:
+        """
+        Fetches live media metrics (views, reach, likes, comments, shares, saves) from Instagram Graph API.
+        """
+        views = 0
+        reach = 0
+        likes = 0
+        comments = 0
+        shares = 0
+        saves = 0
+        raw_insights = {}
+
+        # 1. Fetch public counters from media object
+        try:
+            media_data = cls().get(
+                f"/{platform_post_id}",
+                params={
+                    "fields": "like_count,comments_count",
+                    "access_token": access_token,
+                },
+            )
+            likes = int(media_data.get("like_count", 0) or 0)
+            comments = int(media_data.get("comments_count", 0) or 0)
+        except Exception:
+            media_data = {}
+
+        # 2. Try fetching insights (reach, impressions, shares, saved)
+        try:
+            insights_data = cls().get(
+                f"/{platform_post_id}/insights",
+                params={
+                    "metric": "views,reach,shares,saved,total_interactions",
+                    "access_token": access_token,
+                },
+            )
+            raw_insights = insights_data
+            data_items = insights_data.get("data", [])
+            for item in data_items:
+                name = item.get("name")
+                values = item.get("values", [])
+                val = (
+                    values[0].get("value", 0)
+                    if values
+                    else item.get("total_value", {}).get("value", 0)
+                )
+                if name in ("views", "impressions"):
+                    views = int(val or 0)
+                elif name == "reach":
+                    reach = int(val or 0)
+                elif name == "shares":
+                    shares = int(val or 0)
+                elif name == "saved":
+                    saves = int(val or 0)
+        except Exception:
+            pass
+
+        return {
+            "views": views,
+            "reach": reach,
+            "likes": likes,
+            "comments": comments,
+            "shares": shares,
+            "saves": saves,
+            "raw": {"media": media_data, "insights": raw_insights},
+        }
+

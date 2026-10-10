@@ -8,17 +8,21 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 
 from content.models import ContentPost, PendingUpload
 from content.selectors import ContentPostSelector
 from content.serializers import (
+    BrandAnalyticsResponseSerializer,
     ContentPostCreateSerializer,
     ContentPostResponseSerializer,
     ContentPostUpdateSerializer,
     PhotoPostCreateSerializer,
+    PostAnalyticsResponseSerializer,
     PresignedUrlRequestSerializer,
     TextPostCreateSerializer,
 )
+from content.services.content_analytics_service import ContentAnalyticsService
 from content.services.content_post_service import ContentPostService
 from users.services.brand_service import BrandService
 from users.services.user_service import UserService
@@ -523,3 +527,104 @@ class ContentPostViewSet(viewsets.ViewSet):
 
         response_data = ContentPostResponseSerializer(content_post).data
         return CustomSuccessResponse(response_data, status=status.HTTP_201_CREATED)
+
+
+class ContentPostAnalyticsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Get post engagement analytics",
+        operation_description=(
+            "Returns live/cached engagement metrics (views, reach, likes, comments, shares) "
+            "for a published post across all target platforms. "
+            "Pass `?refresh=true` to force a live sync from social APIs."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                "refresh",
+                openapi.IN_QUERY,
+                description="Force live API refresh bypassing cache",
+                type=openapi.TYPE_BOOLEAN,
+                default=False,
+            )
+        ],
+        responses={
+            200: PostAnalyticsResponseSerializer,
+            403: "Permission denied",
+            404: "Post not found",
+        },
+    )
+    def get(self, request, post_id):
+        try:
+            post = (
+                ContentPost.objects.select_related("brand")
+                .prefetch_related("platform_entries")
+                .get(id=post_id)
+            )
+        except ContentPost.DoesNotExist:
+            return CustomErrorResponse(
+                "Post not found.", status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            BrandService.get_brand_by_id(request.user, post.brand_id)
+        except ValueError:
+            return CustomErrorResponse(
+                "You do not have permission to view analytics for this post.",
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        refresh = (
+            request.query_params.get("refresh", "false").lower() in ("true", "1")
+        )
+
+        analytics = ContentAnalyticsService.get_or_sync_post_analytics(
+            post, force_refresh=refresh
+        )
+        return CustomSuccessResponse(
+            data=PostAnalyticsResponseSerializer(analytics).data,
+            message="Post analytics retrieved successfully.",
+        )
+
+
+class BrandContentAnalyticsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Get brand content analytics overview",
+        operation_description=(
+            "Returns brand-level aggregate KPIs (total views, reach, likes, comments, shares), "
+            "platform breakdown, and top performing posts over a date window (default 30 days)."
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                "days",
+                openapi.IN_QUERY,
+                description="Number of days to analyze (default 30)",
+                type=openapi.TYPE_INTEGER,
+                default=30,
+            )
+        ],
+        responses={
+            200: BrandAnalyticsResponseSerializer,
+            400: "Invalid parameters or brand not found",
+            403: "Permission denied",
+        },
+    )
+    def get(self, request, brand_id):
+        try:
+            brand = BrandService.get_brand_by_id(request.user, brand_id)
+        except ValueError as exc:
+            return CustomErrorResponse(str(exc), status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            days = int(request.query_params.get("days", 30))
+        except (ValueError, TypeError):
+            days = 30
+
+        analytics = ContentAnalyticsService.get_brand_analytics(brand, days=days)
+        return CustomSuccessResponse(
+            data=BrandAnalyticsResponseSerializer(analytics).data,
+            message="Brand content analytics retrieved successfully.",
+        )
+

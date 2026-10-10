@@ -363,3 +363,66 @@ class FacebookService(SocialAccountService):
         if not post_id:
             raise ValueError("Facebook text publish did not return a post ID")
         return {"platform_post_id": post_id}
+
+    @classmethod
+    def get_post_metrics(
+        cls, platform_post_id: str, access_token: str
+    ) -> dict:
+        """
+        Fetches live post statistics (likes, comments, shares, views/impressions) from Facebook Graph API.
+        """
+        views = 0
+        likes = 0
+        comments = 0
+        shares = 0
+        raw_data = {}
+
+        try:
+            post_data = cls().get(
+                f"/{platform_post_id}",
+                params={
+                    "fields": "shares,comments.summary(true),likes.summary(true)",
+                    "access_token": access_token,
+                },
+            )
+            raw_data = post_data or {}
+            shares = int(raw_data.get("shares", {}).get("count", 0) or 0)
+            likes = int(
+                raw_data.get("likes", {})
+                .get("summary", {})
+                .get("total_count", 0)
+                or 0
+            )
+            comments = int(
+                raw_data.get("comments", {})
+                .get("summary", {})
+                .get("total_count", 0)
+                or 0
+            )
+        except Exception:
+            pass
+
+        try:
+            insights_data = cls().get(
+                f"/{platform_post_id}/insights",
+                params={
+                    "metric": "post_impressions",
+                    "access_token": access_token,
+                },
+            )
+            for item in insights_data.get("data", []):
+                if item.get("name") == "post_impressions":
+                    values = item.get("values", [])
+                    if values:
+                        views = int(values[0].get("value", 0) or 0)
+        except Exception:
+            pass
+
+        return {
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "shares": shares,
+            "raw": raw_data,
+        }
+

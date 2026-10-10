@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from content.enums import FileTypeChoice, PostStatus
 from post_reach_backend.models import UUIDTimestampedModel
@@ -164,6 +165,46 @@ class ContentPostPlatform(UUIDTimestampedModel):
 
     def __str__(self):
         return f"{self.content_post} → {self.platform} ({self.status})"
+
+
+class PostPlatformMetric(UUIDTimestampedModel):
+    """
+    Stores the live engagement metrics for a published ContentPostPlatform.
+    Maintains a 1-to-1 relationship with the platform post.
+    """
+
+    content_post_platform = models.OneToOneField(
+        ContentPostPlatform,
+        on_delete=models.CASCADE,
+        related_name="metrics",
+    )
+    views = models.PositiveIntegerField(default=0)
+    reach = models.PositiveIntegerField(default=0)
+    likes = models.PositiveIntegerField(default=0)
+    comments = models.PositiveIntegerField(default=0)
+    shares = models.PositiveIntegerField(default=0)
+    saves = models.PositiveIntegerField(default=0)
+    clicks = models.PositiveIntegerField(default=0)
+    engagement_rate = models.FloatField(default=0.0)
+
+    last_synced_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Timestamp of the most recent sync from the platform API.",
+    )
+    raw_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Platform-specific raw response payload.",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Metrics for {self.content_post_platform}: {self.views} views, {self.likes} likes"
+
 
 
 class PendingUpload(UUIDTimestampedModel):

@@ -474,3 +474,53 @@ class LinkedinService(SocialAccountService):
             raise ValueError("LinkedIn publish did not return a post ID")
 
         return {"platform_post_id": post_id}
+
+    @classmethod
+    def get_post_metrics(
+        cls, platform_post_id: str, access_token: str
+    ) -> dict:
+        """
+        Fetches live post statistics (views/impressions, likes, comments, shares, clicks) from LinkedIn API.
+        """
+        views = 0
+        likes = 0
+        comments = 0
+        shares = 0
+        clicks = 0
+        raw_data = {}
+
+        try:
+            urn = (
+                platform_post_id
+                if platform_post_id.startswith("urn:li:")
+                else f"urn:li:share:{platform_post_id}"
+            )
+            stats_resp = cls().get(
+                "/v2/organizationalEntityShareStatistics",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                },
+                params={"q": "organizationalEntity", "shares[0]": urn},
+            )
+            raw_data = stats_resp or {}
+            elements = raw_data.get("elements", [])
+            if elements:
+                ts = elements[0].get("totalShareStatistics", {})
+                views = int(ts.get("impressionCount", 0) or 0)
+                likes = int(ts.get("likeCount", 0) or 0)
+                comments = int(ts.get("commentCount", 0) or 0)
+                shares = int(ts.get("shareCount", 0) or 0)
+                clicks = int(ts.get("clickCount", 0) or 0)
+        except Exception:
+            pass
+
+        return {
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "shares": shares,
+            "clicks": clicks,
+            "raw": raw_data,
+        }
+

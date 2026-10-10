@@ -365,3 +365,45 @@ class TiktokService(SocialAccountService):
             raise ValueError("TikTok creator info returned unexpected response")
 
         return response["data"]
+
+    @classmethod
+    def get_post_metrics(
+        cls, platform_post_id: str, access_token: str
+    ) -> dict:
+        """
+        Fetches live video statistics (views, likes, comments, shares) from TikTok Display API.
+        """
+        views = 0
+        likes = 0
+        comments = 0
+        shares = 0
+        raw_data = {}
+
+        try:
+            response = cls().post(
+                "/v2/video/query/?fields=id,title,view_count,like_count,comment_count,share_count",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json; charset=UTF-8",
+                },
+                json={"filters": {"video_ids": [platform_post_id]}},
+            )
+            raw_data = response or {}
+            videos = raw_data.get("data", {}).get("videos", [])
+            if videos:
+                v = videos[0]
+                views = int(v.get("view_count", 0) or 0)
+                likes = int(v.get("like_count", 0) or 0)
+                comments = int(v.get("comment_count", 0) or 0)
+                shares = int(v.get("share_count", 0) or 0)
+        except Exception:
+            pass
+
+        return {
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "shares": shares,
+            "raw": raw_data,
+        }
+
