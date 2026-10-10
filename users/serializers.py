@@ -1,13 +1,16 @@
 from drf_yasg.utils import swagger_serializer_method
 from rest_framework import serializers
 
-from social_accounts.enums import PlatformChoices as SocialPlatformChoices
-from social_accounts.models import Brand
-from users.enums import IndustryChoices, PlatformChoices, TeamSizeChoices
+from users.enums import (
+    BrandRoleChoices,
+    IndustryChoices,
+    InvitationStatusChoices,
+    PlatformChoices,
+    TeamSizeChoices,
+)
+from users.models import Brand, BrandInvitation, BrandMember, User
 from users.services.brand_service import BrandService
 from users.services.user_service import UserService
-
-from .models import User
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
@@ -19,7 +22,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
 
 class ConnectedAccountSerializer(serializers.Serializer):
-    platform = serializers.ChoiceField(choices=SocialPlatformChoices.choices)
+    platform = serializers.ChoiceField(choices=PlatformChoices.choices)
     external_id = serializers.CharField()
     account_name = serializers.CharField()
     profile_picture_url = serializers.URLField(allow_null=True, required=False)
@@ -91,9 +94,10 @@ class BrandBriefSerializer(serializers.ModelSerializer):
     @swagger_serializer_method(serializer_or_field=serializers.CharField())
     def get_role(self, brand):
         user = self.context.get("user")
-        if user and brand.user_id == user.id:
-            return "owner"
-        return "collaborator"
+        if not user or brand.user_id == user.id:
+            return BrandRoleChoices.OWNER
+        member = brand.members.filter(user=user).first()
+        return member.role if member else BrandRoleChoices.EDITOR
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -236,3 +240,114 @@ class VerifyOTPResponseSerializer(serializers.Serializer):
 
 class SetActiveBrandSerializer(serializers.Serializer):
     brand_id = serializers.UUIDField(required=True)
+
+
+class BrandMemberUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "handle",
+            "profile_picture_url",
+        ]
+        read_only_fields = fields
+
+
+class BrandMemberSerializer(serializers.ModelSerializer):
+    user = BrandMemberUserSerializer(read_only=True)
+
+    class Meta:
+        model = BrandMember
+        fields = [
+            "id",
+            "brand_id",
+            "user",
+            "role",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "brand_id", "user", "created_at", "updated_at"]
+
+
+class BrandInvitationSerializer(serializers.ModelSerializer):
+    invited_by_email = serializers.EmailField(
+        source="invited_by.email", read_only=True
+    )
+    invited_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BrandInvitation
+        fields = [
+            "id",
+            "brand_id",
+            "email",
+            "role",
+            "status",
+            "invited_by_email",
+            "invited_by_name",
+            "expires_at",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    @swagger_serializer_method(serializer_or_field=serializers.CharField())
+    def get_invited_by_name(self, obj):
+        return (
+            obj.invited_by.get_full_name()
+            or obj.invited_by.handle
+            or obj.invited_by.email
+        )
+
+
+class SendInvitationSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    role = serializers.ChoiceField(
+        choices=[
+            (BrandRoleChoices.ADMIN, "Admin"),
+            (BrandRoleChoices.EDITOR, "Editor"),
+            (BrandRoleChoices.VIEWER, "Viewer"),
+        ],
+        default=BrandRoleChoices.EDITOR,
+    )
+
+
+class UpdateMemberRoleSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(
+        choices=[
+            (BrandRoleChoices.ADMIN, "Admin"),
+            (BrandRoleChoices.EDITOR, "Editor"),
+            (BrandRoleChoices.VIEWER, "Viewer"),
+        ],
+        required=True,
+    )
+
+
+class InvitationDetailsSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    brand_id = serializers.UUIDField()
+    brand_name = serializers.CharField()
+    brand_logo_url = serializers.URLField(allow_null=True)
+    email = serializers.EmailField()
+    role = serializers.CharField()
+    inviter_name = serializers.CharField()
+    inviter_email = serializers.EmailField()
+    expires_at = serializers.DateTimeField()
+    is_expired = serializers.BooleanField()
+    user_exists = serializers.BooleanField()
+
+
+class RegisterInvitationSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+    first_name = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    last_name = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    handle = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, default=None
+    )
+

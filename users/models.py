@@ -4,7 +4,13 @@ from django.db import models
 from django.db.models import Q, UniqueConstraint
 
 from post_reach_backend.models import UUIDModel, UUIDTimestampedModel
-from users.enums import IndustryChoices, PlatformChoices, TeamSizeChoices
+from users.enums import (
+    BrandRoleChoices,
+    IndustryChoices,
+    InvitationStatusChoices,
+    PlatformChoices,
+    TeamSizeChoices,
+)
 from users.managers import UserManager
 
 # Create your models here.
@@ -89,3 +95,67 @@ class Brand(UUIDTimestampedModel):
 
     def __str__(self):
         return f"{self.name} ({self.user.email})"
+
+
+class BrandMember(UUIDTimestampedModel):
+    brand = models.ForeignKey(
+        Brand, on_delete=models.CASCADE, related_name="members"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="brand_memberships",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=BrandRoleChoices.choices,
+        default=BrandRoleChoices.EDITOR,
+    )
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["brand", "user"],
+                name="unique_brand_member",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.brand.name} ({self.role})"
+
+
+class BrandInvitation(UUIDTimestampedModel):
+    brand = models.ForeignKey(
+        Brand, on_delete=models.CASCADE, related_name="invitations"
+    )
+    email = models.EmailField()
+    role = models.CharField(
+        max_length=20,
+        choices=BrandRoleChoices.choices,
+        default=BrandRoleChoices.EDITOR,
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sent_brand_invitations",
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    status = models.CharField(
+        max_length=20,
+        choices=InvitationStatusChoices.choices,
+        default=InvitationStatusChoices.PENDING,
+    )
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["brand", "email"],
+                condition=Q(status=InvitationStatusChoices.PENDING),
+                name="unique_pending_invitation_per_brand",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.email} invited to {self.brand.name} as {self.role} ({self.status})"
+

@@ -9,6 +9,16 @@ from .views.auth_view import (
     SignInView,
 )
 from .views.brand_view import BrandViewSet, SetActiveBrandView
+from .views.invitation_view import (
+    AcceptInvitationView,
+    BrandInvitationDetailView,
+    BrandInvitationView,
+    BrandMemberDetailView,
+    BrandMemberListView,
+    InvitationDetailsView,
+    RegisterAndAcceptInvitationView,
+    ResendInvitationView,
+)
 from .views.user_view import CurrentUserView, OnboardingView
 
 router = DefaultRouter()
@@ -23,5 +33,48 @@ urlpatterns = [
     path("onboarding/", OnboardingView.as_view(), name="onboarding"),
     path("me/", CurrentUserView.as_view(), name="current-user"),
     path("me/active-brand/", SetActiveBrandView.as_view(), name="set-active-brand"),
+    # Brand invitations & members
+    path(
+        "brands/<uuid:brand_id>/invitations/",
+        BrandInvitationView.as_view(),
+        name="brand-invitations",
+    ),
+    path(
+        "brands/<uuid:brand_id>/invitations/<uuid:invitation_id>/",
+        BrandInvitationDetailView.as_view(),
+        name="brand-invitation-detail",
+    ),
+    path(
+        "brands/<uuid:brand_id>/invitations/<uuid:invitation_id>/resend/",
+        ResendInvitationView.as_view(),
+        name="brand-invitation-resend",
+    ),
+    path(
+        "brands/<uuid:brand_id>/members/",
+        BrandMemberListView.as_view(),
+        name="brand-members",
+    ),
+    path(
+        "brands/<uuid:brand_id>/members/<uuid:member_id>/",
+        BrandMemberDetailView.as_view(),
+        name="brand-member-detail",
+    ),
+    # Public invitation token actions
+    path(
+        "invitations/<str:token>/",
+        InvitationDetailsView.as_view(),
+        name="invitation-details",
+    ),
+    path(
+        "invitations/<str:token>/accept/",
+        AcceptInvitationView.as_view(),
+        name="invitation-accept",
+    ),
+    path(
+        "invitations/<str:token>/register/",
+        RegisterAndAcceptInvitationView.as_view(),
+        name="invitation-register-accept",
+    ),
     path("", include(router.urls)),
 ]
+

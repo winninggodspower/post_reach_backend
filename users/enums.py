@@ -27,3 +27,18 @@ class TeamSizeChoices(models.TextChoices):
     SIX_TO_TWENTY = "6-20", "6-20"
     TWENTY_ONE_TO_FIFTY = "21-50", "21-50"
     FIFTY_ONE_PLUS = "51+", "51+"
+
+
+class BrandRoleChoices(models.TextChoices):
+    OWNER = "owner", "Owner"
+    ADMIN = "admin", "Admin"
+    EDITOR = "editor", "Editor"
+    VIEWER = "viewer", "Viewer"
+
+
+class InvitationStatusChoices(models.TextChoices):
+    PENDING = "pending", "Pending"
+    ACCEPTED = "accepted", "Accepted"
+    REVOKED = "revoked", "Revoked"
+    EXPIRED = "expired", "Expired"
+

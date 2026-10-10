@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Join {{ brand_name }} on PostGlee</title>
+    <!-- Google Fonts: Sora (Headings) & Inter (Body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafb;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #374151;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .wrapper {
+            width: 100%;
+            background-color: #f9fafb;
+            padding: 36px 12px;
+        }
+        .container {
+            max-width: 540px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            padding: 32px 32px 24px;
+            border-bottom: 1px solid #f3f4f6;
+            text-align: center;
+            background-color: #ffffff;
+        }
+        .logo-img {
+            height: 38px;
+            max-height: 42px;
+            width: auto;
+            display: inline-block;
+            border: 0;
+            outline: none;
+            text-decoration: none;
+        }
+        .logo-fallback {
+            font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #fb923c;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        .content {
+            padding: 32px;
+        }
+        .greeting {
+            font-size: 16px;
+            color: #374151;
+            margin: 0 0 16px 0;
+            line-height: 1.5;
+        }
+        .intro-text {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #4b5563;
+            margin: 0 0 24px 0;
+        }
+        .invite-card {
+            background-color: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 24px 0;
+            text-align: center;
+        }
+        .brand-name {
+            font-family: 'Sora', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 0 0 6px 0;
+        }
+        .role-badge {
+            display: inline-block;
+            background-color: #ea580c;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            margin-top: 4px;
+        }
+        .btn-container {
+            text-align: center;
+            margin: 32px 0 24px 0;
+        }
+        .btn-primary {
+            display: inline-block;
+            background-color: #f87c1c;
+            color: #ffffff !important;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(248, 124, 28, 0.25);
+        }
+        .btn-primary:hover {
+            background-color: #ea580c;
+        }
+        .direct-link {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.5;
+            word-break: break-all;
+            margin-top: 16px;
+        }
+        .info-card {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin: 24px 0 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #6b7280;
+        }
+        .footer {
+            padding: 28px 32px;
+            background-color: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.6;
+            text-align: center;
+        }
+        .footer p {
+            margin: 0 0 8px 0;
+        }
+        .footer p:last-child {
+            margin-bottom: 0;
+        }
+        .footer a {
+            color: #f87c1c;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 480px) {
+            .content {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <!-- Header with PostGlee Logo -->
+            <div class="header">
+                <a href="{{ home_url|default:'https://postglee.com' }}" target="_blank" style="text-decoration: none; display: inline-block;">
+                    <img src="https://postglee.com/postglee-logo.png" alt="PostGlee" class="logo-img" width="148" height="38" style="display: block; border: 0; outline: none; margin: 0 auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                    <span class="logo-fallback" style="display: none;">PostGlee</span>
+                </a>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+                <p class="greeting">Hello,</p>
+
+                <p class="intro-text">
+                    <strong>{{ inviter_name }}</strong> ({{ inviter_email }}) has invited you to join and collaborate on <strong>{{ brand_name }}</strong> on PostGlee.
+                </p>
+
+                <!-- Brand & Role Details -->
+                <div class="invite-card">
+                    <div class="brand-name">{{ brand_name }}</div>
+                    <div>Your assigned role:</div>
+                    <span class="role-badge">{{ role_label }}</span>
+                </div>
+
+                <!-- Call to Action Button -->
+                <div class="btn-container">
+                    <a href="{{ accept_url }}" target="_blank" class="btn-primary">
+                        Accept Invitation
+                    </a>
+                    <div class="direct-link">
+                        Or paste this link into your browser:<br>
+                        <a href="{{ accept_url }}" style="color: #f87c1c;">{{ accept_url }}</a>
+                    </div>
+                </div>
+
+                <!-- Expiration & Guidance -->
+                <div class="info-card">
+                    <p style="margin: 0 0 6px 0;">⏳ This invitation will expire in <strong>7 days</strong>.</p>
+                    <p style="margin: 0;">If you already have a PostGlee account, sign in to accept. If you're new, you'll be able to create your account and join immediately.</p>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <p>Best regards,<br><strong>The PostGlee Team</strong></p>
+                <p>
+                    Need help? <a href="https://postglee.com/support" target="_blank">Visit our Help Center</a> or reply to this email.
+                </p>
+                <p>&copy; {% now "Y" %} PostGlee. All rights reserved. &bull; Social media management made effortless.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

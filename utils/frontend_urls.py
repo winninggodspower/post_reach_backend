@@ -48,3 +48,9 @@ class FrontendUrls:
     def password_reset(cls, token: str) -> str:
         """URL to password reset page with token."""
         return f"{cls.base()}/reset-password?token={token}"
+
+    @classmethod
+    def invitation_accept(cls, token: str) -> str:
+        """URL to invitation acceptance page with token."""
+        return f"{cls.base()}/invitations/accept?token={token}"
+

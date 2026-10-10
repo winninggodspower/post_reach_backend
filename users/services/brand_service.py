@@ -1,4 +1,8 @@
-from users.models import Brand, User
+from django.db import transaction
+from django.db.models import Q
+
+from users.enums import BrandRoleChoices
+from users.models import Brand, BrandMember, User
 
 
 class BrandService:
@@ -16,7 +20,13 @@ class BrandService:
 
     @staticmethod
     def get_brand_by_id(user: User, brand_id) -> Brand:
-        brand = Brand.objects.filter(id=brand_id, user=user).first()
+        brand = (
+            Brand.objects.filter(
+                Q(id=brand_id) & (Q(user=user) | Q(members__user=user))
+            )
+            .distinct()
+            .first()
+        )
         if not brand:
             raise ValueError(
                 "Brand not found or you don't have permission to access it."
@@ -27,19 +37,27 @@ class BrandService:
     def get_accessible_brands(user: User):
         """
         Return all brands the user has access to (owned or collaborated).
-        Currently returns all brands owned by the user.
         """
-        return user.brands.all()
+        return (
+            Brand.objects.filter(Q(user=user) | Q(members__user=user))
+            .distinct()
+            .order_by("-is_default", "name")
+        )
 
     @staticmethod
     def create_brand(user: User, validated_data: dict) -> Brand:
         # Prevent users from creating a second default brand
         if validated_data.get("is_default", False):
-            # For simplicity, we just force it to False here if a default already exists,
-            # or handle it differently. But we should just force it to False for additional brands.
             validated_data["is_default"] = False
 
         if not Brand.objects.filter(user=user).exists():
             validated_data["is_default"] = True
 
-        return Brand.objects.create(user=user, **validated_data)
+        with transaction.atomic():
+            brand = Brand.objects.create(user=user, **validated_data)
+            BrandMember.objects.create(
+                brand=brand,
+                user=user,
+                role=BrandRoleChoices.OWNER,
+            )
+            return brand
