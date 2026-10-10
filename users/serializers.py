@@ -3,6 +3,8 @@ from rest_framework import serializers
 from social_accounts.enums import PlatformChoices as SocialPlatformChoices
 from social_accounts.models import Brand
 from users.enums import IndustryChoices, PlatformChoices, TeamSizeChoices
+from users.services.brand_service import BrandService
+from users.services.user_service import UserService
 
 from .models import User
 
@@ -15,9 +17,37 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         fields = ["email", "first_name", "last_name", "handle", "password"]
 
 
+class BrandBriefSerializer(serializers.ModelSerializer):
+    is_active = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Brand
+        fields = [
+            "id",
+            "name",
+            "logo_url",
+            "is_default",
+            "is_active",
+            "role",
+        ]
+        read_only_fields = fields
+
+    def get_is_active(self, brand):
+        active_brand_id = self.context.get("active_brand_id")
+        return bool(active_brand_id and brand.id == active_brand_id)
+
+    def get_role(self, brand):
+        user = self.context.get("user")
+        if user and brand.user_id == user.id:
+            return "owner"
+        return "collaborator"
+
+
 class UserSerializer(serializers.ModelSerializer):
     has_completed_onboarding = serializers.SerializerMethodField()
     brand = serializers.SerializerMethodField()
+    brands = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -31,11 +61,12 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "has_completed_onboarding",
             "brand",
+            "brands",
         ]
         read_only_fields = fields
 
     def get_has_completed_onboarding(self, user):
-        active_brand = self._get_active_brand(user)
+        active_brand = UserService.get_active_brand(user)
         if not active_brand:
             return False
 
@@ -48,14 +79,19 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         return all(required_values)
 
-    def _get_active_brand(self, user):
-        from users.services import BrandService
-
-        return user.active_brand or BrandService.get_default_brand(user)
-
     def get_brand(self, user):
-        active_brand = self._get_active_brand(user)
+        active_brand = UserService.get_active_brand(user)
         return BrandSerializer(active_brand).data
+
+    def get_brands(self, user):
+        active_brand = UserService.get_active_brand(user)
+        active_brand_id = active_brand.id if active_brand else None
+        accessible_brands = BrandService.get_accessible_brands(user)
+        return BrandBriefSerializer(
+            accessible_brands,
+            many=True,
+            context={"active_brand_id": active_brand_id, "user": user},
+        ).data
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

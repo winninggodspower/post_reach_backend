@@ -24,6 +24,14 @@ class BrandService:
         return brand
 
     @staticmethod
+    def get_accessible_brands(user: User):
+        """
+        Return all brands the user has access to (owned or collaborated).
+        Currently returns all brands owned by the user.
+        """
+        return user.brands.all()
+
+    @staticmethod
     def create_brand(user: User, validated_data: dict) -> Brand:
         # Prevent users from creating a second default brand
         if validated_data.get("is_default", False):
