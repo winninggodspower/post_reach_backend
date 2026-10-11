@@ -273,9 +273,7 @@ class BrandMemberSerializer(serializers.ModelSerializer):
 
 
 class BrandInvitationSerializer(serializers.ModelSerializer):
-    invited_by_email = serializers.EmailField(
-        source="invited_by.email", read_only=True
-    )
+    invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True)
     invited_by_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -341,13 +339,8 @@ class InvitationDetailsSerializer(serializers.Serializer):
 
 class RegisterInvitationSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
-    first_name = serializers.CharField(
-        required=False, allow_blank=True, default=""
-    )
-    last_name = serializers.CharField(
-        required=False, allow_blank=True, default=""
-    )
+    first_name = serializers.CharField(required=False, allow_blank=True, default="")
+    last_name = serializers.CharField(required=False, allow_blank=True, default="")
     handle = serializers.CharField(
         required=False, allow_blank=True, allow_null=True, default=None
     )
-

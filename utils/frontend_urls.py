@@ -53,4 +53,3 @@ class FrontendUrls:
     def invitation_accept(cls, token: str) -> str:
         """URL to invitation acceptance page with token."""
         return f"{cls.base()}/invitations/accept?token={token}"
-

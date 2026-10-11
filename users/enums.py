@@ -41,4 +41,3 @@ class InvitationStatusChoices(models.TextChoices):
     ACCEPTED = "accepted", "Accepted"
     REVOKED = "revoked", "Revoked"
     EXPIRED = "expired", "Expired"
-
