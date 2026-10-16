@@ -235,6 +235,9 @@ class BrandInvitationService:
         if not invitation:
             raise ValueError("Invitation not found.")
 
+        if invitation.status == InvitationStatusChoices.REVOKED:
+            return invitation
+
         if invitation.status != InvitationStatusChoices.PENDING:
             raise ValueError(
                 f"Cannot revoke an invitation that is already {invitation.status.lower()}."
@@ -288,7 +291,7 @@ class BrandInvitationService:
 
     @classmethod
     def list_brand_invitations(
-        cls, *, user: User, brand_id: UUID | str
+        cls, *, user: User, brand_id: UUID | str, status: str | None = None
     ) -> QuerySet[BrandInvitation]:
         brand = BrandService.get_brand_by_id(user, brand_id)
         if not cls.can_manage_members(user, brand):
@@ -296,9 +299,19 @@ class BrandInvitationService:
                 "You do not have permission to view invitations for this brand."
             )
 
+        qs = BrandInvitation.objects.filter(brand=brand)
+        if status and status.lower() != "all":
+            qs = qs.filter(status=status.lower())
+        elif not status:
+            qs = qs.exclude(
+                status__in=[
+                    InvitationStatusChoices.REVOKED,
+                    InvitationStatusChoices.ACCEPTED,
+                ]
+            )
+
         return (
-            BrandInvitation.objects.filter(brand=brand)
-            .select_related("invited_by")
+            qs.select_related("invited_by")
             .order_by("-created_at")
         )
 

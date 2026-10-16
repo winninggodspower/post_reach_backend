@@ -299,11 +299,27 @@ class TestBrandInvitationAPIEndpoints:
 
         # Revoke
         revoke_url = reverse(
-            "brand-invitation-detail",
+            "brand-invitation-revoke",
             kwargs={"brand_id": brand.id, "invitation_id": invitation.id},
         )
         del_response = api_client.delete(revoke_url)
         assert del_response.status_code == status.HTTP_200_OK
+
+        # Revoking again should be idempotent and succeed
+        del_again_response = api_client.delete(revoke_url)
+        assert del_again_response.status_code == status.HTTP_200_OK
+
+        # Listing invitations should not include the revoked invitation by default
+        list_url = reverse("brand-invitations", kwargs={"brand_id": brand.id})
+        list_res = api_client.get(list_url)
+        assert list_res.status_code == status.HTTP_200_OK
+        assert len(list_res.data["data"]) == 0
+
+        # Listing invitations with ?status=all should include the revoked invitation
+        list_all_res = api_client.get(f"{list_url}?status=all")
+        assert list_all_res.status_code == status.HTTP_200_OK
+        assert len(list_all_res.data["data"]) == 1
+        assert list_all_res.data["data"][0]["status"] == InvitationStatusChoices.REVOKED
 
     @patch("utils.notification_service.NotificationService.send_email")
     def test_public_invitation_details_endpoint(

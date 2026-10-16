@@ -11,13 +11,13 @@ from .views.auth_view import (
 from .views.brand_view import BrandViewSet, SetActiveBrandView
 from .views.invitation_view import (
     AcceptInvitationView,
-    BrandInvitationDetailView,
     BrandInvitationView,
     BrandMemberDetailView,
     BrandMemberListView,
     InvitationDetailsView,
     RegisterAndAcceptInvitationView,
     ResendInvitationView,
+    RevokeInvitationView,
 )
 from .views.user_view import CurrentUserView, OnboardingView
 
@@ -41,8 +41,8 @@ urlpatterns = [
     ),
     path(
         "brands/<uuid:brand_id>/invitations/<uuid:invitation_id>/",
-        BrandInvitationDetailView.as_view(),
-        name="brand-invitation-detail",
+        RevokeInvitationView.as_view(),
+        name="brand-invitation-revoke",
     ),
     path(
         "brands/<uuid:brand_id>/invitations/<uuid:invitation_id>/resend/",

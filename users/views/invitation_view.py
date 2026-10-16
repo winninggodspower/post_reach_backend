@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -26,7 +27,16 @@ class BrandInvitationView(APIView):
 
     @swagger_auto_schema(
         operation_summary="List brand invitations",
-        operation_description="Get all pending, accepted, or revoked invitations for a brand.",
+        operation_description="Get invitations for a brand. Excludes revoked and accepted invitations by default. Filter by passing ?status=<pending|expired|revoked|accepted|all>.",
+        manual_parameters=[
+            openapi.Parameter(
+                "status",
+                openapi.IN_QUERY,
+                description="Filter by invitation status (pending, expired, revoked, accepted, all).",
+                type=openapi.TYPE_STRING,
+                required=False,
+            )
+        ],
         responses={
             200: BrandInvitationSerializer(many=True),
             400: "Permission denied or brand not found",
@@ -35,8 +45,9 @@ class BrandInvitationView(APIView):
     )
     def get(self, request, brand_id):
         try:
+            status_param = request.query_params.get("status")
             invitations = BrandInvitationService.list_brand_invitations(
-                user=request.user, brand_id=brand_id
+                user=request.user, brand_id=brand_id, status=status_param
             )
             return CustomSuccessResponse(
                 data=BrandInvitationSerializer(invitations, many=True).data,
@@ -83,7 +94,7 @@ class BrandInvitationView(APIView):
             )
 
 
-class BrandInvitationDetailView(APIView):
+class RevokeInvitationView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
