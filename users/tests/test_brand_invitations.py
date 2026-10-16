@@ -420,3 +420,68 @@ class TestBrandInvitationAPIEndpoints:
         del_response = api_client.delete(member_detail_url)
         assert del_response.status_code == status.HTTP_200_OK
         assert not BrandMember.objects.filter(id=member.id).exists()
+
+    @patch("utils.notification_service.NotificationService.send_email")
+    def test_user_received_invitations_flow(
+        self, mock_email, api_client, brand_owner, brand, existing_user
+    ):
+        # 1. Send invitation to existing user
+        invitation = BrandInvitationService.send_invitation(
+            inviter=brand_owner,
+            brand_id=brand.id,
+            email=existing_user.email,
+            role=BrandRoleChoices.EDITOR,
+        )
+
+        # Authenticate as invited recipient
+        api_client.force_authenticate(user=existing_user)
+
+        # 2. Recipient views their pending invitations in dashboard
+        received_url = reverse("user-received-invitations")
+        list_res = api_client.get(received_url)
+        assert list_res.status_code == status.HTTP_200_OK
+        invites = list_res.data["data"]
+        assert len(invites) == 1
+        assert invites[0]["id"] == str(invitation.id)
+        assert invites[0]["brand_name"] == brand.name
+        assert invites[0]["role"] == BrandRoleChoices.EDITOR
+        assert invites[0]["status"] == InvitationStatusChoices.PENDING
+
+        # 3. Recipient accepts the invitation
+        accept_url = reverse(
+            "user-received-invitation-accept",
+            kwargs={"invitation_id": invitation.id},
+        )
+        accept_res = api_client.post(accept_url)
+        assert accept_res.status_code == status.HTTP_200_OK
+        assert accept_res.data["data"]["role"] == BrandRoleChoices.EDITOR
+        assert BrandMember.objects.filter(brand=brand, user=existing_user).exists()
+
+        # 4. Received invitations list should now be empty (it was accepted)
+        list_res_after = api_client.get(received_url)
+        assert list_res_after.status_code == status.HTTP_200_OK
+        assert len(list_res_after.data["data"]) == 0
+
+    @patch("utils.notification_service.NotificationService.send_email")
+    def test_user_decline_received_invitation(
+        self, mock_email, api_client, brand_owner, brand, existing_user
+    ):
+        invitation = BrandInvitationService.send_invitation(
+            inviter=brand_owner,
+            brand_id=brand.id,
+            email=existing_user.email,
+            role=BrandRoleChoices.VIEWER,
+        )
+
+        api_client.force_authenticate(user=existing_user)
+
+        decline_url = reverse(
+            "user-received-invitation-decline",
+            kwargs={"invitation_id": invitation.id},
+        )
+        decline_res = api_client.post(decline_url)
+        assert decline_res.status_code == status.HTTP_200_OK
+
+        invitation.refresh_from_db()
+        assert invitation.status == InvitationStatusChoices.DECLINED
+        assert not BrandMember.objects.filter(brand=brand, user=existing_user).exists()

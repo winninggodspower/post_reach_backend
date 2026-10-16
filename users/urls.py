@@ -18,6 +18,9 @@ from .views.invitation_view import (
     RegisterAndAcceptInvitationView,
     ResendInvitationView,
     RevokeInvitationView,
+    UserReceivedInvitationAcceptView,
+    UserReceivedInvitationDeclineView,
+    UserReceivedInvitationListView,
 )
 from .views.user_view import CurrentUserView, OnboardingView
 
@@ -33,6 +36,21 @@ urlpatterns = [
     path("onboarding/", OnboardingView.as_view(), name="onboarding"),
     path("me/", CurrentUserView.as_view(), name="current-user"),
     path("me/active-brand/", SetActiveBrandView.as_view(), name="set-active-brand"),
+    path(
+        "me/invitations/",
+        UserReceivedInvitationListView.as_view(),
+        name="user-received-invitations",
+    ),
+    path(
+        "me/invitations/<uuid:invitation_id>/accept/",
+        UserReceivedInvitationAcceptView.as_view(),
+        name="user-received-invitation-accept",
+    ),
+    path(
+        "me/invitations/<uuid:invitation_id>/decline/",
+        UserReceivedInvitationDeclineView.as_view(),
+        name="user-received-invitation-decline",
+    ),
     # Brand invitations & members
     path(
         "brands/<uuid:brand_id>/invitations/",

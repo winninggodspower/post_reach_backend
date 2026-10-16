@@ -14,6 +14,7 @@ from users.serializers import (
     RegisterInvitationSerializer,
     SendInvitationSerializer,
     UpdateMemberRoleSerializer,
+    UserReceivedInvitationSerializer,
 )
 from users.services.invitation_service import BrandInvitationService
 from users.views.utils import get_auth_response_data
@@ -346,6 +347,94 @@ class RegisterAndAcceptInvitationView(APIView):
         except ValueError as exc:
             return CustomErrorResponse(
                 message="Registration failed.",
+                errors={"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class UserReceivedInvitationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="List received brand invitations",
+        operation_description="Get all pending invitations sent to the currently signed-in user's email address.",
+        manual_parameters=[
+            openapi.Parameter(
+                "status",
+                openapi.IN_QUERY,
+                description="Filter by invitation status (pending, accepted, declined, expired, all). Defaults to pending.",
+                type=openapi.TYPE_STRING,
+                required=False,
+            )
+        ],
+        responses={
+            200: UserReceivedInvitationSerializer(many=True),
+            401: "Unauthorized",
+        },
+    )
+    def get(self, request):
+        status_param = request.query_params.get("status")
+        invitations = BrandInvitationService.list_received_invitations(
+            user=request.user, status=status_param
+        )
+        return CustomSuccessResponse(
+            data=UserReceivedInvitationSerializer(invitations, many=True).data,
+            message="Received invitations retrieved successfully.",
+        )
+
+
+class UserReceivedInvitationAcceptView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Accept received brand invitation",
+        operation_description="Accept a pending invitation sent to the currently signed-in user's email address.",
+        responses={
+            200: BrandMemberSerializer,
+            400: "Invalid invitation, expired, or email mismatch",
+            401: "Unauthorized",
+        },
+    )
+    def post(self, request, invitation_id):
+        try:
+            member, brand = BrandInvitationService.accept_received_invitation(
+                user=request.user, invitation_id=invitation_id
+            )
+            return CustomSuccessResponse(
+                data=BrandMemberSerializer(member).data,
+                message=f"You have joined {brand.name} successfully.",
+            )
+        except ValueError as exc:
+            return CustomErrorResponse(
+                message="Failed to accept invitation.",
+                errors={"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class UserReceivedInvitationDeclineView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Decline received brand invitation",
+        operation_description="Decline a pending invitation sent to the currently signed-in user's email address.",
+        responses={
+            200: "Invitation declined successfully",
+            400: "Invalid invitation or permission denied",
+            401: "Unauthorized",
+        },
+    )
+    def post(self, request, invitation_id):
+        try:
+            BrandInvitationService.decline_received_invitation(
+                user=request.user, invitation_id=invitation_id
+            )
+            return CustomSuccessResponse(
+                message="Invitation declined.",
+            )
+        except ValueError as exc:
+            return CustomErrorResponse(
+                message="Failed to decline invitation.",
                 errors={"detail": str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )

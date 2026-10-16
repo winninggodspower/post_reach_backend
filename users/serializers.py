@@ -300,6 +300,38 @@ class BrandInvitationSerializer(serializers.ModelSerializer):
         )
 
 
+class UserReceivedInvitationSerializer(serializers.ModelSerializer):
+    brand_name = serializers.CharField(source="brand.name", read_only=True)
+    brand_logo_url = serializers.CharField(source="brand.logo_url", read_only=True)
+    invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True)
+    invited_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BrandInvitation
+        fields = [
+            "id",
+            "brand_id",
+            "brand_name",
+            "brand_logo_url",
+            "email",
+            "role",
+            "status",
+            "invited_by_email",
+            "invited_by_name",
+            "expires_at",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    @swagger_serializer_method(serializer_or_field=serializers.CharField())
+    def get_invited_by_name(self, obj):
+        return (
+            obj.invited_by.get_full_name()
+            or obj.invited_by.handle
+            or obj.invited_by.email
+        )
+
+
 class SendInvitationSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     role = serializers.ChoiceField(
