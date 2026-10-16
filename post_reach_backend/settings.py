@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "analytics.apps.AnalyticsConfig",
     # Third-party apps
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "querycount",
     "drf_yasg",
