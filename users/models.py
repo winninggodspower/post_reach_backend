@@ -98,9 +98,7 @@ class Brand(UUIDTimestampedModel):
 
 
 class BrandMember(UUIDTimestampedModel):
-    brand = models.ForeignKey(
-        Brand, on_delete=models.CASCADE, related_name="members"
-    )
+    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name="members")
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -157,5 +155,6 @@ class BrandInvitation(UUIDTimestampedModel):
         ]
 
     def __str__(self):
-        return f"{self.email} invited to {self.brand.name} as {self.role} ({self.status})"
-
+        return (
+            f"{self.email} invited to {self.brand.name} as {self.role} ({self.status})"
+        )

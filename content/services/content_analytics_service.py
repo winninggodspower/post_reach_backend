@@ -204,17 +204,13 @@ class ContentAnalyticsService:
 
     @classmethod
     @log_exceptions()
-    def get_brand_analytics(
-        cls, brand: Brand, days: int = 30
-    ) -> dict[str, Any]:
+    def get_brand_analytics(cls, brand: Brand, days: int = 30) -> dict[str, Any]:
         """
         Calculates brand-level content engagement KPIs and top performing posts over a given window.
         """
         since_date = timezone.now() - timedelta(days=days)
 
-        posts_qs = ContentPost.objects.filter(
-            brand=brand, created_at__gte=since_date
-        )
+        posts_qs = ContentPost.objects.filter(brand=brand, created_at__gte=since_date)
         total_posts = posts_qs.count()
 
         # Aggregate metrics across all platform posts of this brand
@@ -263,12 +259,9 @@ class ContentAnalyticsService:
             platform_breakdown[p]["posts_count"] += 1
 
         # Top 5 performing posts (ordered by views, then likes)
-        top_platform_metrics = (
-            metrics_qs.select_related(
-                "content_post_platform", "content_post_platform__content_post"
-            )
-            .order_by("-views", "-likes")[:5]
-        )
+        top_platform_metrics = metrics_qs.select_related(
+            "content_post_platform", "content_post_platform__content_post"
+        ).order_by("-views", "-likes")[:5]
 
         top_posts = [
             {

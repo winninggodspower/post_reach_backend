@@ -65,7 +65,9 @@ class TestBrandInvitationService:
         assert invitation.expires_at > timezone.now() + timedelta(days=6)
         mock_email.assert_called_once()
 
-    def test_cannot_invite_owner_or_existing_member(self, brand_owner, brand, existing_user):
+    def test_cannot_invite_owner_or_existing_member(
+        self, brand_owner, brand, existing_user
+    ):
         # Cannot invite the owner
         with pytest.raises(ValueError, match="already the owner"):
             BrandInvitationService.send_invitation(
@@ -75,7 +77,9 @@ class TestBrandInvitationService:
             )
 
         # Cannot invite existing member
-        BrandMember.objects.create(brand=brand, user=existing_user, role=BrandRoleChoices.EDITOR)
+        BrandMember.objects.create(
+            brand=brand, user=existing_user, role=BrandRoleChoices.EDITOR
+        )
         with pytest.raises(ValueError, match="already a member"):
             BrandInvitationService.send_invitation(
                 inviter=brand_owner,
@@ -84,7 +88,9 @@ class TestBrandInvitationService:
             )
 
     def test_unauthorized_member_cannot_invite(self, brand_owner, brand, existing_user):
-        BrandMember.objects.create(brand=brand, user=existing_user, role=BrandRoleChoices.VIEWER)
+        BrandMember.objects.create(
+            brand=brand, user=existing_user, role=BrandRoleChoices.VIEWER
+        )
         with pytest.raises(ValueError, match="do not have permission"):
             BrandInvitationService.send_invitation(
                 inviter=existing_user,
@@ -93,7 +99,9 @@ class TestBrandInvitationService:
             )
 
     @patch("utils.notification_service.NotificationService.send_email")
-    def test_reinviting_pending_email_updates_token(self, mock_email, brand_owner, brand):
+    def test_reinviting_pending_email_updates_token(
+        self, mock_email, brand_owner, brand
+    ):
         invite1 = BrandInvitationService.send_invitation(
             inviter=brand_owner,
             brand_id=brand.id,
@@ -112,10 +120,17 @@ class TestBrandInvitationService:
         assert invite1.id == invite2.id
         assert invite2.role == BrandRoleChoices.ADMIN
         assert invite2.token != token1
-        assert BrandInvitation.objects.filter(brand=brand, email="reinvite@example.com").count() == 1
+        assert (
+            BrandInvitation.objects.filter(
+                brand=brand, email="reinvite@example.com"
+            ).count()
+            == 1
+        )
 
     @patch("utils.notification_service.NotificationService.send_email")
-    def test_accept_invitation_authenticated(self, mock_email, brand_owner, brand, existing_user):
+    def test_accept_invitation_authenticated(
+        self, mock_email, brand_owner, brand, existing_user
+    ):
         invitation = BrandInvitationService.send_invitation(
             inviter=brand_owner,
             brand_id=brand.id,
@@ -135,7 +150,9 @@ class TestBrandInvitationService:
         assert invitation.status == InvitationStatusChoices.ACCEPTED
 
     @patch("utils.notification_service.NotificationService.send_email")
-    def test_accept_invitation_with_mismatched_email_fails(self, mock_email, brand_owner, brand):
+    def test_accept_invitation_with_mismatched_email_fails(
+        self, mock_email, brand_owner, brand
+    ):
         invitation = BrandInvitationService.send_invitation(
             inviter=brand_owner,
             brand_id=brand.id,
@@ -154,7 +171,9 @@ class TestBrandInvitationService:
             )
 
     @patch("utils.notification_service.NotificationService.send_email")
-    def test_expired_invitation_raises_error(self, mock_email, brand_owner, brand, existing_user):
+    def test_expired_invitation_raises_error(
+        self, mock_email, brand_owner, brand, existing_user
+    ):
         invitation = BrandInvitationService.send_invitation(
             inviter=brand_owner,
             brand_id=brand.id,
@@ -188,7 +207,9 @@ class TestBrandInvitationService:
 
         assert new_user.email == "brandnew@example.com"
         assert "access" in tokens
-        assert BrandMember.objects.filter(brand=brand, user=new_user, role=BrandRoleChoices.ADMIN).exists()
+        assert BrandMember.objects.filter(
+            brand=brand, user=new_user, role=BrandRoleChoices.ADMIN
+        ).exists()
         invitation.refresh_from_db()
         assert invitation.status == InvitationStatusChoices.ACCEPTED
 
@@ -214,11 +235,16 @@ class TestBrandInvitationService:
         assert resent.token != invitation.token
 
     def test_member_role_update_and_removal(self, brand_owner, brand, existing_user):
-        member = BrandMember.objects.create(brand=brand, user=existing_user, role=BrandRoleChoices.EDITOR)
+        member = BrandMember.objects.create(
+            brand=brand, user=existing_user, role=BrandRoleChoices.EDITOR
+        )
 
         # Update role to admin
         updated = BrandInvitationService.update_member_role(
-            user=brand_owner, brand_id=brand.id, member_id=member.id, new_role=BrandRoleChoices.ADMIN
+            user=brand_owner,
+            brand_id=brand.id,
+            member_id=member.id,
+            new_role=BrandRoleChoices.ADMIN,
         )
         assert updated.role == BrandRoleChoices.ADMIN
 
@@ -273,11 +299,27 @@ class TestBrandInvitationAPIEndpoints:
 
         # Revoke
         revoke_url = reverse(
-            "brand-invitation-detail",
+            "brand-invitation-revoke",
             kwargs={"brand_id": brand.id, "invitation_id": invitation.id},
         )
         del_response = api_client.delete(revoke_url)
         assert del_response.status_code == status.HTTP_200_OK
+
+        # Revoking again should be idempotent and succeed
+        del_again_response = api_client.delete(revoke_url)
+        assert del_again_response.status_code == status.HTTP_200_OK
+
+        # Listing invitations should not include the revoked invitation by default
+        list_url = reverse("brand-invitations", kwargs={"brand_id": brand.id})
+        list_res = api_client.get(list_url)
+        assert list_res.status_code == status.HTTP_200_OK
+        assert len(list_res.data["data"]) == 0
+
+        # Listing invitations with ?status=all should include the revoked invitation
+        list_all_res = api_client.get(f"{list_url}?status=all")
+        assert list_all_res.status_code == status.HTTP_200_OK
+        assert len(list_all_res.data["data"]) == 1
+        assert list_all_res.data["data"][0]["status"] == InvitationStatusChoices.REVOKED
 
     @patch("utils.notification_service.NotificationService.send_email")
     def test_public_invitation_details_endpoint(
@@ -378,3 +420,68 @@ class TestBrandInvitationAPIEndpoints:
         del_response = api_client.delete(member_detail_url)
         assert del_response.status_code == status.HTTP_200_OK
         assert not BrandMember.objects.filter(id=member.id).exists()
+
+    @patch("utils.notification_service.NotificationService.send_email")
+    def test_user_received_invitations_flow(
+        self, mock_email, api_client, brand_owner, brand, existing_user
+    ):
+        # 1. Send invitation to existing user
+        invitation = BrandInvitationService.send_invitation(
+            inviter=brand_owner,
+            brand_id=brand.id,
+            email=existing_user.email,
+            role=BrandRoleChoices.EDITOR,
+        )
+
+        # Authenticate as invited recipient
+        api_client.force_authenticate(user=existing_user)
+
+        # 2. Recipient views their pending invitations in dashboard
+        received_url = reverse("user-received-invitations")
+        list_res = api_client.get(received_url)
+        assert list_res.status_code == status.HTTP_200_OK
+        invites = list_res.data["data"]
+        assert len(invites) == 1
+        assert invites[0]["id"] == str(invitation.id)
+        assert invites[0]["brand_name"] == brand.name
+        assert invites[0]["role"] == BrandRoleChoices.EDITOR
+        assert invites[0]["status"] == InvitationStatusChoices.PENDING
+
+        # 3. Recipient accepts the invitation
+        accept_url = reverse(
+            "user-received-invitation-accept",
+            kwargs={"invitation_id": invitation.id},
+        )
+        accept_res = api_client.post(accept_url)
+        assert accept_res.status_code == status.HTTP_200_OK
+        assert accept_res.data["data"]["role"] == BrandRoleChoices.EDITOR
+        assert BrandMember.objects.filter(brand=brand, user=existing_user).exists()
+
+        # 4. Received invitations list should now be empty (it was accepted)
+        list_res_after = api_client.get(received_url)
+        assert list_res_after.status_code == status.HTTP_200_OK
+        assert len(list_res_after.data["data"]) == 0
+
+    @patch("utils.notification_service.NotificationService.send_email")
+    def test_user_decline_received_invitation(
+        self, mock_email, api_client, brand_owner, brand, existing_user
+    ):
+        invitation = BrandInvitationService.send_invitation(
+            inviter=brand_owner,
+            brand_id=brand.id,
+            email=existing_user.email,
+            role=BrandRoleChoices.VIEWER,
+        )
+
+        api_client.force_authenticate(user=existing_user)
+
+        decline_url = reverse(
+            "user-received-invitation-decline",
+            kwargs={"invitation_id": invitation.id},
+        )
+        decline_res = api_client.post(decline_url)
+        assert decline_res.status_code == status.HTTP_200_OK
+
+        invitation.refresh_from_db()
+        assert invitation.status == InvitationStatusChoices.DECLINED
+        assert not BrandMember.objects.filter(brand=brand, user=existing_user).exists()

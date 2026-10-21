@@ -316,6 +316,16 @@ def test_get_auth_tokens_returns_refresh_and_access(user):
     assert tokens["access"]
 
 
+def test_token_refresh_endpoint(api_client, user):
+    tokens = UserService.get_auth_tokens(user)
+    response = api_client.post(
+        "/api/auth/token/refresh/", {"refresh": tokens["refresh"]}
+    )
+    assert response.status_code == 200
+    assert "access" in response.data
+    assert "refresh" in response.data
+
+
 def test_complete_onboarding_updates_records(user):
     user, brand = OnboardingService.complete_onboarding(
         user=user,

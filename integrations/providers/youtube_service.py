@@ -549,9 +549,7 @@ class YoutubeService(SocialAccountService):
             "youtube", "v3", credentials=credentials
         )
         response = (
-            youtube.videos()
-            .list(part="statistics", id=platform_post_id)
-            .execute()
+            youtube.videos().list(part="statistics", id=platform_post_id).execute()
         )
         items = response.get("items", [])
         if not items:
@@ -571,4 +569,3 @@ class YoutubeService(SocialAccountService):
             "shares": 0,
             "raw": stats,
         }
-

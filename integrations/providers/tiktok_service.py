@@ -367,9 +367,7 @@ class TiktokService(SocialAccountService):
         return response["data"]
 
     @classmethod
-    def get_post_metrics(
-        cls, platform_post_id: str, access_token: str
-    ) -> dict:
+    def get_post_metrics(cls, platform_post_id: str, access_token: str) -> dict:
         """
         Fetches live video statistics (views, likes, comments, shares) from TikTok Display API.
         """
@@ -406,4 +404,3 @@ class TiktokService(SocialAccountService):
             "shares": shares,
             "raw": raw_data,
         }
-

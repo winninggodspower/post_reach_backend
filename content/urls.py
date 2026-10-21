@@ -55,4 +55,3 @@ urlpatterns = [
         name="content-post-detail",
     ),
 ]
-

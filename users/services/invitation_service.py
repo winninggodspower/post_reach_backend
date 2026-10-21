@@ -235,6 +235,9 @@ class BrandInvitationService:
         if not invitation:
             raise ValueError("Invitation not found.")
 
+        if invitation.status == InvitationStatusChoices.REVOKED:
+            return invitation
+
         if invitation.status != InvitationStatusChoices.PENDING:
             raise ValueError(
                 f"Cannot revoke an invitation that is already {invitation.status.lower()}."
@@ -288,7 +291,7 @@ class BrandInvitationService:
 
     @classmethod
     def list_brand_invitations(
-        cls, *, user: User, brand_id: UUID | str
+        cls, *, user: User, brand_id: UUID | str, status: str | None = None
     ) -> QuerySet[BrandInvitation]:
         brand = BrandService.get_brand_by_id(user, brand_id)
         if not cls.can_manage_members(user, brand):
@@ -296,11 +299,18 @@ class BrandInvitationService:
                 "You do not have permission to view invitations for this brand."
             )
 
-        return (
-            BrandInvitation.objects.filter(brand=brand)
-            .select_related("invited_by")
-            .order_by("-created_at")
-        )
+        qs = BrandInvitation.objects.filter(brand=brand)
+        if status and status.lower() != "all":
+            qs = qs.filter(status=status.lower())
+        elif not status:
+            qs = qs.exclude(
+                status__in=[
+                    InvitationStatusChoices.REVOKED,
+                    InvitationStatusChoices.ACCEPTED,
+                ]
+            )
+
+        return qs.select_related("invited_by").order_by("-created_at")
 
     @classmethod
     def list_brand_members(
@@ -395,3 +405,102 @@ class BrandInvitationService:
                 member.user.save(update_fields=["active_brand"])
 
             member.delete()
+
+    @classmethod
+    def list_received_invitations(
+        cls, *, user: User, status: str | None = None
+    ) -> QuerySet[BrandInvitation]:
+        """Returns invitations sent to the authenticated user's email."""
+        now = timezone.now()
+        # Mark expired invitations
+        BrandInvitation.objects.filter(
+            email__iexact=user.email,
+            status=InvitationStatusChoices.PENDING,
+            expires_at__lte=now,
+        ).update(status=InvitationStatusChoices.EXPIRED, updated_at=now)
+
+        qs = BrandInvitation.objects.filter(email__iexact=user.email)
+        if status and status.lower() != "all":
+            qs = qs.filter(status=status.lower())
+        elif not status:
+            qs = qs.filter(status=InvitationStatusChoices.PENDING)
+
+        return qs.select_related("brand", "invited_by").order_by("-created_at")
+
+    @classmethod
+    @log_exceptions()
+    def accept_received_invitation(
+        cls, *, user: User, invitation_id: UUID | str
+    ) -> tuple[BrandMember, Brand]:
+        invitation = (
+            BrandInvitation.objects.select_related("brand", "invited_by")
+            .filter(id=invitation_id)
+            .first()
+        )
+        if not invitation:
+            raise ValueError("Invitation not found.")
+
+        if user.email.lower() != invitation.email.lower():
+            raise ValueError("This invitation was not sent to your email address.")
+
+        now = timezone.now()
+        if (
+            invitation.status == InvitationStatusChoices.PENDING
+            and invitation.expires_at <= now
+        ):
+            invitation.status = InvitationStatusChoices.EXPIRED
+            invitation.save(update_fields=["status", "updated_at"])
+            raise ValueError("This invitation has expired.")
+
+        if invitation.status != InvitationStatusChoices.PENDING:
+            raise ValueError(
+                f"This invitation has already been {invitation.status.lower()}."
+            )
+
+        brand = invitation.brand
+        with transaction.atomic():
+            member, created = BrandMember.objects.get_or_create(
+                brand=brand,
+                user=user,
+                defaults={"role": invitation.role},
+            )
+            if not created and member.role != invitation.role:
+                member.role = invitation.role
+                member.save(update_fields=["role", "updated_at"])
+
+            invitation.status = InvitationStatusChoices.ACCEPTED
+            invitation.save(update_fields=["status", "updated_at"])
+
+            if not user.active_brand:
+                user.active_brand = brand
+                user.save(update_fields=["active_brand"])
+
+        return member, brand
+
+    @classmethod
+    @log_exceptions()
+    def decline_received_invitation(
+        cls, *, user: User, invitation_id: UUID | str
+    ) -> BrandInvitation:
+        invitation = (
+            BrandInvitation.objects.select_related("brand", "invited_by")
+            .filter(id=invitation_id)
+            .first()
+        )
+        if not invitation:
+            raise ValueError("Invitation not found.")
+
+        if user.email.lower() != invitation.email.lower():
+            raise ValueError("This invitation was not sent to your email address.")
+
+        if invitation.status == InvitationStatusChoices.DECLINED:
+            return invitation
+
+        if invitation.status != InvitationStatusChoices.PENDING:
+            raise ValueError(
+                f"Cannot decline an invitation that is already {invitation.status.lower()}."
+            )
+
+        invitation.status = InvitationStatusChoices.DECLINED
+        invitation.save(update_fields=["status", "updated_at"])
+        return invitation

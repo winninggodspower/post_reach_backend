@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "analytics.apps.AnalyticsConfig",
     # Third-party apps
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "querycount",
     "drf_yasg",
@@ -104,18 +105,12 @@ REST_FRAMEWORK = {
 
 SIMPLE_JWT = {
     # Refresh is rolled every time we issue a fresh access token
-    # 'ROTATE_REFRESH_TOKENS': True,
-    # An old refresh token is black-listed the moment it is replaced
-    # 'BLACKLIST_AFTER_ROTATION': True,
-    # 35 minutes is short enough to limit damage, long enough for a SPA
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=35),
-    # Three days keeps the user logged in through normal work hours
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=3),
-    # 'AUTH_COOKIE':    'access_token',
-    # 'REFRESH_COOKIE': 'refresh_token',
-    # 'AUTH_COOKIE_HTTP_ONLY': True,     # JavaScript cannot peek inside
-    # 'AUTH_COOKIE_SECURE':    False,    # switch to True on production HTTPS
-    # 'AUTH_COOKIE_SAMESITE': 'Strict'   # cookie travels only to our own origin
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": False,
+    # 2 hours access token lifetime gives enough buffer for continuous use
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
+    # 10 days rolling window keeps users logged in as long as they return within 10 days
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=10),
 }
 
 

@@ -476,9 +476,7 @@ class LinkedinService(SocialAccountService):
         return {"platform_post_id": post_id}
 
     @classmethod
-    def get_post_metrics(
-        cls, platform_post_id: str, access_token: str
-    ) -> dict:
+    def get_post_metrics(cls, platform_post_id: str, access_token: str) -> dict:
         """
         Fetches live post statistics (views/impressions, likes, comments, shares, clicks) from LinkedIn API.
         """
@@ -523,4 +521,3 @@ class LinkedinService(SocialAccountService):
             "clicks": clicks,
             "raw": raw_data,
         }
-

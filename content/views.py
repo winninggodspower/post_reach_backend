@@ -574,9 +574,7 @@ class ContentPostAnalyticsView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        refresh = (
-            request.query_params.get("refresh", "false").lower() in ("true", "1")
-        )
+        refresh = request.query_params.get("refresh", "false").lower() in ("true", "1")
 
         analytics = ContentAnalyticsService.get_or_sync_post_analytics(
             post, force_refresh=refresh
@@ -627,4 +625,3 @@ class BrandContentAnalyticsView(APIView):
             data=BrandAnalyticsResponseSerializer(analytics).data,
             message="Brand content analytics retrieved successfully.",
         )
-

@@ -620,4 +620,3 @@ class TwitterService(SocialAccountService):
             "saves": saves,
             "raw": raw_data,
         }
-

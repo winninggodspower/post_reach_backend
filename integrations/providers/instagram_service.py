@@ -469,4 +469,3 @@ class InstagramService(SocialAccountService):
             "saves": saves,
             "raw": {"media": media_data, "insights": raw_insights},
         }
-

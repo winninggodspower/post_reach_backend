@@ -206,7 +206,6 @@ class PostPlatformMetric(UUIDTimestampedModel):
         return f"Metrics for {self.content_post_platform}: {self.views} views, {self.likes} likes"
 
 
-
 class PendingUpload(UUIDTimestampedModel):
     """
     Tracks media uploaded to R2 via presigned URLs before a ContentPost is created.

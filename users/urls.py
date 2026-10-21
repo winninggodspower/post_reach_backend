@@ -11,13 +11,16 @@ from .views.auth_view import (
 from .views.brand_view import BrandViewSet, SetActiveBrandView
 from .views.invitation_view import (
     AcceptInvitationView,
-    BrandInvitationDetailView,
     BrandInvitationView,
     BrandMemberDetailView,
     BrandMemberListView,
     InvitationDetailsView,
     RegisterAndAcceptInvitationView,
     ResendInvitationView,
+    RevokeInvitationView,
+    UserReceivedInvitationAcceptView,
+    UserReceivedInvitationDeclineView,
+    UserReceivedInvitationListView,
 )
 from .views.user_view import CurrentUserView, OnboardingView
 
@@ -33,6 +36,21 @@ urlpatterns = [
     path("onboarding/", OnboardingView.as_view(), name="onboarding"),
     path("me/", CurrentUserView.as_view(), name="current-user"),
     path("me/active-brand/", SetActiveBrandView.as_view(), name="set-active-brand"),
+    path(
+        "me/invitations/",
+        UserReceivedInvitationListView.as_view(),
+        name="user-received-invitations",
+    ),
+    path(
+        "me/invitations/<uuid:invitation_id>/accept/",
+        UserReceivedInvitationAcceptView.as_view(),
+        name="user-received-invitation-accept",
+    ),
+    path(
+        "me/invitations/<uuid:invitation_id>/decline/",
+        UserReceivedInvitationDeclineView.as_view(),
+        name="user-received-invitation-decline",
+    ),
     # Brand invitations & members
     path(
         "brands/<uuid:brand_id>/invitations/",
@@ -41,8 +59,8 @@ urlpatterns = [
     ),
     path(
         "brands/<uuid:brand_id>/invitations/<uuid:invitation_id>/",
-        BrandInvitationDetailView.as_view(),
-        name="brand-invitation-detail",
+        RevokeInvitationView.as_view(),
+        name="brand-invitation-revoke",
     ),
     path(
         "brands/<uuid:brand_id>/invitations/<uuid:invitation_id>/resend/",
@@ -77,4 +95,3 @@ urlpatterns = [
     ),
     path("", include(router.urls)),
 ]
-

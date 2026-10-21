@@ -273,9 +273,7 @@ class BrandMemberSerializer(serializers.ModelSerializer):
 
 
 class BrandInvitationSerializer(serializers.ModelSerializer):
-    invited_by_email = serializers.EmailField(
-        source="invited_by.email", read_only=True
-    )
+    invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True)
     invited_by_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -283,6 +281,38 @@ class BrandInvitationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "brand_id",
+            "email",
+            "role",
+            "status",
+            "invited_by_email",
+            "invited_by_name",
+            "expires_at",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    @swagger_serializer_method(serializer_or_field=serializers.CharField())
+    def get_invited_by_name(self, obj):
+        return (
+            obj.invited_by.get_full_name()
+            or obj.invited_by.handle
+            or obj.invited_by.email
+        )
+
+
+class UserReceivedInvitationSerializer(serializers.ModelSerializer):
+    brand_name = serializers.CharField(source="brand.name", read_only=True)
+    brand_logo_url = serializers.CharField(source="brand.logo_url", read_only=True)
+    invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True)
+    invited_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BrandInvitation
+        fields = [
+            "id",
+            "brand_id",
+            "brand_name",
+            "brand_logo_url",
             "email",
             "role",
             "status",
@@ -341,13 +371,8 @@ class InvitationDetailsSerializer(serializers.Serializer):
 
 class RegisterInvitationSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
-    first_name = serializers.CharField(
-        required=False, allow_blank=True, default=""
-    )
-    last_name = serializers.CharField(
-        required=False, allow_blank=True, default=""
-    )
+    first_name = serializers.CharField(required=False, allow_blank=True, default="")
+    last_name = serializers.CharField(required=False, allow_blank=True, default="")
     handle = serializers.CharField(
         required=False, allow_blank=True, allow_null=True, default=None
     )
-

@@ -405,4 +405,3 @@ class BrandAnalyticsResponseSerializer(serializers.Serializer):
     average_engagement_rate = serializers.FloatField()
     platforms = BrandPlatformBreakdownSerializer(many=True)
     top_posts = TopPerformingPostSerializer(many=True)
-

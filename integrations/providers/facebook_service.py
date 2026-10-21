@@ -365,9 +365,7 @@ class FacebookService(SocialAccountService):
         return {"platform_post_id": post_id}
 
     @classmethod
-    def get_post_metrics(
-        cls, platform_post_id: str, access_token: str
-    ) -> dict:
+    def get_post_metrics(cls, platform_post_id: str, access_token: str) -> dict:
         """
         Fetches live post statistics (likes, comments, shares, views/impressions) from Facebook Graph API.
         """
@@ -388,15 +386,10 @@ class FacebookService(SocialAccountService):
             raw_data = post_data or {}
             shares = int(raw_data.get("shares", {}).get("count", 0) or 0)
             likes = int(
-                raw_data.get("likes", {})
-                .get("summary", {})
-                .get("total_count", 0)
-                or 0
+                raw_data.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
             )
             comments = int(
-                raw_data.get("comments", {})
-                .get("summary", {})
-                .get("total_count", 0)
+                raw_data.get("comments", {}).get("summary", {}).get("total_count", 0)
                 or 0
             )
         except Exception:
@@ -425,4 +418,3 @@ class FacebookService(SocialAccountService):
             "shares": shares,
             "raw": raw_data,
         }
-

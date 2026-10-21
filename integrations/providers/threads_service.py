@@ -496,9 +496,7 @@ class ThreadsService(SocialAccountService):
         return response_data.get("permalink", "")
 
     @classmethod
-    def get_post_metrics(
-        cls, platform_post_id: str, access_token: str
-    ) -> dict:
+    def get_post_metrics(cls, platform_post_id: str, access_token: str) -> dict:
         """
         Fetches live media statistics (views, likes, replies, reposts, quotes) from Threads Graph API.
         """
@@ -541,4 +539,3 @@ class ThreadsService(SocialAccountService):
             "shares": shares,
             "raw": raw_data,
         }
-
