@@ -580,7 +580,10 @@ class TwitterService(SocialAccountService):
 
     @classmethod
     def get_post_metrics(
-        cls, platform_post_id: str, access_token: str
+        cls,
+        platform_post_id: str,
+        access_token: str,
+        access_token_secret: str | None = None,
     ) -> dict[str, Any]:
         """
         Fetches live tweet metrics (views/impressions, likes, retweets, replies, bookmarks) from X/Twitter API v2.
@@ -593,12 +596,23 @@ class TwitterService(SocialAccountService):
         raw_data = {}
 
         try:
-            resp = httpx.get(
-                f"{cls.BASE_URL}/2/tweets/{platform_post_id}",
-                params={"tweet.fields": "public_metrics"},
-                headers={"Authorization": f"Bearer {access_token}"},
-                timeout=10.0,
-            )
+            if access_token_secret:
+                oauth = cls._get_oauth_session(
+                    resource_owner_key=access_token,
+                    resource_owner_secret=access_token_secret,
+                )
+                resp = oauth.get(
+                    f"{cls.BASE_URL}/2/tweets/{platform_post_id}",
+                    params={"tweet.fields": "public_metrics"},
+                    timeout=10.0,
+                )
+            else:
+                resp = httpx.get(
+                    f"{cls.BASE_URL}/2/tweets/{platform_post_id}",
+                    params={"tweet.fields": "public_metrics"},
+                    headers={"Authorization": f"Bearer {access_token}"},
+                    timeout=10.0,
+                )
             if resp.status_code == 200:
                 raw_data = resp.json()
                 metrics = raw_data.get("data", {}).get("public_metrics", {})

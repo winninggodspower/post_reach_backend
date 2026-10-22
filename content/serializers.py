@@ -338,8 +338,8 @@ class ContentPostResponseSerializer(serializers.ModelSerializer):
 class PlatformPostMetricSerializer(serializers.Serializer):
     platform = serializers.CharField()
     status = serializers.CharField()
-    platform_post_id = serializers.CharField(allow_blank=True)
-    post_url = serializers.CharField(allow_blank=True)
+    platform_post_id = serializers.CharField(allow_blank=True, allow_null=True)
+    post_url = serializers.CharField(allow_blank=True, allow_null=True)
     views = serializers.IntegerField()
     reach = serializers.IntegerField()
     likes = serializers.IntegerField()
@@ -348,7 +348,7 @@ class PlatformPostMetricSerializer(serializers.Serializer):
     saves = serializers.IntegerField()
     clicks = serializers.IntegerField()
     engagement_rate = serializers.FloatField()
-    last_synced_at = serializers.DateTimeField()
+    last_synced_at = serializers.DateTimeField(allow_null=True)
 
 
 class PostAnalyticsResponseSerializer(serializers.Serializer):
@@ -381,8 +381,8 @@ class BrandPlatformBreakdownSerializer(serializers.Serializer):
 class TopPerformingPostSerializer(serializers.Serializer):
     post_id = serializers.UUIDField()
     platform = serializers.CharField()
-    caption = serializers.CharField(allow_blank=True)
-    post_url = serializers.CharField(allow_blank=True)
+    caption = serializers.CharField(allow_blank=True, allow_null=True)
+    post_url = serializers.CharField(allow_blank=True, allow_null=True)
     views = serializers.IntegerField()
     likes = serializers.IntegerField()
     comments = serializers.IntegerField()

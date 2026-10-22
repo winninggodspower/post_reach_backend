@@ -81,11 +81,17 @@ class ContentAnalyticsService:
         if not access_token:
             return metric
 
+        kwargs = {
+            "platform_post_id": entry.platform_post_id,
+            "access_token": access_token,
+        }
+        if entry.platform == PlatformChoices.TWITTER and getattr(
+            social_account, "access_token_secret", None
+        ):
+            kwargs["access_token_secret"] = social_account.access_token_secret
+
         try:
-            data = provider_cls.get_post_metrics(
-                platform_post_id=entry.platform_post_id,
-                access_token=access_token,
-            )
+            data = provider_cls.get_post_metrics(**kwargs)
         except Exception as exc:
             CustomLogger.warning(
                 f"Failed to fetch live metrics for post {entry.id} on {entry.platform}: {exc}"

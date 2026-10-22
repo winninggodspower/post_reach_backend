@@ -24,6 +24,7 @@ class LinkedinService(SocialAccountService):
         "profile",
         "email",
         "w_member_social",
+        "r_member_social",
     }
 
     @classmethod
@@ -487,29 +488,55 @@ class LinkedinService(SocialAccountService):
         clicks = 0
         raw_data = {}
 
+        urn = (
+            platform_post_id
+            if platform_post_id.startswith("urn:li:")
+            else f"urn:li:share:{platform_post_id}"
+        )
+
+        # 1. Fetch social actions (likes & comments) for the post
         try:
-            urn = (
-                platform_post_id
-                if platform_post_id.startswith("urn:li:")
-                else f"urn:li:share:{platform_post_id}"
+            actions_resp = cls().get(
+                f"{cls.API_BASE_URL}/socialActions/{urn}",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                },
             )
+            if actions_resp and isinstance(actions_resp, dict):
+                raw_data["socialActions"] = actions_resp
+                likes = int(
+                    actions_resp.get("likesSummary", {}).get("totalLikes", 0) or 0
+                )
+                comments = int(
+                    actions_resp.get("commentsSummary", {}).get("totalComments", 0)
+                    or 0
+                )
+        except Exception:
+            pass
+
+        # 2. Try fetching share statistics (views, clicks, shares)
+        try:
             stats_resp = cls().get(
-                "/v2/organizationalEntityShareStatistics",
+                f"{cls.API_BASE_URL}/organizationalEntityShareStatistics",
                 headers={
                     "Authorization": f"Bearer {access_token}",
                     "X-Restli-Protocol-Version": "2.0.0",
                 },
                 params={"q": "organizationalEntity", "shares[0]": urn},
             )
-            raw_data = stats_resp or {}
-            elements = raw_data.get("elements", [])
-            if elements:
-                ts = elements[0].get("totalShareStatistics", {})
-                views = int(ts.get("impressionCount", 0) or 0)
-                likes = int(ts.get("likeCount", 0) or 0)
-                comments = int(ts.get("commentCount", 0) or 0)
-                shares = int(ts.get("shareCount", 0) or 0)
-                clicks = int(ts.get("clickCount", 0) or 0)
+            if stats_resp and isinstance(stats_resp, dict):
+                raw_data["shareStatistics"] = stats_resp
+                elements = stats_resp.get("elements", [])
+                if elements:
+                    ts = elements[0].get("totalShareStatistics", {})
+                    views = int(ts.get("impressionCount", 0) or 0)
+                    clicks = int(ts.get("clickCount", 0) or 0)
+                    shares = int(ts.get("shareCount", 0) or 0)
+                    if likes == 0:
+                        likes = int(ts.get("likeCount", 0) or 0)
+                    if comments == 0:
+                        comments = int(ts.get("commentCount", 0) or 0)
         except Exception:
             pass
 

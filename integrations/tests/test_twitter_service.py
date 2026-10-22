@@ -319,3 +319,42 @@ class TestTwitterServicePublishing:
         )
         assert media_id == "vid_media_stream_123"
         assert mock_oauth.post.call_count == 3
+
+
+class TestTwitterServiceMetrics:
+    def test_get_post_metrics_with_oauth_secret(self, mocker):
+        mock_oauth = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "data": {
+                "public_metrics": {
+                    "impression_count": 2500,
+                    "like_count": 150,
+                    "reply_count": 25,
+                    "retweet_count": 30,
+                    "quote_count": 5,
+                    "bookmark_count": 12,
+                }
+            }
+        }
+        mock_oauth.get.return_value = mock_resp
+        mock_session_factory = mocker.patch.object(
+            TwitterService, "_get_oauth_session", return_value=mock_oauth
+        )
+
+        metrics = TwitterService.get_post_metrics(
+            platform_post_id="tweet_123",
+            access_token="oauth_token_abc",
+            access_token_secret="oauth_secret_xyz",
+        )
+
+        mock_session_factory.assert_called_once_with(
+            resource_owner_key="oauth_token_abc",
+            resource_owner_secret="oauth_secret_xyz",
+        )
+        assert metrics["views"] == 2500
+        assert metrics["likes"] == 150
+        assert metrics["comments"] == 25
+        assert metrics["shares"] == 35  # 30 retweets + 5 quotes
+        assert metrics["saves"] == 12

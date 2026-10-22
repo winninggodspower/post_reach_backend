@@ -260,3 +260,26 @@ class TestContentAnalyticsAPI:
         assert data["total_views"] == 3500
         assert data["total_likes"] == 200
         assert len(data["top_posts"]) == 1
+
+    def test_get_post_analytics_with_pending_entry_null_last_synced_at(
+        self, authenticated_client, post
+    ):
+        # Create an entry that is still PENDING without platform_post_id or sync history
+        ContentPostPlatform.objects.create(
+            content_post=post,
+            platform=PlatformChoices.TIKTOK,
+            status=PostStatus.PENDING,
+            platform_post_id="",
+            post_url="",
+        )
+
+        url = reverse("content-post-analytics", kwargs={"post_id": post.id})
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.data["data"]
+        assert len(data["platforms"]) == 1
+        platform_info = data["platforms"][0]
+        assert platform_info["status"] == PostStatus.PENDING
+        assert platform_info["last_synced_at"] is None
+        assert platform_info["views"] == 0

@@ -64,6 +64,8 @@ class TestVerifyGrantedScope:
                 {"permission": "pages_show_list", "status": "granted"},
                 {"permission": "pages_read_engagement", "status": "granted"},
                 {"permission": "pages_manage_posts", "status": "granted"},
+                {"permission": "pages_read_user_content", "status": "granted"},
+                {"permission": "read_insights", "status": "granted"},
             ]
         }
         mocker.patch.object(FacebookService, "get", return_value=mock_response)

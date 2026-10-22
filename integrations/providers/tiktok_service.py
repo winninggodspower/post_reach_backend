@@ -48,6 +48,7 @@ class TiktokService(SocialAccountService):
         "user.info.basic",
         "video.publish",
         "video.upload",
+        "video.list",
     ]
 
     @classmethod
