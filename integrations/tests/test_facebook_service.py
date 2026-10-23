@@ -82,6 +82,8 @@ class TestVerifyGrantedScope:
                 {"permission": "pages_show_list", "status": "granted"},
                 {"permission": "pages_read_engagement", "status": "granted"},
                 {"permission": "pages_manage_posts", "status": "declined"},
+                {"permission": "pages_read_user_content", "status": "granted"},
+                {"permission": "read_insights", "status": "granted"},
             ]
         }
         mocker.patch.object(FacebookService, "get", return_value=mock_response)
@@ -323,3 +325,61 @@ class TestGetFacebookPages:
 
         with pytest.raises(ValueError, match="Failed to fetch Facebook pages"):
             FacebookService.get_facebook_pages("bad_token")
+
+
+class TestGetPostMetrics:
+    """Tests for FacebookService.get_post_metrics()"""
+
+    def test_get_post_metrics_with_nested_insights(self, mocker):
+        """Should fetch likes, comments, shares, and views from nested insights via Field Expansion."""
+        mock_get = mocker.patch.object(
+            FacebookService,
+            "get",
+            return_value={
+                "shares": {"count": 14},
+                "likes": {"summary": {"total_count": 88}},
+                "comments": {"summary": {"total_count": 22}},
+                "insights": {
+                    "data": [
+                        {
+                            "name": "post_media_view",
+                            "values": [{"value": 520}],
+                        }
+                    ]
+                },
+            },
+        )
+
+        metrics = FacebookService.get_post_metrics("12345_67890", "valid_token")
+
+        assert metrics["views"] == 520
+        assert metrics["likes"] == 88
+        assert metrics["comments"] == 22
+        assert metrics["shares"] == 14
+        mock_get.assert_called_once_with(
+            "/12345_67890",
+            params={
+                "fields": "views,shares,comments.summary(true),likes.summary(true),insights.metric(post_media_view,post_impressions_unique)",
+                "access_token": "valid_token",
+            },
+        )
+
+    def test_get_post_metrics_with_direct_views_on_video(self, mocker):
+        """Should extract views when directly returned on the video object."""
+        mocker.patch.object(
+            FacebookService,
+            "get",
+            return_value={
+                "views": 1500,
+                "shares": {"count": 5},
+                "likes": {"summary": {"total_count": 30}},
+                "comments": {"summary": {"total_count": 8}},
+            },
+        )
+
+        metrics = FacebookService.get_post_metrics("video_id_999", "valid_token")
+
+        assert metrics["views"] == 1500
+        assert metrics["likes"] == 30
+        assert metrics["comments"] == 8
+        assert metrics["shares"] == 5

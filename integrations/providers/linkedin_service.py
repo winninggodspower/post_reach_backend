@@ -24,7 +24,6 @@ class LinkedinService(SocialAccountService):
         "profile",
         "email",
         "w_member_social",
-        "r_member_social",
     }
 
     @classmethod

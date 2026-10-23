@@ -369,7 +369,9 @@ class FacebookService(SocialAccountService):
     @classmethod
     def get_post_metrics(cls, platform_post_id: str, access_token: str) -> dict:
         """
-        Fetches live post statistics (likes, comments, shares, views/impressions) from Facebook Graph API.
+        Fetches live post statistics (likes, comments, shares, views) from Facebook Graph API.
+        Uses Graph API Field Expansion to query both object counters and nested insights
+        in a single request.
         """
         views = 0
         likes = 0
@@ -377,41 +379,49 @@ class FacebookService(SocialAccountService):
         shares = 0
         raw_data = {}
 
+        # 1. Query object fields and nested insights in a single request via Field Expansion
         try:
             post_data = cls().get(
                 f"/{platform_post_id}",
                 params={
-                    "fields": "shares,comments.summary(true),likes.summary(true)",
+                    "fields": "views,shares,comments.summary(true),likes.summary(true),insights.metric(post_media_view,post_impressions_unique)",
                     "access_token": access_token,
                 },
             )
             raw_data = post_data or {}
-            shares = int(raw_data.get("shares", {}).get("count", 0) or 0)
-            likes = int(
-                raw_data.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
-            )
-            comments = int(
-                raw_data.get("comments", {}).get("summary", {}).get("total_count", 0)
-                or 0
-            )
         except Exception:
-            pass
+            # Fallback if insights metric fails on specific post/node types
+            try:
+                post_data = cls().get(
+                    f"/{platform_post_id}",
+                    params={
+                        "fields": "views,shares,comments.summary(true),likes.summary(true)",
+                        "access_token": access_token,
+                    },
+                )
+                raw_data = post_data or {}
+            except Exception:
+                raw_data = {}
 
-        try:
-            insights_data = cls().get(
-                f"/{platform_post_id}/insights",
-                params={
-                    "metric": "post_impressions",
-                    "access_token": access_token,
-                },
-            )
-            for item in insights_data.get("data", []):
-                if item.get("name") == "post_impressions":
+        shares = int(raw_data.get("shares", {}).get("count", 0) or 0)
+        likes = int(
+            raw_data.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
+        )
+        comments = int(
+            raw_data.get("comments", {}).get("summary", {}).get("total_count", 0)
+            or 0
+        )
+        if "views" in raw_data:
+            views = int(raw_data.get("views", 0) or 0)
+
+        # If views was not directly on the object, extract from nested insights
+        if views == 0 and "insights" in raw_data:
+            for item in raw_data.get("insights", {}).get("data", []):
+                if item.get("name") in ("post_media_view", "post_impressions_unique"):
                     values = item.get("values", [])
                     if values:
                         views = int(values[0].get("value", 0) or 0)
-        except Exception:
-            pass
+                        break
 
         return {
             "views": views,
