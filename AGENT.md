@@ -1,4 +1,4 @@
-# Agent instructions for Post Reach Backend
+# Agent instructions for Postglee Backend
 
 Purpose
 - Quick reference for any automated agent contributing to this repository.

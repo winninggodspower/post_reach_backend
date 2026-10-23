@@ -330,8 +330,8 @@ class TestGetFacebookPages:
 class TestGetPostMetrics:
     """Tests for FacebookService.get_post_metrics()"""
 
-    def test_get_post_metrics_with_nested_insights(self, mocker):
-        """Should fetch likes, comments, shares, and views from nested insights via Field Expansion."""
+    def test_get_post_metrics_feed_post_single_call(self, mocker):
+        """Should query shares, comments, and likes in a single call for feed posts (with underscore)."""
         mock_get = mocker.patch.object(
             FacebookService,
             "get",
@@ -339,47 +339,61 @@ class TestGetPostMetrics:
                 "shares": {"count": 14},
                 "likes": {"summary": {"total_count": 88}},
                 "comments": {"summary": {"total_count": 22}},
-                "insights": {
-                    "data": [
-                        {
-                            "name": "post_media_view",
-                            "values": [{"value": 520}],
-                        }
-                    ]
-                },
             },
         )
 
         metrics = FacebookService.get_post_metrics("12345_67890", "valid_token")
 
-        assert metrics["views"] == 520
+        assert metrics["views"] == 0
         assert metrics["likes"] == 88
         assert metrics["comments"] == 22
         assert metrics["shares"] == 14
         mock_get.assert_called_once_with(
             "/12345_67890",
             params={
-                "fields": "views,shares,comments.summary(true),likes.summary(true),insights.metric(post_media_view,post_impressions_unique)",
+                "fields": "shares,comments.summary(true),likes.summary(true)",
                 "access_token": "valid_token",
             },
         )
 
-    def test_get_post_metrics_with_direct_views_on_video(self, mocker):
-        """Should extract views when directly returned on the video object."""
-        mocker.patch.object(
+    def test_get_post_metrics_photo_node_single_call(self, mocker):
+        """Should query comments and likes in a single call for photo nodes (no underscore)."""
+        mock_get = mocker.patch.object(
             FacebookService,
             "get",
             return_value={
-                "views": 1500,
-                "shares": {"count": 5},
-                "likes": {"summary": {"total_count": 30}},
-                "comments": {"summary": {"total_count": 8}},
+                "likes": {"summary": {"total_count": 12}},
+                "comments": {"summary": {"total_count": 3}},
             },
         )
 
-        metrics = FacebookService.get_post_metrics("video_id_999", "valid_token")
+        metrics = FacebookService.get_post_metrics("122289014858403768", "valid_token")
 
-        assert metrics["views"] == 1500
-        assert metrics["likes"] == 30
-        assert metrics["comments"] == 8
-        assert metrics["shares"] == 5
+        assert metrics["views"] == 0
+        assert metrics["likes"] == 12
+        assert metrics["comments"] == 3
+        assert metrics["shares"] == 0
+        mock_get.assert_called_once_with(
+            "/122289014858403768",
+            params={
+                "fields": "comments.summary(true),likes.summary(true)",
+                "access_token": "valid_token",
+            },
+        )
+
+    def test_get_post_metrics_api_failure_returns_zeroes_gracefully(self, mocker):
+        """Should return zeroes gracefully when API call fails."""
+        from utils.http import APIError
+
+        mocker.patch.object(
+            FacebookService,
+            "get",
+            side_effect=APIError("API error"),
+        )
+
+        metrics = FacebookService.get_post_metrics("12345_67890", "valid_token")
+
+        assert metrics["views"] == 0
+        assert metrics["likes"] == 0
+        assert metrics["comments"] == 0
+        assert metrics["shares"] == 0

@@ -286,7 +286,7 @@ class FacebookService(SocialAccountService):
                 )
                 raise ValueError(f"Facebook photo publish failed: {str(e)}") from e
 
-            post_id = data.get("id", "") or data.get("post_id", "")
+            post_id = data.get("post_id", "") or data.get("id", "")
             if not post_id:
                 raise ValueError("Facebook photo publish did not return a post ID")
             return {"platform_post_id": post_id}
@@ -379,48 +379,50 @@ class FacebookService(SocialAccountService):
         shares = 0
         raw_data = {}
 
-        # 1. Query object fields and nested insights in a single request via Field Expansion
+        # Determine valid fields upfront based on Facebook node type:
+        # - Feed posts ("{page_id}_{post_id}") support shares, comments, and likes.
+        # - Photo nodes (single numeric IDs) support comments and likes only.
+        fields = (
+            "shares,comments.summary(true),likes.summary(true)"
+            if "_" in platform_post_id
+            else "comments.summary(true),likes.summary(true)"
+        )
+
         try:
             post_data = cls().get(
                 f"/{platform_post_id}",
                 params={
-                    "fields": "views,shares,comments.summary(true),likes.summary(true),insights.metric(post_media_view,post_impressions_unique)",
+                    "fields": fields,
                     "access_token": access_token,
                 },
             )
             raw_data = post_data or {}
         except Exception:
-            # Fallback if insights metric fails on specific post/node types
-            try:
-                post_data = cls().get(
-                    f"/{platform_post_id}",
-                    params={
-                        "fields": "views,shares,comments.summary(true),likes.summary(true)",
-                        "access_token": access_token,
-                    },
-                )
-                raw_data = post_data or {}
-            except Exception:
-                raw_data = {}
+            raw_data = {}
 
         shares = int(raw_data.get("shares", {}).get("count", 0) or 0)
         likes = int(
             raw_data.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
         )
         comments = int(
-            raw_data.get("comments", {}).get("summary", {}).get("total_count", 0)
-            or 0
+            raw_data.get("comments", {}).get("summary", {}).get("total_count", 0) or 0
         )
-        if "views" in raw_data:
-            views = int(raw_data.get("views", 0) or 0)
 
-        # If views was not directly on the object, extract from nested insights
-        if views == 0 and "insights" in raw_data:
+        # Extract views from nested insights (Graph API v25+)
+        if "insights" in raw_data:
             for item in raw_data.get("insights", {}).get("data", []):
-                if item.get("name") in ("post_media_view", "post_impressions_unique"):
+                if item.get("name") in (
+                    "post_total_media_view_unique",
+                    "post_media_view",
+                ):
                     values = item.get("values", [])
                     if values:
-                        views = int(values[0].get("value", 0) or 0)
+                        val = values[0].get("value", 0)
+                        # Value can be an integer or a dict of breakdown counts
+                        if isinstance(val, dict):
+                            views = int(sum(val.values()) if val else 0)
+                        else:
+                            views = int(val or 0)
                         break
 
         return {

@@ -508,8 +508,7 @@ class LinkedinService(SocialAccountService):
                     actions_resp.get("likesSummary", {}).get("totalLikes", 0) or 0
                 )
                 comments = int(
-                    actions_resp.get("commentsSummary", {}).get("totalComments", 0)
-                    or 0
+                    actions_resp.get("commentsSummary", {}).get("totalComments", 0) or 0
                 )
         except Exception:
             pass

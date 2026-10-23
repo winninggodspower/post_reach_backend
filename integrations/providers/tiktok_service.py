@@ -371,12 +371,45 @@ class TiktokService(SocialAccountService):
     def get_post_metrics(cls, platform_post_id: str, access_token: str) -> dict:
         """
         Fetches live video statistics (views, likes, comments, shares) from TikTok Display API.
+        Resolves publish_id to the public video ID if necessary.
         """
         views = 0
         likes = 0
         comments = 0
         shares = 0
         raw_data = {}
+
+        video_id = str(platform_post_id).strip()
+        # If platform_post_id is a TikTok publish_id (starts with 'p_pub_' or non-numeric), resolve it
+        if not video_id.isdigit():
+            try:
+                status_data = cls.check_publish_status(
+                    access_token=access_token, publish_id=video_id
+                )
+                post_ids = (
+                    status_data.get("publicaly_available_post_id")
+                    or status_data.get("publicly_available_post_id")
+                    or []
+                )
+                if post_ids:
+                    video_id = str(post_ids[0])
+                else:
+                    # Video is still processing or not yet public
+                    return {
+                        "views": 0,
+                        "likes": 0,
+                        "comments": 0,
+                        "shares": 0,
+                        "raw": status_data,
+                    }
+            except Exception:
+                return {
+                    "views": 0,
+                    "likes": 0,
+                    "comments": 0,
+                    "shares": 0,
+                    "raw": {},
+                }
 
         try:
             response = cls().post(
@@ -385,7 +418,7 @@ class TiktokService(SocialAccountService):
                     "Authorization": f"Bearer {access_token}",
                     "Content-Type": "application/json; charset=UTF-8",
                 },
-                json={"filters": {"video_ids": [platform_post_id]}},
+                json={"filters": {"video_ids": [video_id]}},
             )
             raw_data = response or {}
             videos = raw_data.get("data", {}).get("videos", [])

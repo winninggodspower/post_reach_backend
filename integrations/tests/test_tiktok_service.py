@@ -342,3 +342,99 @@ class TestRefreshAccessToken:
         assert call_kwargs["data"]["grant_type"] == "refresh_token"
         assert call_kwargs["data"]["refresh_token"] == "old_refresh_token"
         assert "client_secret" in call_kwargs["data"]
+
+
+class TestGetPostMetrics:
+    """Tests for TiktokService.get_post_metrics()"""
+
+    def test_get_post_metrics_with_numeric_id(self, mocker):
+        """Should query /v2/video/query/ directly when ID is numeric."""
+        mock_post = mocker.patch.object(
+            TiktokService,
+            "post",
+            return_value={
+                "data": {
+                    "videos": [
+                        {
+                            "id": "7699795790084458518",
+                            "view_count": 1200,
+                            "like_count": 85,
+                            "comment_count": 12,
+                            "share_count": 4,
+                        }
+                    ]
+                }
+            },
+        )
+
+        metrics = TiktokService.get_post_metrics("7699795790084458518", "valid_token")
+
+        assert metrics["views"] == 1200
+        assert metrics["likes"] == 85
+        assert metrics["comments"] == 12
+        assert metrics["shares"] == 4
+        mock_post.assert_called_once_with(
+            "/v2/video/query/?fields=id,title,view_count,like_count,comment_count,share_count",
+            headers={
+                "Authorization": "Bearer valid_token",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
+            json={"filters": {"video_ids": ["7699795790084458518"]}},
+        )
+
+    def test_get_post_metrics_resolves_publish_id(self, mocker):
+        """Should resolve a publish_id (e.g. p_pub_url~v2...) to numeric video ID."""
+        mocker.patch.object(
+            TiktokService,
+            "check_publish_status",
+            return_value={
+                "status": "SUCCESS",
+                "publicaly_available_post_id": [7699795790084458518],
+            },
+        )
+        mocker.patch.object(
+            TiktokService,
+            "post",
+            return_value={
+                "data": {
+                    "videos": [
+                        {
+                            "id": "7699795790084458518",
+                            "view_count": 450,
+                            "like_count": 30,
+                            "comment_count": 5,
+                            "share_count": 2,
+                        }
+                    ]
+                }
+            },
+        )
+
+        metrics = TiktokService.get_post_metrics(
+            "p_pub_url~v2.7699795790084458518", "valid_token"
+        )
+
+        assert metrics["views"] == 450
+        assert metrics["likes"] == 30
+        assert metrics["comments"] == 5
+        assert metrics["shares"] == 2
+
+    def test_get_post_metrics_resolves_publish_id_still_processing(self, mocker):
+        """Should return zeroes gracefully when publish status is still processing."""
+        mocker.patch.object(
+            TiktokService,
+            "check_publish_status",
+            return_value={
+                "status": "PROCESSING",
+                "publicaly_available_post_id": [],
+            },
+        )
+
+        metrics = TiktokService.get_post_metrics(
+            "p_pub_url~v2.7699795790084458518", "valid_token"
+        )
+
+        assert metrics["views"] == 0
+        assert metrics["likes"] == 0
+        assert metrics["comments"] == 0
+        assert metrics["shares"] == 0
