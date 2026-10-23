@@ -33,19 +33,15 @@ class SubscriptionPlan(UUIDTimestampedModel):
 
     brands_limit = models.PositiveIntegerField(default=1)
     social_accounts_limit = models.PositiveIntegerField(default=3)
-    scheduled_posts_per_account = models.IntegerField(
+    monthly_platform_posts_limit = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="Null represents unlimited scheduled posts per account.",
+        help_text="Total platform posts per month across accounts (null represents unlimited).",
     )
     team_members_limit = models.PositiveIntegerField(default=1)
     has_content_calendar = models.BooleanField(default=True)
-    has_cross_platform_publishing = models.BooleanField(default=True)
-    has_basic_analytics = models.BooleanField(default=True)
     has_advanced_analytics = models.BooleanField(default=False)
     ai_features = models.CharField(max_length=50, default="limited")
-    has_multiple_brands = models.BooleanField(default=False)
-    has_approval_workflows = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     sort_order = models.PositiveIntegerField(default=0)
 

@@ -17,15 +17,11 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
             "billing_interval",
             "brands_limit",
             "social_accounts_limit",
-            "scheduled_posts_per_account",
+            "monthly_platform_posts_limit",
             "team_members_limit",
             "has_content_calendar",
-            "has_cross_platform_publishing",
-            "has_basic_analytics",
             "has_advanced_analytics",
             "ai_features",
-            "has_multiple_brands",
-            "has_approval_workflows",
         ]
         read_only_fields = fields
 

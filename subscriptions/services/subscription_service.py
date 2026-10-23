@@ -22,7 +22,6 @@ from subscriptions.models import (
     PaymentTransaction,
     Subscription,
     SubscriptionPlan,
-    WebhookEvent,
 )
 from subscriptions.services.bachs_service import BachsService
 from users.models import User
@@ -230,15 +229,11 @@ class SubscriptionService:
                 "billing_interval": BillingIntervalChoices.MONTH,
                 "brands_limit": 1,
                 "social_accounts_limit": 3,
-                "scheduled_posts_per_account": 10,
+                "monthly_platform_posts_limit": 30,
                 "team_members_limit": 1,
                 "has_content_calendar": True,
-                "has_cross_platform_publishing": True,
-                "has_basic_analytics": True,
                 "has_advanced_analytics": False,
                 "ai_features": "limited",
-                "has_multiple_brands": False,
-                "has_approval_workflows": False,
                 "sort_order": 0,
             },
             {
@@ -250,15 +245,11 @@ class SubscriptionService:
                 "billing_interval": BillingIntervalChoices.MONTH,
                 "brands_limit": 2,
                 "social_accounts_limit": 10,
-                "scheduled_posts_per_account": None,  # Unlimited
+                "monthly_platform_posts_limit": None,  # Unlimited
                 "team_members_limit": 3,
                 "has_content_calendar": True,
-                "has_cross_platform_publishing": True,
-                "has_basic_analytics": True,
                 "has_advanced_analytics": True,
                 "ai_features": "full",
-                "has_multiple_brands": True,
-                "has_approval_workflows": False,
                 "sort_order": 1,
             },
             {
@@ -270,15 +261,11 @@ class SubscriptionService:
                 "billing_interval": BillingIntervalChoices.MONTH,
                 "brands_limit": 10,
                 "social_accounts_limit": 50,
-                "scheduled_posts_per_account": None,  # Unlimited
+                "monthly_platform_posts_limit": None,  # Unlimited
                 "team_members_limit": 10,
                 "has_content_calendar": True,
-                "has_cross_platform_publishing": True,
-                "has_basic_analytics": True,
                 "has_advanced_analytics": True,
                 "ai_features": "full",
-                "has_multiple_brands": True,
-                "has_approval_workflows": True,
                 "sort_order": 2,
             },
         ]
