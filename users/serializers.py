@@ -163,7 +163,6 @@ class UserSerializer(serializers.ModelSerializer):
         return SubscriptionSerializer(sub).data
 
 
-
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

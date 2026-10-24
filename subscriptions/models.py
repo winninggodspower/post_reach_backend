@@ -18,7 +18,6 @@ class SubscriptionPlan(UUIDTimestampedModel):
     tier = models.CharField(
         max_length=20,
         choices=PlanTierChoices.choices,
-        unique=True,
     )
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, default="")
@@ -32,7 +31,12 @@ class SubscriptionPlan(UUIDTimestampedModel):
     bachs_product_id = models.CharField(max_length=100, blank=True, null=True)
 
     brands_limit = models.PositiveIntegerField(default=1)
-    social_accounts_limit = models.PositiveIntegerField(default=3)
+    social_accounts_limit = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=3,
+        help_text="Social accounts limit across brands (null represents unlimited).",
+    )
     monthly_platform_posts_limit = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -47,9 +51,10 @@ class SubscriptionPlan(UUIDTimestampedModel):
 
     class Meta:
         ordering = ["sort_order", "price_usd"]
+        unique_together = [("tier", "billing_interval")]
 
     def __str__(self):
-        return f"{self.name} (${self.price_usd} / ₦{self.price_ngn:,.0f})"
+        return f"{self.name} ({self.billing_interval}) - (${self.price_usd} / ₦{self.price_ngn:,.0f})"
 
 
 class Subscription(UUIDTimestampedModel):

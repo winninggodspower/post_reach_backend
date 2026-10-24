@@ -4,7 +4,9 @@ from subscriptions.services import SubscriptionService
 
 
 class Command(BaseCommand):
-    help = "Seeds or updates default Postglee subscription plans (Free, Pro, Enterprise)"
+    help = (
+        "Seeds or updates default Postglee subscription plans (Free, Pro, Enterprise)"
+    )
 
     def handle(self, *args, **options):
         SubscriptionService.seed_default_plans()

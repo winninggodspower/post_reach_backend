@@ -1,6 +1,6 @@
 import logging
-from typing import Any, Dict, List, Optional
 from decimal import Decimal
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 
@@ -32,10 +32,10 @@ class BachsService:
         plan,
         currency: str = "USD",
         payment_method_type: str = "auto",
-        success_url: Optional[str] = None,
-        cancel_url: Optional[str] = None,
-        reference: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        success_url: str | None = None,
+        cancel_url: str | None = None,
+        reference: str | None = None,
+    ) -> dict[str, Any]:
         """
         Creates a Bachs Checkout Session.
         Supports both USD Card (recurring subscription) and NGN Money Transfer (bank transfer).
@@ -55,7 +55,7 @@ class BachsService:
             "payment_method_type": payment_method_type,
         }
 
-        checkout_kwargs: Dict[str, Any] = {
+        checkout_kwargs: dict[str, Any] = {
             "customer": customer,
             "metadata": metadata,
         }
@@ -71,7 +71,7 @@ class BachsService:
         amount = plan.price_ngn if currency == "NGN" else plan.price_usd
 
         if plan.bachs_product_id:
-            cart_item: Dict[str, Any] = {
+            cart_item: dict[str, Any] = {
                 "product_id": plan.bachs_product_id,
                 "quantity": 1,
             }
@@ -97,14 +97,15 @@ class BachsService:
         checkout = client.checkout_sessions.create(**checkout_kwargs)
 
         return {
-            "checkout_id": getattr(checkout, "id", None) or getattr(checkout, "checkout_id", None),
+            "checkout_id": getattr(checkout, "id", None)
+            or getattr(checkout, "checkout_id", None),
             "checkout_url": getattr(checkout, "checkout_url", None),
             "status": getattr(checkout, "status", "open"),
             "expires_at": getattr(checkout, "expires_at", None),
         }
 
     @classmethod
-    def create_customer_portal_session(cls, customer_id: str) -> Dict[str, Any]:
+    def create_customer_portal_session(cls, customer_id: str) -> dict[str, Any]:
         """
         Creates a customer portal session on Bachs for managing recurring subscriptions.
         """
@@ -129,7 +130,7 @@ class BachsService:
 
     @classmethod
     def verify_and_construct_webhook_event(
-        cls, raw_body: bytes, headers: Dict[str, Any]
+        cls, raw_body: bytes, headers: dict[str, Any]
     ) -> Any:
         """
         Verifies Bachs webhook signature and returns the event object.

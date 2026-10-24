@@ -1,9 +1,11 @@
 from decimal import Decimal
 from unittest.mock import MagicMock
+
 import pytest
 from django.utils import timezone
 
 from subscriptions.enums import (
+    BillingIntervalChoices,
     PaymentMethodTypeChoices,
     PlanTierChoices,
     SubscriptionStatusChoices,
@@ -30,17 +32,59 @@ def test_get_or_create_default_subscription(user):
 @pytest.mark.django_db
 def test_get_all_plans():
     plans = SubscriptionService.get_all_plans()
-    assert plans.count() == 3
-    tiers = [p.tier for p in plans]
-    assert tiers == [PlanTierChoices.FREE, PlanTierChoices.PRO, PlanTierChoices.ENTERPRISE]
+    assert plans.count() == 7
 
-    pro = plans.get(tier=PlanTierChoices.PRO)
-    assert pro.price_usd == Decimal("5.00")
-    assert pro.price_ngn == Decimal("5000.00")
+    starter_m = plans.get(
+        tier=PlanTierChoices.STARTER, billing_interval=BillingIntervalChoices.MONTH
+    )
+    assert starter_m.price_usd == Decimal("6.00")
+    assert starter_m.price_ngn == Decimal("5000.00")
+    assert starter_m.brands_limit == 2
+    assert starter_m.social_accounts_limit == 14
+    assert starter_m.team_members_limit == 1
 
-    enterprise = plans.get(tier=PlanTierChoices.ENTERPRISE)
-    assert enterprise.price_usd == Decimal("12.00")
-    assert enterprise.price_ngn == Decimal("14000.00")
+    starter_y = plans.get(
+        tier=PlanTierChoices.STARTER, billing_interval=BillingIntervalChoices.YEAR
+    )
+    assert starter_y.price_usd == Decimal("60.00")
+    assert starter_y.price_ngn == Decimal("50000.00")
+    assert starter_y.brands_limit == 2
+    assert starter_y.social_accounts_limit == 14
+    assert starter_y.team_members_limit == 1
+
+    creator_m = plans.get(
+        tier=PlanTierChoices.CREATOR, billing_interval=BillingIntervalChoices.MONTH
+    )
+    assert creator_m.price_usd == Decimal("12.00")
+    assert creator_m.price_ngn == Decimal("14000.00")
+    assert creator_m.brands_limit == 4
+    assert creator_m.social_accounts_limit == 28
+    assert creator_m.team_members_limit == 5
+
+    creator_y = plans.get(
+        tier=PlanTierChoices.CREATOR, billing_interval=BillingIntervalChoices.YEAR
+    )
+    assert creator_y.price_usd == Decimal("120.00")
+    assert creator_y.price_ngn == Decimal("140000.00")
+    assert creator_y.brands_limit == 4
+    assert creator_y.social_accounts_limit == 28
+    assert creator_y.team_members_limit == 5
+
+    agency_m = plans.get(
+        tier=PlanTierChoices.AGENCY, billing_interval=BillingIntervalChoices.MONTH
+    )
+    assert agency_m.price_usd == Decimal("35.00")
+    assert agency_m.price_ngn == Decimal("45000.00")
+    assert agency_m.social_accounts_limit is None
+    assert agency_m.team_members_limit == 15
+
+    agency_y = plans.get(
+        tier=PlanTierChoices.AGENCY, billing_interval=BillingIntervalChoices.YEAR
+    )
+    assert agency_y.price_usd == Decimal("350.00")
+    assert agency_y.price_ngn == Decimal("450000.00")
+    assert agency_y.social_accounts_limit is None
+    assert agency_y.team_members_limit == 15
 
 
 @pytest.mark.django_db
@@ -57,7 +101,7 @@ def test_create_checkout_session_card(user, mocker):
 
     result = SubscriptionService.create_checkout_session(
         user=user,
-        plan_tier=PlanTierChoices.PRO,
+        plan_tier=PlanTierChoices.STARTER,
         currency="USD",
         payment_method_type="card",
     )
@@ -65,7 +109,7 @@ def test_create_checkout_session_card(user, mocker):
     assert result["checkout_id"] == "chk_test123"
     assert result["checkout_url"] == "https://checkout.bachs.io/c/test123"
     assert result["currency"] == "USD"
-    assert result["amount"] == "5.00"
+    assert result["amount"] == "6.00"
 
     tx = PaymentTransaction.objects.get(reference=result["reference"])
     assert tx.checkout_id == "chk_test123"
@@ -87,7 +131,7 @@ def test_create_checkout_session_bank_transfer(user, mocker):
 
     result = SubscriptionService.create_checkout_session(
         user=user,
-        plan_tier=PlanTierChoices.ENTERPRISE,
+        plan_tier=PlanTierChoices.CREATOR,
         currency="NGN",
         payment_method_type="bank_transfer",
     )
@@ -104,7 +148,7 @@ def test_create_checkout_session_bank_transfer(user, mocker):
 @pytest.mark.django_db
 def test_webhook_collection_succeeded_bank_transfer(user):
     # Setup pending transaction
-    plan = SubscriptionService.get_plan_by_tier(PlanTierChoices.PRO)
+    plan = SubscriptionService.get_plan_by_tier(PlanTierChoices.STARTER)
     PaymentTransaction.objects.create(
         user=user,
         plan=plan,
@@ -125,7 +169,7 @@ def test_webhook_collection_succeeded_bank_transfer(user):
             "currency": "NGN",
             "metadata": {
                 "user_id": str(user.id),
-                "plan_tier": PlanTierChoices.PRO,
+                "plan_tier": PlanTierChoices.STARTER,
             },
             "payment_method_details": {
                 "type": "bank_transfer",
@@ -136,9 +180,9 @@ def test_webhook_collection_succeeded_bank_transfer(user):
     success, msg = WebhookService.process_webhook_event(event_payload)
     assert success is True
 
-    # User subscription must now be active Pro plan via bank transfer
+    # User subscription must now be active Starter plan via bank transfer
     sub = Subscription.objects.get(user=user)
-    assert sub.plan.tier == PlanTierChoices.PRO
+    assert sub.plan.tier == PlanTierChoices.STARTER
     assert sub.status == SubscriptionStatusChoices.ACTIVE
     assert sub.payment_method_type == PaymentMethodTypeChoices.BANK_TRANSFER
     assert sub.currency == "NGN"
@@ -173,7 +217,7 @@ def test_webhook_subscription_lifecycle(user):
             },
             "metadata": {
                 "user_id": str(user.id),
-                "plan_tier": PlanTierChoices.ENTERPRISE,
+                "plan_tier": PlanTierChoices.CREATOR,
             },
             "current_period_start": "2026-10-01T00:00:00Z",
             "current_period_end": "2026-11-01T00:00:00Z",
@@ -185,7 +229,7 @@ def test_webhook_subscription_lifecycle(user):
     assert success is True
 
     sub = Subscription.objects.get(user=user)
-    assert sub.plan.tier == PlanTierChoices.ENTERPRISE
+    assert sub.plan.tier == PlanTierChoices.CREATOR
     assert sub.bachs_subscription_id == "sub_bachs_888"
     assert sub.bachs_customer_id == "cust_bachs_111"
     assert sub.status == SubscriptionStatusChoices.ACTIVE
@@ -211,7 +255,7 @@ def test_webhook_subscription_lifecycle(user):
 def test_cancel_user_subscription(user, mocker):
     mocker.patch.object(BachsService, "cancel_subscription", return_value=True)
 
-    plan = SubscriptionService.get_plan_by_tier(PlanTierChoices.PRO)
+    plan = SubscriptionService.get_plan_by_tier(PlanTierChoices.STARTER)
     sub = SubscriptionService.get_or_create_default_subscription(user)
     sub.plan = plan
     sub.status = SubscriptionStatusChoices.ACTIVE
@@ -219,10 +263,14 @@ def test_cancel_user_subscription(user, mocker):
     sub.save()
 
     # Cancel at period end
-    updated_sub = SubscriptionService.cancel_user_subscription(user, cancel_at_period_end=True)
+    updated_sub = SubscriptionService.cancel_user_subscription(
+        user, cancel_at_period_end=True
+    )
     assert updated_sub.cancel_at_period_end is True
 
     # Immediate cancel
-    updated_sub2 = SubscriptionService.cancel_user_subscription(user, cancel_at_period_end=False)
+    updated_sub2 = SubscriptionService.cancel_user_subscription(
+        user, cancel_at_period_end=False
+    )
     assert updated_sub2.status == SubscriptionStatusChoices.CANCELED
     assert updated_sub2.plan.tier == PlanTierChoices.FREE

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from subscriptions.enums import PlanTierChoices
+from subscriptions.enums import BillingIntervalChoices, PlanTierChoices
 from subscriptions.models import Subscription, SubscriptionPlan
 
 
@@ -50,7 +50,15 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 class CheckoutSessionRequestSerializer(serializers.Serializer):
     plan_tier = serializers.ChoiceField(
-        choices=[PlanTierChoices.PRO, PlanTierChoices.ENTERPRISE]
+        choices=[
+            PlanTierChoices.STARTER,
+            PlanTierChoices.CREATOR,
+            PlanTierChoices.AGENCY,
+        ]
+    )
+    billing_interval = serializers.ChoiceField(
+        choices=BillingIntervalChoices.choices,
+        default=BillingIntervalChoices.MONTH,
     )
     currency = serializers.ChoiceField(choices=["USD", "NGN"], default="USD")
     payment_method = serializers.ChoiceField(
@@ -69,6 +77,7 @@ class CheckoutSessionResponseSerializer(serializers.Serializer):
     currency = serializers.CharField()
     amount = serializers.CharField()
     plan_tier = serializers.CharField()
+    billing_interval = serializers.CharField()
 
 
 class CustomerPortalResponseSerializer(serializers.Serializer):

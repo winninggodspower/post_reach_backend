@@ -1,4 +1,5 @@
 from decimal import Decimal
+
 import pytest
 from django.urls import reverse
 
@@ -16,10 +17,12 @@ def test_get_plans_endpoint(api_client):
     res_data = response.json()
     assert res_data["success"] is True
     plans = res_data["data"]
-    assert len(plans) == 3
+    assert len(plans) == 7
 
-    tiers = [p["tier"] for p in plans]
-    assert tiers == ["free", "pro", "enterprise"]
+    tiers = {p["tier"] for p in plans}
+    assert tiers == {"free", "starter", "creator", "agency"}
+    intervals = {p["billing_interval"] for p in plans}
+    assert intervals == {"month", "year"}
 
 
 @pytest.mark.django_db
@@ -57,7 +60,7 @@ def test_checkout_endpoint_card(authenticated_client, user, mocker):
 
     url = reverse("subscription-checkout")
     payload = {
-        "plan_tier": "pro",
+        "plan_tier": "starter",
         "currency": "USD",
         "payment_method": "card",
         "success_url": "https://app.postglee.com/billing/success",
@@ -70,7 +73,7 @@ def test_checkout_endpoint_card(authenticated_client, user, mocker):
     assert res_data["success"] is True
     assert res_data["data"]["checkout_id"] == "chk_api_123"
     assert res_data["data"]["checkout_url"] == "https://checkout.bachs.io/c/api_123"
-    assert res_data["data"]["amount"] == "5.00"
+    assert res_data["data"]["amount"] == "6.00"
     assert res_data["data"]["currency"] == "USD"
 
 
@@ -88,7 +91,7 @@ def test_checkout_endpoint_bank_transfer(authenticated_client, user, mocker):
 
     url = reverse("subscription-checkout")
     payload = {
-        "plan_tier": "enterprise",
+        "plan_tier": "creator",
         "currency": "NGN",
         "payment_method": "bank_transfer",
     }
@@ -133,7 +136,7 @@ def test_customer_portal_endpoint(authenticated_client, user, mocker):
 def test_cancel_subscription_endpoint(authenticated_client, user, mocker):
     mocker.patch.object(BachsService, "cancel_subscription", return_value=True)
 
-    plan = SubscriptionService.get_plan_by_tier(PlanTierChoices.PRO)
+    plan = SubscriptionService.get_plan_by_tier(PlanTierChoices.STARTER)
     sub = SubscriptionService.get_or_create_default_subscription(user)
     sub.plan = plan
     sub.status = SubscriptionStatusChoices.ACTIVE
@@ -141,7 +144,9 @@ def test_cancel_subscription_endpoint(authenticated_client, user, mocker):
     sub.save()
 
     url = reverse("subscription-cancel")
-    response = authenticated_client.post(url, {"cancel_at_period_end": True}, format="json")
+    response = authenticated_client.post(
+        url, {"cancel_at_period_end": True}, format="json"
+    )
 
     assert response.status_code == 200
     res_data = response.json()
@@ -179,7 +184,7 @@ def test_bachs_webhook_view_valid_event(api_client, user, mocker):
             "currency": "NGN",
             "metadata": {
                 "user_id": str(user.id),
-                "plan_tier": "pro",
+                "plan_tier": "starter",
             },
             "payment_method_details": {
                 "type": "bank_transfer",
@@ -203,5 +208,5 @@ def test_bachs_webhook_view_valid_event(api_client, user, mocker):
     assert response.status_code == 200
 
     sub = Subscription.objects.get(user=user)
-    assert sub.plan.tier == "pro"
+    assert sub.plan.tier == "starter"
     assert sub.status == "active"

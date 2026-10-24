@@ -33,7 +33,7 @@ class WebhookService:
 
     @classmethod
     @transaction.atomic
-    def process_webhook_event(cls, event: Any) -> Tuple[bool, str]:
+    def process_webhook_event(cls, event: Any) -> tuple[bool, str]:
         """
         Processes webhook events from Bachs idempotently.
         """
@@ -86,7 +86,7 @@ class WebhookService:
         return True, "Event processed successfully"
 
     @classmethod
-    def _handle_collection_succeeded(cls, data: Dict[str, Any]):
+    def _handle_collection_succeeded(cls, data: dict[str, Any]):
         """
         Handles payment collection succeeded. This is critical for Bank Transfer (money transfer)
         and one-time payments.
@@ -101,7 +101,9 @@ class WebhookService:
 
         transaction_obj = None
         if checkout_id:
-            transaction_obj = PaymentTransaction.objects.filter(checkout_id=checkout_id).first()
+            transaction_obj = PaymentTransaction.objects.filter(
+                checkout_id=checkout_id
+            ).first()
 
         user = None
         user_id = metadata.get("user_id")
@@ -119,7 +121,9 @@ class WebhookService:
             transaction_obj.status = TransactionStatusChoices.SUCCEEDED
             transaction_obj.charge_id = charge_id
             payment_details = data.get("payment_method_details", {}) or {}
-            method_str = str(payment_details.get("type") or data.get("payment_method") or "").upper()
+            method_str = str(
+                payment_details.get("type") or data.get("payment_method") or ""
+            ).upper()
             if "BANK_TRANSFER" in method_str:
                 transaction_obj.payment_method = PaymentMethodChoices.NGN_BANK_TRANSFER
             elif "CARD" in method_str:
@@ -151,10 +155,12 @@ class WebhookService:
             )
             sub.cancel_at_period_end = False
             sub.save()
-            logger.info(f"Activated {plan.name} subscription for user {user.email} via collection.succeeded")
+            logger.info(
+                f"Activated {plan.name} subscription for user {user.email} via collection.succeeded"
+            )
 
     @classmethod
-    def _handle_subscription_sync(cls, data: Dict[str, Any]):
+    def _handle_subscription_sync(cls, data: dict[str, Any]):
         """
         Handles recurring Bachs subscription created/updated.
         """
@@ -183,10 +189,12 @@ class WebhookService:
         if plan_tier:
             plan = SubscriptionService.get_plan_by_tier(plan_tier)
         elif data.get("product_id"):
-            plan = SubscriptionPlan.objects.filter(bachs_product_id=data.get("product_id")).first()
+            plan = SubscriptionPlan.objects.filter(
+                bachs_product_id=data.get("product_id")
+            ).first()
 
         if not plan:
-            plan = SubscriptionService.get_plan_by_tier(PlanTierChoices.PRO)
+            plan = SubscriptionService.get_plan_by_tier(PlanTierChoices.STARTER)
 
         status = data.get("status", "active")
         status_map = {
@@ -218,10 +226,12 @@ class WebhookService:
 
         sub.cancel_at_period_end = bool(data.get("cancel_at_period_end", False))
         sub.save()
-        logger.info(f"Synchronized recurring subscription {sub_id} for user {user.email}")
+        logger.info(
+            f"Synchronized recurring subscription {sub_id} for user {user.email}"
+        )
 
     @classmethod
-    def _handle_subscription_deleted(cls, data: Dict[str, Any]):
+    def _handle_subscription_deleted(cls, data: dict[str, Any]):
         """
         Handles cancelled / deleted recurring subscription.
         """
@@ -239,7 +249,7 @@ class WebhookService:
             logger.info(f"Canceled subscription {sub_id} for user {sub.user.email}")
 
     @classmethod
-    def _handle_invoice_paid(cls, data: Dict[str, Any]):
+    def _handle_invoice_paid(cls, data: dict[str, Any]):
         """
         Extends subscription period upon successful invoice payment.
         """
@@ -254,7 +264,7 @@ class WebhookService:
                 sub.save(update_fields=["status", "current_period_end"])
 
     @classmethod
-    def _handle_invoice_payment_failed(cls, data: Dict[str, Any]):
+    def _handle_invoice_payment_failed(cls, data: dict[str, Any]):
         """
         Marks subscription as past due upon failed renewal attempt.
         """

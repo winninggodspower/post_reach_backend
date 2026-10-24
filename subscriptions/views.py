@@ -1,4 +1,5 @@
 import logging
+
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -85,6 +86,7 @@ class CreateCheckoutSessionView(APIView):
             checkout_result = SubscriptionService.create_checkout_session(
                 user=request.user,
                 plan_tier=data["plan_tier"],
+                billing_interval=data.get("billing_interval", "month"),
                 currency=data.get("currency", "USD"),
                 payment_method_type=data.get("payment_method", "auto"),
                 success_url=data.get("success_url") or None,
@@ -117,7 +119,9 @@ class CustomerPortalView(APIView):
     )
     def post(self, request):
         try:
-            portal_session = SubscriptionService.create_customer_portal_session(request.user)
+            portal_session = SubscriptionService.create_customer_portal_session(
+                request.user
+            )
             return CustomSuccessResponse(
                 data={"portal_url": portal_session.get("url")},
                 message="Customer portal session created successfully.",
@@ -146,7 +150,9 @@ class CancelSubscriptionView(APIView):
         serializer = CancelSubscriptionRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        cancel_at_period_end = serializer.validated_data.get("cancel_at_period_end", True)
+        cancel_at_period_end = serializer.validated_data.get(
+            "cancel_at_period_end", True
+        )
         try:
             sub = SubscriptionService.cancel_user_subscription(
                 user=request.user,

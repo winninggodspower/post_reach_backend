@@ -18,11 +18,7 @@ from subscriptions.enums import (
     SubscriptionStatusChoices,
     TransactionStatusChoices,
 )
-from subscriptions.models import (
-    PaymentTransaction,
-    Subscription,
-    SubscriptionPlan,
-)
+from subscriptions.models import PaymentTransaction, Subscription, SubscriptionPlan
 from subscriptions.services.bachs_service import BachsService
 from users.models import User
 
@@ -59,21 +55,38 @@ class SubscriptionService:
         return sub
 
     @classmethod
-    def get_plan_by_tier(cls, tier: str) -> SubscriptionPlan:
-        plan = SubscriptionPlan.objects.filter(tier=tier, is_active=True).first()
+    def get_plan_by_tier(
+        cls, tier: str, billing_interval: str = BillingIntervalChoices.MONTH
+    ) -> SubscriptionPlan:
+        plan = SubscriptionPlan.objects.filter(
+            tier=tier, billing_interval=billing_interval, is_active=True
+        ).first()
         if not plan:
             cls.seed_default_plans()
-            plan = SubscriptionPlan.objects.filter(tier=tier, is_active=True).first()
+            plan = SubscriptionPlan.objects.filter(
+                tier=tier, billing_interval=billing_interval, is_active=True
+            ).first()
             if not plan:
-                raise ValueError(f"Subscription plan for tier '{tier}' does not exist.")
+                # Fallback to any active plan for this tier
+                plan = SubscriptionPlan.objects.filter(
+                    tier=tier, is_active=True
+                ).first()
+                if not plan:
+                    raise ValueError(
+                        f"Subscription plan for tier '{tier}' does not exist."
+                    )
         return plan
 
     @classmethod
     def get_all_plans(cls):
-        plans = SubscriptionPlan.objects.filter(is_active=True).order_by("sort_order", "price_usd")
+        plans = SubscriptionPlan.objects.filter(is_active=True).order_by(
+            "sort_order", "price_usd"
+        )
         if not plans.exists():
             cls.seed_default_plans()
-            plans = SubscriptionPlan.objects.filter(is_active=True).order_by("sort_order", "price_usd")
+            plans = SubscriptionPlan.objects.filter(is_active=True).order_by(
+                "sort_order", "price_usd"
+            )
         return plans
 
     @classmethod
@@ -81,11 +94,12 @@ class SubscriptionService:
         cls,
         user: User,
         plan_tier: str,
+        billing_interval: str = BillingIntervalChoices.MONTH,
         currency: str = "USD",
         payment_method_type: str = "auto",
-        success_url: Optional[str] = None,
-        cancel_url: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        success_url: str | None = None,
+        cancel_url: str | None = None,
+    ) -> dict[str, Any]:
         """
         Creates a checkout session for the user to subscribe to a paid plan.
         Supports bank transfer / money transfer (NGN) and card (USD).
@@ -93,7 +107,7 @@ class SubscriptionService:
         if plan_tier == PlanTierChoices.FREE:
             raise ValueError("The Free plan does not require a checkout session.")
 
-        plan = cls.get_plan_by_tier(plan_tier)
+        plan = cls.get_plan_by_tier(plan_tier, billing_interval=billing_interval)
         currency = currency.upper()
 
         if currency == "NGN":
@@ -115,7 +129,9 @@ class SubscriptionService:
             )
             payment_method = PaymentMethodChoices.CARD
 
-        reference = f"sub_{user.id}_{int(timezone.now().timestamp())}_{uuid.uuid4().hex[:6]}"
+        reference = (
+            f"sub_{user.id}_{int(timezone.now().timestamp())}_{uuid.uuid4().hex[:6]}"
+        )
 
         checkout_data = BachsService.create_checkout_session(
             user=user,
@@ -143,6 +159,7 @@ class SubscriptionService:
             payment_method=payment_method,
             metadata={
                 "plan_tier": plan.tier,
+                "billing_interval": plan.billing_interval,
                 "payment_method_type": payment_method_type,
             },
         )
@@ -154,10 +171,11 @@ class SubscriptionService:
             "currency": currency,
             "amount": str(amount),
             "plan_tier": plan.tier,
+            "billing_interval": plan.billing_interval,
         }
 
     @classmethod
-    def create_customer_portal_session(cls, user: User) -> Dict[str, Any]:
+    def create_customer_portal_session(cls, user: User) -> dict[str, Any]:
         """
         Creates a portal session for customer to manage cards and invoices.
         """
@@ -209,15 +227,13 @@ class SubscriptionService:
 
         return sub
 
-
-
     @classmethod
     def seed_default_plans(cls):
         """
-        Seeds the 3 Postglee plans:
-        1. Free: $0 / ₦0
-        2. Pro: $5 / ₦5,000
-        3. Enterprise: $12 / ₦14,000
+        Seeds Postglee plans (Monthly & Yearly):
+        1. Free: $0 / ₦0 (Monthly)
+        2. Pro: $5 / ₦5,000 (Monthly) & $50 / ₦50,000 (Yearly - 2 months free)
+        3. Enterprise: $12 / ₦14,000 (Monthly) & $120 / ₦140,000 (Yearly - 2 months free)
         """
         plans_data = [
             {
@@ -237,41 +253,106 @@ class SubscriptionService:
                 "sort_order": 0,
             },
             {
-                "tier": PlanTierChoices.PRO,
-                "name": "Pro",
-                "description": "Powerful tools and multi-account publishing for growing brands",
-                "price_usd": Decimal("5.00"),
+                "tier": PlanTierChoices.STARTER,
+                "name": "Starter (Monthly)",
+                "description": "Solo creators and small accounts getting serious with publishing",
+                "price_usd": Decimal("6.00"),
                 "price_ngn": Decimal("5000.00"),
                 "billing_interval": BillingIntervalChoices.MONTH,
                 "brands_limit": 2,
-                "social_accounts_limit": 10,
+                "social_accounts_limit": 14,
                 "monthly_platform_posts_limit": None,  # Unlimited
-                "team_members_limit": 3,
+                "team_members_limit": 1,
                 "has_content_calendar": True,
-                "has_advanced_analytics": True,
-                "ai_features": "full",
+                "has_advanced_analytics": False,
+                "ai_features": "limited",
                 "sort_order": 1,
             },
             {
-                "tier": PlanTierChoices.ENTERPRISE,
-                "name": "Enterprise",
-                "description": "Maximum power, workflows, analytics and team collaboration",
+                "tier": PlanTierChoices.STARTER,
+                "name": "Starter (Yearly)",
+                "description": "Solo creators with 2 months free (billed annually)",
+                "price_usd": Decimal("60.00"),
+                "price_ngn": Decimal("50000.00"),
+                "billing_interval": BillingIntervalChoices.YEAR,
+                "brands_limit": 2,
+                "social_accounts_limit": 14,
+                "monthly_platform_posts_limit": None,  # Unlimited
+                "team_members_limit": 1,
+                "has_content_calendar": True,
+                "has_advanced_analytics": False,
+                "ai_features": "limited",
+                "sort_order": 2,
+            },
+            {
+                "tier": PlanTierChoices.CREATOR,
+                "name": "Creator (Monthly)",
+                "description": "Power creators, influencers, and brands with multi-accounts & analytics",
                 "price_usd": Decimal("12.00"),
                 "price_ngn": Decimal("14000.00"),
                 "billing_interval": BillingIntervalChoices.MONTH,
-                "brands_limit": 10,
-                "social_accounts_limit": 50,
+                "brands_limit": 4,
+                "social_accounts_limit": 28,
                 "monthly_platform_posts_limit": None,  # Unlimited
-                "team_members_limit": 10,
+                "team_members_limit": 5,
                 "has_content_calendar": True,
                 "has_advanced_analytics": True,
                 "ai_features": "full",
-                "sort_order": 2,
+                "sort_order": 3,
+            },
+            {
+                "tier": PlanTierChoices.CREATOR,
+                "name": "Creator (Yearly)",
+                "description": "Power creators with 2 months free (billed annually)",
+                "price_usd": Decimal("120.00"),
+                "price_ngn": Decimal("140000.00"),
+                "billing_interval": BillingIntervalChoices.YEAR,
+                "brands_limit": 4,
+                "social_accounts_limit": 28,
+                "monthly_platform_posts_limit": None,  # Unlimited
+                "team_members_limit": 5,
+                "has_content_calendar": True,
+                "has_advanced_analytics": True,
+                "ai_features": "full",
+                "sort_order": 4,
+            },
+            {
+                "tier": PlanTierChoices.AGENCY,
+                "name": "Agency (Monthly)",
+                "description": "Agencies and multi-client businesses requiring maximum power",
+                "price_usd": Decimal("35.00"),
+                "price_ngn": Decimal("45000.00"),
+                "billing_interval": BillingIntervalChoices.MONTH,
+                "brands_limit": 10,
+                "social_accounts_limit": None,  # Unlimited
+                "monthly_platform_posts_limit": None,  # Unlimited
+                "team_members_limit": 15,
+                "has_content_calendar": True,
+                "has_advanced_analytics": True,
+                "ai_features": "full",
+                "sort_order": 5,
+            },
+            {
+                "tier": PlanTierChoices.AGENCY,
+                "name": "Agency (Yearly)",
+                "description": "Agencies with 2 months free (billed annually)",
+                "price_usd": Decimal("350.00"),
+                "price_ngn": Decimal("450000.00"),
+                "billing_interval": BillingIntervalChoices.YEAR,
+                "brands_limit": 10,
+                "social_accounts_limit": None,  # Unlimited
+                "monthly_platform_posts_limit": None,  # Unlimited
+                "team_members_limit": 15,
+                "has_content_calendar": True,
+                "has_advanced_analytics": True,
+                "ai_features": "full",
+                "sort_order": 6,
             },
         ]
 
         for pdata in plans_data:
             SubscriptionPlan.objects.update_or_create(
                 tier=pdata["tier"],
+                billing_interval=pdata["billing_interval"],
                 defaults=pdata,
             )

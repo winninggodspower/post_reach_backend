@@ -41,6 +41,7 @@ ALLOWED_HOSTS = env.list(
         "127.0.0.1",
         "post-reach-pi.vercel.app",
         "winningtech.xyz",
+        "local-backend.winningtech.xyz",
     ],
 )
 
@@ -344,5 +345,3 @@ CELERY_BEAT_SCHEDULE = {
 # Bachs Payments & Subscriptions
 BACHS_API_KEY = env("BACHS_API_KEY", default="")
 BACHS_WEBHOOK_SECRET = env("BACHS_WEBHOOK_SECRET", default="")
-BACHS_API_URL = env("BACHS_API_URL", default="https://sandbox-api.bachs.io")
-

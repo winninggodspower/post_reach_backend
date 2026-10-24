@@ -3,8 +3,9 @@ from django.db import models
 
 class PlanTierChoices(models.TextChoices):
     FREE = "free", "Free"
-    PRO = "pro", "Pro"
-    ENTERPRISE = "enterprise", "Enterprise"
+    STARTER = "starter", "Starter"
+    CREATOR = "creator", "Creator"
+    AGENCY = "agency", "Agency"
 
 
 class SubscriptionStatusChoices(models.TextChoices):
