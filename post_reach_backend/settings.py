@@ -41,6 +41,7 @@ ALLOWED_HOSTS = env.list(
         "127.0.0.1",
         "post-reach-pi.vercel.app",
         "winningtech.xyz",
+        "local-backend.winningtech.xyz",
     ],
 )
 
@@ -60,6 +61,7 @@ INSTALLED_APPS = [
     "integrations",
     "content.apps.ContentConfig",
     "analytics.apps.AnalyticsConfig",
+    "subscriptions.apps.SubscriptionsConfig",
     # Third-party apps
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
@@ -339,3 +341,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 86400,  # 24 hours in seconds
     },
 }
+
+# Bachs Payments & Subscriptions
+BACHS_API_KEY = env("BACHS_API_KEY", default="")
+BACHS_WEBHOOK_SECRET = env("BACHS_WEBHOOK_SECRET", default="")

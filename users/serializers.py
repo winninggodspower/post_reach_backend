@@ -104,6 +104,7 @@ class UserSerializer(serializers.ModelSerializer):
     has_completed_onboarding = serializers.SerializerMethodField()
     brand = serializers.SerializerMethodField()
     brands = serializers.SerializerMethodField()
+    subscription = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -118,6 +119,7 @@ class UserSerializer(serializers.ModelSerializer):
             "has_completed_onboarding",
             "brand",
             "brands",
+            "subscription",
         ]
         read_only_fields = fields
 
@@ -151,6 +153,14 @@ class UserSerializer(serializers.ModelSerializer):
             many=True,
             context={"active_brand_id": active_brand_id, "user": user},
         ).data
+
+    @swagger_serializer_method(serializer_or_field=serializers.DictField())
+    def get_subscription(self, user):
+        from subscriptions.serializers import SubscriptionSerializer
+        from subscriptions.services.subscription_service import SubscriptionService
+
+        sub = SubscriptionService.get_or_create_default_subscription(user)
+        return SubscriptionSerializer(sub).data
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
