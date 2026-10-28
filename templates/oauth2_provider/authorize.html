@@ -4,108 +4,250 @@
     <meta charset="utf-8">
     <title>{% trans "Authorize Application" %} — PostGlee</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --border: #334155;
-            --text: #f8fafc;
-            --muted: #94a3b8;
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --danger: #ef4444;
+            --primary: #fb923c;
+            --primary-bright: #fca55f;
+            --primary-deep: #f87c1c;
+            --on-primary: #ffffff;
+            --ink: #374151;
+            --ink-soft: #6b7280;
+            --link-pressed: #111827;
+            --canvas: #ffffff;
+            --paper: #ffffff;
+            --hairline: #e5e7eb;
+
+            --rounded-md: 8px;
+            --rounded-lg: 10px;
+            --rounded-xl: 24px;
+            --rounded-pill: 9999px;
+
+            --space-xs: 8px;
+            --space-sm: 12px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+
+            --shadow-soft-lift: rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.1) 0px 1px 2px -1px;
+            --shadow-card: rgba(0, 0, 0, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.1) 0px 2px 4px -2px;
+            --shadow-interactive: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px;
+            --shadow-modal: rgba(0, 0, 0, 0.25) 0px 25px 50px -12px;
+
+            --transition-default: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-transform: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
         }
-        * { box-sizing: border-box; }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: 24px;
+            background-color: var(--canvas);
+            background-image:
+                linear-gradient(to right, var(--hairline) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--hairline) 1px, transparent 1px);
+            background-size: 48px 48px;
+            color: var(--ink);
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.5;
+            padding: var(--space-md);
         }
+
         .card {
             width: 100%;
-            max-width: 440px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 32px;
-            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+            max-width: 460px;
+            background-color: var(--paper);
+            border: 1px solid var(--hairline);
+            border-radius: var(--rounded-xl);
+            padding: var(--space-xl);
+            box-shadow: var(--shadow-card);
         }
-        .brand-badge {
+
+        .brand-header {
+            margin-bottom: var(--space-lg);
+        }
+
+        .logo-img {
+            height: 34px;
+            width: auto;
+            display: block;
+            border: 0;
+            outline: none;
+        }
+
+        .logo-fallback {
+            font-family: "Sora", sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+        }
+
+        h1 {
+            font-family: "Sora", sans-serif;
+            font-size: 24px;
+            font-weight: 600;
+            line-height: 1.25;
+            color: var(--ink);
+            margin: 0 0 10px;
+        }
+
+        .app-highlight {
+            color: var(--primary);
+        }
+
+        .subtitle {
+            color: var(--ink-soft);
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.55;
+            margin: 0 0 var(--space-lg);
+        }
+
+        .subtitle strong {
+            color: var(--ink);
+            font-weight: 600;
+        }
+
+        .scopes-heading {
             font-size: 13px;
             font-weight: 600;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            color: var(--primary);
-            margin-bottom: 8px;
+            color: var(--ink);
+            margin: 0 0 10px;
         }
-        h1 {
-            font-size: 22px;
-            margin: 0 0 8px;
-        }
-        .subtitle {
-            color: var(--muted);
-            font-size: 14px;
-            margin: 0 0 20px;
-        }
+
         .scopes {
             list-style: none;
-            padding: 16px;
-            margin: 0 0 24px;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border);
-            border-radius: 12px;
+            padding: 0;
+            margin: 0 0 28px;
+            background-color: var(--paper);
+            border: 1px solid var(--hairline);
+            border-radius: var(--rounded-lg);
+            overflow: hidden;
         }
+
         .scopes li {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
             font-size: 14px;
-            padding: 6px 0;
-            color: var(--text);
+            font-weight: 400;
+            line-height: 1.45;
+            padding: 14px var(--space-md);
+            color: var(--ink);
         }
+
         .scopes li + li {
-            border-top: 1px solid rgba(51, 65, 85, 0.6);
+            border-top: 1px solid var(--hairline);
         }
+
+        .check-badge {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: var(--rounded-pill);
+            background-color: var(--primary);
+            color: var(--on-primary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
         .actions {
             display: flex;
-            gap: 12px;
+            align-items: center;
+            justify-content: flex-end;
+            gap: var(--space-sm);
         }
+
         .btn {
             flex: 1;
-            padding: 12px 16px;
+            padding: 10px var(--space-lg);
+            font-family: "Inter", sans-serif;
             font-size: 14px;
             font-weight: 600;
-            border-radius: 10px;
+            line-height: 1.5;
+            border-radius: var(--rounded-pill);
             cursor: pointer;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--text);
+            transition: var(--transition-default), var(--transition-transform);
+            text-align: center;
         }
-        .btn-primary {
-            background: var(--primary);
+
+        .btn-secondary {
+            background-color: var(--paper);
+            border: 1px solid var(--hairline);
+            color: var(--ink);
+            box-shadow: var(--shadow-soft-lift);
+        }
+
+        .btn-secondary:hover {
+            color: var(--primary);
             border-color: var(--primary);
-            color: #fff;
         }
+
+        .btn-primary {
+            background-color: var(--primary);
+            border: 1px solid var(--primary);
+            color: var(--on-primary);
+            box-shadow: var(--shadow-interactive);
+        }
+
         .btn-primary:hover {
-            background: var(--primary-hover);
+            background-color: var(--primary-bright);
+            border-color: var(--primary-bright);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-modal);
         }
-        .error-box {
-            color: var(--danger);
+
+        .error-description {
+            color: var(--ink-soft);
             font-size: 14px;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                padding: var(--space-lg);
+            }
+
+            .actions {
+                flex-direction: column-reverse;
+            }
+
+            .btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
     <div class="card">
-        <div class="brand-badge">PostGlee MCP</div>
+        <div class="brand-header">
+            <img src="https://postglee.com/postglee-logo.png" alt="PostGlee" class="logo-img" width="132" height="34" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+            <span class="logo-fallback" style="display: none;">PostGlee</span>
+        </div>
+
         {% if not error %}
             <form id="authorizationForm" method="post">
-                <h1>{% trans "Authorize" %} {{ application.name|default:application.client_id }}?</h1>
+                <h1>
+                    {% trans "Authorize" %}
+                    <span class="app-highlight">{{ application.name|default:application.client_id }}</span>?
+                </h1>
                 <p class="subtitle">
-                    Signed in as <strong>{{ request.user.email }}</strong>. This application is requesting permission to:
+                    Signed in as <strong>{{ request.user.email }}</strong>. This application is requesting access to your PostGlee account.
                 </p>
                 {% csrf_token %}
 
@@ -115,9 +257,13 @@
                     {% endif %}
                 {% endfor %}
 
+                <p class="scopes-heading">{% trans "Permissions requested" %}</p>
                 <ul class="scopes">
                     {% for scope in scopes_descriptions %}
-                        <li>✓ {{ scope }}</li>
+                        <li>
+                            <span class="check-badge" aria-hidden="true">✓</span>
+                            <span>{{ scope }}</span>
+                        </li>
                     {% endfor %}
                 </ul>
 
@@ -125,13 +271,13 @@
                 {{ form.non_field_errors }}
 
                 <div class="actions">
-                    <input type="submit" class="btn" value="{% trans 'Deny' %}"/>
+                    <input type="submit" class="btn btn-secondary" value="{% trans 'Deny' %}"/>
                     <input type="submit" class="btn btn-primary" name="allow" value="{% trans 'Allow Access' %}"/>
                 </div>
             </form>
         {% else %}
-            <h1>Authorization Error ({{ error.error }})</h1>
-            <p class="error-box">{{ error.description }}</p>
+            <h1>{% trans "Authorization Error" %} ({{ error.error }})</h1>
+            <p class="error-description">{{ error.description }}</p>
         {% endif %}
     </div>
 </body>

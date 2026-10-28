@@ -16,6 +16,7 @@ Conventions
 - Service classes: use `*Service` named classes with staticmethods or instance methods for logic.
 - External integrations: wrap third-party API calls in integration/service modules (e.g., `GoogleAuthService`) so they can be mocked in tests.
 - Responses: use the project's response wrappers (`utils.responses.SuccessResponse` / `ErrorResponse` or legacy wrappers in `post_reach_bacend.responses`).
+- UI & HTML/Email Templates (`templates/**/*.html`): Always activate and follow the `postglee-design` skill (`.agents/skills/postglee-design/SKILL.md`). Use the light PostGlee theme (`#fb923c` primary, `#374151` ink, `#6b7280` ink-soft, `#ffffff` canvas/paper, `#e5e7eb` hairline, `Sora` for headings, `Inter` for body/buttons, pill buttons `9999px`, and the `https://postglee.com/postglee-logo.png` header). Reference existing templates in `templates/emails/` and `templates/oauth2_provider/authorize.html` before creating new ones.
 
 Testing rules
 - Test framework: `pytest` + `pytest-django`. Use the fixtures in `conftest.py`.
