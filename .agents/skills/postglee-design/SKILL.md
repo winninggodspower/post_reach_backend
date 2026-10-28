@@ -260,4 +260,3 @@ The primary spacing rhythm is built on a 4px grid, with tokens like `{spacing.xx
 6.  **Don't** overuse `{colors.primary}`. It is an accent color, not a primary surface color.
 7.  **Don't** set body copy in any style other than `{typography.body-md}` or `{typography.body-lg}` to maintain readability.
 8.  **Don't** forget to apply hover and focus states to all interactive components using the `{motion.*}` tokens for smooth transitions.
-

@@ -400,6 +400,7 @@ OAUTH2_PROVIDER = {
     "ALLOW_LOCALHOST_LOOPBACK": True,
     "ALLOWED_REDIRECT_URI_SCHEMES": ["http", "https"],
     "DCR_ENABLED": True,
+    "DCR_REGISTRATION_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 90,  # 90 days
     "DCR_REGISTRATION_PERMISSION_CLASSES": (
         "oauth2_provider.dcr.AllowAllDCRPermission",
     ),

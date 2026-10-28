@@ -122,7 +122,7 @@ class OAuthConnectionService:
                 registration_source=Application.RegistrationSource.DCR,
                 updated__lt=cutoff,
             )
-            .exclude(accesstoken__isnull=False)
+            .exclude(accesstoken__user__isnull=False)
             .exclude(refreshtoken__isnull=False)
             .exclude(grant__isnull=False)
             .distinct()
