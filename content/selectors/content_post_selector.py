@@ -25,12 +25,16 @@ class ContentPostSelector:
     @classmethod
     def get_content_post(cls, post_id: UUID | str, user: User) -> ContentPost:
         """
-        Retrieve a single ContentPost by ID, ensuring it belongs to the given user.
+        Retrieve a single ContentPost by ID, ensuring it belongs to the given user
+        or a brand accessible by the user.
         Prefetches media_items and platform_entries.
 
-        :raises ContentPost.DoesNotExist: If not found or not owned by user.
+        :raises ContentPost.DoesNotExist: If not found or not accessible by user.
         :return: The ContentPost instance.
         """
+        from users.services.brand_service import BrandService
+
+        accessible_brands = BrandService.get_accessible_brands(user)
         return (
             ContentPost.objects.select_related("brand")
             .prefetch_related(
@@ -43,7 +47,9 @@ class ContentPostSelector:
                     queryset=ContentPostPlatform.objects.all(),
                 ),
             )
-            .get(id=post_id, user=user)
+            .filter(Q(user=user) | Q(brand__in=accessible_brands))
+            .distinct()
+            .get(id=post_id)
         )
 
     @classmethod

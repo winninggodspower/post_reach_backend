@@ -7,6 +7,7 @@ from .views.auth_view import (
     PasswordResetViewSet,
     RegisterUserView,
     SignInView,
+    SignOutView,
 )
 from .views.brand_view import BrandViewSet, SetActiveBrandView
 from .views.invitation_view import (
@@ -30,6 +31,7 @@ router.register(r"brands", BrandViewSet, basename="brand")
 
 urlpatterns = [
     path("sign-in/", SignInView.as_view(), name="sign-in"),
+    path("sign-out/", SignOutView.as_view(), name="sign-out"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("register/", RegisterUserView.as_view(), name="register"),
     path("google-sign-in/", GoogleSignInView.as_view(), name="google-sign-in"),

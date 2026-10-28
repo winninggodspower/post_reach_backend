@@ -62,9 +62,12 @@ INSTALLED_APPS = [
     "content.apps.ContentConfig",
     "analytics.apps.AnalyticsConfig",
     "subscriptions.apps.SubscriptionsConfig",
+    "mcp_integration.apps.McpIntegrationConfig",
     # Third-party apps
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "oauth2_provider",
+    "mcp_server",
     "corsheaders",
     "querycount",
     "drf_yasg",
@@ -89,11 +92,33 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "http://localhost:3000",
     "http://localhost:3001",
     "https://postreach.winningtech.xyz",
     "https://postglee.com",
 ]
+CORS_EXPOSE_HEADERS = [
+    "WWW-Authenticate",
+    "Mcp-Session-Id",
+]
+
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:8000",
+        "https://postreach.winningtech.xyz",
+        "https://postglee.com",
+    ],
+)
+
+# Session cookie settings (used by OAuth 2.1 browser authorization flow)
+SESSION_COOKIE_AGE = 86400  # 1 day
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_DOMAIN = env("SESSION_COOKIE_DOMAIN", default=None) or None
 
 # User settings
 AUTH_USER_MODEL = "users.User"
@@ -340,8 +365,78 @@ CELERY_BEAT_SCHEDULE = {
         "task": "content.tasks.cleanup_abandoned_pending_uploads",
         "schedule": 86400,  # 24 hours in seconds
     },
+    "cleanup_oauth_tokens_and_dcr_clients": {
+        "task": "mcp_integration.tasks.cleanup_oauth_tokens_and_dcr_clients",
+        "schedule": 86400,  # 24 hours in seconds
+    },
 }
 
 # Bachs Payments & Subscriptions
 BACHS_API_KEY = env("BACHS_API_KEY", default="")
 BACHS_WEBHOOK_SECRET = env("BACHS_WEBHOOK_SECRET", default="")
+
+# ── OAuth 2.1 Authorization Server (django-oauth-toolkit) ─────────────────
+LOGIN_URL = env("OAUTH_LOGIN_URL", default=f"{FRONTEND_URL.rstrip('/')}/login")
+
+MCP_RESOURCE_URL = env("MCP_RESOURCE_URL", default="")
+OAUTH_ISSUER_URL = env("OAUTH_ISSUER_URL", default="")
+
+OAUTH2_PROVIDER = {
+    "SCOPES": {
+        "accounts:read": "View your brands and connected social media accounts",
+        "posts:read": "View your scheduled and published posts and content calendar",
+        "posts:write": "Create, schedule, update, and delete social media posts",
+    },
+    "DEFAULT_SCOPES": ["accounts:read", "posts:read", "posts:write"],
+    "PKCE_REQUIRED": True,
+    "AUTHORIZATION_CODE_EXPIRE_SECONDS": 600,
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 3600,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 30,  # 30 days
+    "ROTATE_REFRESH_TOKEN": True,
+    "REFRESH_TOKEN_REUSE_PROTECTION": True,
+    "REQUEST_APPROVAL_PROMPT": "force",
+    "ALLOW_LOCALHOST_LOOPBACK": True,
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["http", "https"],
+    "DCR_ENABLED": True,
+    "DCR_REGISTRATION_PERMISSION_CLASSES": (
+        "oauth2_provider.dcr.AllowAllDCRPermission",
+    ),
+    "CIMD_ENABLED": True,
+    "OAUTH2_RESPONSE_TYPES_SUPPORTED": ["code"],
+    "OAUTH2_GRANT_TYPES_SUPPORTED": ["authorization_code", "refresh_token"],
+    "OAUTH2_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED": [
+        "none",
+        "client_secret_post",
+        "client_secret_basic",
+    ],
+    "COMPLIANT_BCP_RFC9700_IMPLICIT_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PASSWORD_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    "COMPLIANT_BCP_RFC9700_AUTHZ_RESPONSE_ISS": True,
+    "OAUTH2_PROTECTED_RESOURCE_NAME": "PostGlee MCP Server",
+    "OAUTH2_PROTECTED_RESOURCE_BEARER_METHODS_SUPPORTED": ["header"],
+    **(
+        {"OAUTH2_PROTECTED_RESOURCE_IDENTIFIER": MCP_RESOURCE_URL}
+        if MCP_RESOURCE_URL
+        else {}
+    ),
+    **(
+        {
+            "OIDC_ISS_ENDPOINT": OAUTH_ISSUER_URL,
+            "OAUTH2_PROTECTED_RESOURCE_AUTHORIZATION_SERVERS": [OAUTH_ISSUER_URL],
+        }
+        if OAUTH_ISSUER_URL
+        else {}
+    ),
+}
+
+# ── MCP Server (django-mcp-server) ────────────────────────────────────────
+DJANGO_MCP_GLOBAL_SERVER_CONFIG = {
+    "name": "PostGlee",
+    "instructions": (
+        "PostGlee MCP server. Use `list_brands` and `list_connected_accounts` to inspect "
+        "available brands and social accounts before scheduling or publishing posts."
+    ),
+    "stateless": True,
+}
+DJANGO_MCP_GET_SERVER_INSTRUCTIONS_TOOL = False
