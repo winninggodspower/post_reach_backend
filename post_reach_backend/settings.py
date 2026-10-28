@@ -5,6 +5,8 @@ from pathlib import Path
 
 import environ
 
+from utils.frontend_urls import FrontendUrls
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -376,7 +378,7 @@ BACHS_API_KEY = env("BACHS_API_KEY", default="")
 BACHS_WEBHOOK_SECRET = env("BACHS_WEBHOOK_SECRET", default="")
 
 # ── OAuth 2.1 Authorization Server (django-oauth-toolkit) ─────────────────
-LOGIN_URL = env("OAUTH_LOGIN_URL", default=f"{FRONTEND_URL.rstrip('/')}/login")
+LOGIN_URL = env("OAUTH_LOGIN_URL", default=FrontendUrls.login(FRONTEND_URL))
 
 MCP_RESOURCE_URL = env("MCP_RESOURCE_URL", default="")
 OAUTH_ISSUER_URL = env("OAUTH_ISSUER_URL", default="")

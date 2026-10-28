@@ -14,4 +14,3 @@ urlpatterns = [
         name="oauth-connection-detail",
     ),
 ]
-

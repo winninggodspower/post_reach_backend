@@ -138,9 +138,7 @@ class TestMCPContextAndConnectionService:
         )
         assert resolved.id == other_brand.id
 
-    def test_list_and_revoke_connections_via_api(
-        self, authenticated_client, user
-    ):
+    def test_list_and_revoke_connections_via_api(self, authenticated_client, user):
         app, _tok, _rt = _issue_oauth_token(
             user, scope="accounts:read posts:read", client_name="Cursor MCP"
         )
@@ -288,7 +286,7 @@ class TestOAuthAndMCPEndToEnd:
         }
         anon_auth = client.get("/oauth/authorize/", auth_params)
         assert anon_auth.status_code == 302
-        assert "/login?next=" in anon_auth["Location"]
+        assert "/signin?next=" in anon_auth["Location"]
 
         # 3. User signs in via EXISTING /api/auth/sign-in/ -> sets session cookie
         login_resp = client.post(
@@ -386,4 +384,3 @@ class TestOAuthAndMCPEndToEnd:
         assert call_resp.status_code == 200
         call_result = call_resp.json()["result"]
         assert call_result["isError"] is False
-

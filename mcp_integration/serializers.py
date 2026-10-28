@@ -7,4 +7,3 @@ class OAuthConnectionSerializer(serializers.Serializer):
     scopes = serializers.ListField(child=serializers.CharField())
     connected_at = serializers.DateTimeField()
     expires_at = serializers.DateTimeField()
-

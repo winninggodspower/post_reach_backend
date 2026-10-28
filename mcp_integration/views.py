@@ -1,8 +1,6 @@
 from drf_yasg.utils import swagger_auto_schema
 from mcp_server.views import MCPServerStreamableHttpView
-from oauth2_provider.contrib.rest_framework import (
-    OAuth2ProtectedResourceAuthentication,
-)
+from oauth2_provider.contrib.rest_framework import OAuth2ProtectedResourceAuthentication
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -70,4 +68,3 @@ class OAuthConnectionDetailView(APIView):
         return CustomSuccessResponse(
             message="Application access revoked successfully.",
         )
-

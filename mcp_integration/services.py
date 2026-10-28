@@ -10,11 +10,15 @@ from users.services.user_service import UserService
 
 
 class MCPContextService:
-    """ Resolves authenticated user, OAuth scopes, and target brand for MCP tool calls. """
+    """Resolves authenticated user, OAuth scopes, and target brand for MCP tool calls."""
 
     @staticmethod
     def get_user_and_scopes(request) -> tuple[User, set[str]]:
-        if request is None or not getattr(request, "user", None) or not request.user.is_authenticated:
+        if (
+            request is None
+            or not getattr(request, "user", None)
+            or not request.user.is_authenticated
+        ):
             raise PermissionError("Authentication is required to invoke MCP tools.")
 
         token = getattr(request, "auth", None) or getattr(request, "access_token", None)
@@ -42,12 +46,14 @@ class MCPContextService:
         else:
             brand = UserService.get_active_brand(user)
             if not brand:
-                raise ValueError("No active brand found. Please create or select a brand first.")
+                raise ValueError(
+                    "No active brand found. Please create or select a brand first."
+                )
         return user, brand
 
 
 class OAuthConnectionService:
-    """ Manage a user's authorized OAuth / MCP client connections. """
+    """Manage a user's authorized OAuth / MCP client connections."""
 
     @staticmethod
     def list_connections(user: User) -> list[dict]:
@@ -123,4 +129,3 @@ class OAuthConnectionService:
         )
         deleted_apps, _ = stale_apps.delete()
         return {"deleted_dcr_clients": deleted_apps}
-

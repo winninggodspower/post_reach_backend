@@ -36,9 +36,7 @@ class PostGleeMCPToolset(MCPToolset):
             context={"active_brand_id": active_brand_id, "user": user},
         ).data
 
-    def list_connected_accounts(
-        self, brand_id: str | None = None
-    ) -> dict[str, Any]:
+    def list_connected_accounts(self, brand_id: str | None = None) -> dict[str, Any]:
         """
         List connected social media accounts for a brand (defaults to the user's active brand).
 
@@ -54,9 +52,7 @@ class PostGleeMCPToolset(MCPToolset):
         return {
             "brand_id": str(brand.id),
             "brand_name": brand.name,
-            "connected_accounts": ConnectedAccountSerializer(
-                accounts, many=True
-            ).data,
+            "connected_accounts": ConnectedAccountSerializer(accounts, many=True).data,
         }
 
     def list_scheduled_posts(
@@ -243,9 +239,7 @@ class PostGleeMCPToolset(MCPToolset):
                 validated_data["scheduled_at"] = parsed_dt
         if platforms is not None:
             if content_post.content_type == "text":
-                unsupported = [
-                    p for p in platforms if p not in ALLOWED_TEXT_PLATFORMS
-                ]
+                unsupported = [p for p in platforms if p not in ALLOWED_TEXT_PLATFORMS]
                 if unsupported:
                     raise ValueError(
                         f"Unsupported platform(s) for text posts: {', '.join(unsupported)}."
@@ -276,4 +270,3 @@ class PostGleeMCPToolset(MCPToolset):
 
         ContentPostService.delete_content_post(content_post)
         return {"deleted": True, "post_id": str(post_id)}
-
