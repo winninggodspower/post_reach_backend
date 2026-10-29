@@ -246,11 +246,19 @@ class ThreadsService(SocialAccountService):
             raise ValueError("Threads did not return a container ID")
 
         # Publish the container immediately
-        return cls.publish_container(
+        result = cls.publish_container(
             access_token=access_token,
             threads_user_id=threads_user_id,
             container_id=container_id,
         )
+        permalink = cls.get_permalink(
+            access_token=access_token,
+            media_id=result["platform_post_id"],
+        )
+        return {
+            **result,
+            "post_url": permalink,
+        }
 
     @classmethod
     def publish_photo(

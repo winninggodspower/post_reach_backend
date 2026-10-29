@@ -535,7 +535,11 @@ class TestPostingService:
         """Should publish text post to Threads."""
         mock_pub = mocker.patch(
             "content.services.posting_service.ThreadsService.publish_text",
-            return_value={"platform_post_id": "th_post_456", "status": "published"},
+            return_value={
+                "platform_post_id": "th_post_456",
+                "status": "published",
+                "post_url": "https://www.threads.com/@threads_user/post/DfFKN0BDPHw",
+            },
         )
 
         expires = timezone.now() + timezone.timedelta(days=60)
@@ -560,7 +564,7 @@ class TestPostingService:
         result = PostingService.publish_platform_entry(entry, content_type="text")
         assert result.status == PostStatus.POSTED
         assert (
-            result.post_url == "https://www.threads.net/@threads_user/post/th_post_456"
+            result.post_url == "https://www.threads.com/@threads_user/post/DfFKN0BDPHw"
         )
         assert mock_pub.call_count == 1
 

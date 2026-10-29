@@ -116,12 +116,17 @@ class TestThreadsServicePublishing:
     """Tests for ThreadsService media and post publishing methods."""
 
     def test_publish_text_success(self, mocker):
-        """Should create a TEXT container and publish it."""
+        """Should create a TEXT container, publish it, and fetch its permalink."""
         mock_post = mocker.patch.object(ThreadsService, "post")
         mock_post.side_effect = [
             {"id": "text_container_123"},
             {"id": "threads_post_999"},
         ]
+        mock_permalink = mocker.patch.object(
+            ThreadsService,
+            "get_permalink",
+            return_value="https://www.threads.com/@user/post/DfFKN0BDPHw",
+        )
 
         result = ThreadsService.publish_text(
             access_token="valid_token",
@@ -132,6 +137,7 @@ class TestThreadsServicePublishing:
         assert result == {
             "platform_post_id": "threads_post_999",
             "status": "published",
+            "post_url": "https://www.threads.com/@user/post/DfFKN0BDPHw",
         }
         assert mock_post.call_count == 2
         mock_post.assert_any_call(
@@ -141,6 +147,10 @@ class TestThreadsServicePublishing:
                 "text": "Hello Threads!",
                 "access_token": "valid_token",
             },
+        )
+        mock_permalink.assert_called_once_with(
+            access_token="valid_token",
+            media_id="threads_post_999",
         )
 
     def test_publish_text_exceeds_character_limit(self):

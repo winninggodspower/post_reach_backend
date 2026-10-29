@@ -450,9 +450,6 @@ class PostingService:
         elif platform == PlatformChoices.TWITTER:
             username = social_account.account_name or social_account.external_id
             return f"https://twitter.com/{username}/status/{platform_post_id}"
-        elif platform == PlatformChoices.THREADS:
-            username = social_account.account_name or social_account.external_id
-            return f"https://www.threads.net/@{username}/post/{platform_post_id}"
 
         return ""
 
