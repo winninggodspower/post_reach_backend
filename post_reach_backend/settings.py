@@ -407,6 +407,7 @@ OAUTH2_PROVIDER = {
         "oauth2_provider.dcr.AllowAllDCRPermission",
     ),
     "CIMD_ENABLED": True,
+    "CIMD_METADATA_FETCHER": "mcp_integration.services.PostGleeCIMDMetadataFetcher",
     "OAUTH2_RESPONSE_TYPES_SUPPORTED": ["code"],
     "OAUTH2_GRANT_TYPES_SUPPORTED": ["authorization_code", "refresh_token"],
     "OAUTH2_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED": [

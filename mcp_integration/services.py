@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
+from oauth2_provider.cimd import SafeMetadataFetcher
 from oauth2_provider.models import AccessToken, Application, RefreshToken, clear_expired
 
 from users.models import Brand, User
@@ -129,3 +130,21 @@ class OAuthConnectionService:
         )
         deleted_apps, _ = stale_apps.delete()
         return {"deleted_dcr_clients": deleted_apps}
+
+
+class PostGleeCIMDMetadataFetcher(SafeMetadataFetcher):
+    """
+    Normalizes `grant_types` on fetched CIMD documents (such as Claude's
+    `https://claude.ai/oauth/mcp-oauth-client-metadata`, which declares
+    `urn:ietf:params:oauth:grant-type:jwt-bearer` alongside `authorization_code`)
+    so django-oauth-toolkit's single-grant-type check succeeds.
+    """
+
+    def fetch(self, client_id: str):
+        metadata, max_age = super().fetch(client_id)
+        grant_types = metadata.get("grant_types")
+        if isinstance(grant_types, list) and "authorization_code" in grant_types:
+            metadata["grant_types"] = [
+                g for g in grant_types if g in ("authorization_code", "refresh_token")
+            ]
+        return metadata, max_age
