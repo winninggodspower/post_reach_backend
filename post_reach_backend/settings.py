@@ -36,6 +36,7 @@ DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list(
     "ALLOWED_HOSTS",
     default=[
+        "api.postglee.com",
         "postreachbackend.pxxl.run",
         "postreach-backend-a052732af4b0.herokuapp.com",
         "10.88.0.11",
@@ -110,6 +111,7 @@ CSRF_TRUSTED_ORIGINS = env.list(
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:8000",
+        "https://api.postglee.com",
         "https://postreach.winningtech.xyz",
         "https://postglee.com",
     ],
