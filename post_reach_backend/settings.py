@@ -439,8 +439,15 @@ OAUTH2_PROVIDER = {
 DJANGO_MCP_GLOBAL_SERVER_CONFIG = {
     "name": "PostGlee",
     "instructions": (
-        "PostGlee MCP server. Use `list_brands` and `list_connected_accounts` to inspect "
-        "available brands and social accounts before scheduling or publishing posts."
+        "PostGlee is a multi-brand social media management and scheduling platform for "
+        "creating, scheduling, and publishing content across social networks (LinkedIn, "
+        "X/Twitter, Threads, Facebook, Instagram, TikTok, and YouTube). "
+        "Call `list_brands` and `list_connected_accounts` to inspect "
+        "available brands and social accounts before scheduling or publishing posts. "
+        "Use `create_post` both to schedule posts for a future date/time (by passing `scheduled_at`) "
+        "and to publish posts immediately (by omitting `scheduled_at`). "
+        "Use `get_calendar`, `list_scheduled_posts`, `get_post`, `update_post`, and "
+        "`delete_post` to view, reschedule, edit, or delete posts on the content calendar."
     ),
     "stateless": True,
 }

@@ -1,9 +1,10 @@
 import calendar
-from typing import Any
+from typing import Annotated, Any
 
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from mcp_server.djangomcp import MCPToolset
+from pydantic import Field
 
 from content.enums import TextPlatformOptions
 from content.models import ContentPost
@@ -36,11 +37,18 @@ class PostGleeMCPToolset(MCPToolset):
             context={"active_brand_id": active_brand_id, "user": user},
         ).data
 
-    def list_connected_accounts(self, brand_id: str | None = None) -> dict[str, Any]:
+    def list_connected_accounts(
+        self,
+        brand_id: Annotated[
+            str | None,
+            Field(
+                description="Optional UUID of the brand to inspect. Defaults to the user's active brand."
+            ),
+        ] = None,
+    ) -> dict[str, Any]:
         """
         List connected social media accounts for a brand (defaults to the user's active brand).
-
-        :param brand_id: Optional UUID of the brand to inspect.
+        Always call this before creating or scheduling a post to check which platforms are connected.
         """
         _user, brand = MCPContextService.resolve_brand(
             self.request, required_scope="accounts:read", brand_id=brand_id
@@ -57,18 +65,29 @@ class PostGleeMCPToolset(MCPToolset):
 
     def list_scheduled_posts(
         self,
-        brand_id: str | None = None,
-        platform: str | None = None,
-        content_type: str | None = None,
-        limit: int | None = None,
+        brand_id: Annotated[
+            str | None,
+            Field(
+                description="Optional UUID of the brand. Defaults to the user's active brand."
+            ),
+        ] = None,
+        platform: Annotated[
+            str | None,
+            Field(
+                description="Optional platform filter (e.g. facebook, linkedin, twitter, threads, instagram, tiktok, youtube)."
+            ),
+        ] = None,
+        content_type: Annotated[
+            str | None,
+            Field(description="Optional content type filter (text, photo, video)."),
+        ] = None,
+        limit: Annotated[
+            int | None,
+            Field(description="Optional maximum number of scheduled posts to return."),
+        ] = None,
     ) -> list[dict[str, Any]]:
         """
         List upcoming scheduled posts for a brand (defaults to the user's active brand).
-
-        :param brand_id: Optional UUID of the brand.
-        :param platform: Optional platform filter (e.g. facebook, linkedin, twitter, threads, instagram, tiktok, youtube).
-        :param content_type: Optional content type filter (text, photo, video).
-        :param limit: Optional maximum number of posts to return.
         """
         _user, brand = MCPContextService.resolve_brand(
             self.request, required_scope="posts:read", brand_id=brand_id
@@ -83,17 +102,28 @@ class PostGleeMCPToolset(MCPToolset):
 
     def get_calendar(
         self,
-        brand_id: str | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
+        brand_id: Annotated[
+            str | None,
+            Field(
+                description="Optional UUID of the brand. Defaults to the user's active brand."
+            ),
+        ] = None,
+        start_date: Annotated[
+            str | None,
+            Field(
+                description="Optional start date in YYYY-MM-DD format. Defaults to the 1st of the current month."
+            ),
+        ] = None,
+        end_date: Annotated[
+            str | None,
+            Field(
+                description="Optional end date in YYYY-MM-DD format. Defaults to the last day of the month."
+            ),
+        ] = None,
     ) -> list[dict[str, Any]]:
         """
-        Retrieve calendar posts for a brand within a date range (YYYY-MM-DD).
+        Retrieve calendar posts (scheduled and published) for a brand within a date range (YYYY-MM-DD).
         Defaults to the current calendar month when dates are omitted.
-
-        :param brand_id: Optional UUID of the brand.
-        :param start_date: Optional start date in YYYY-MM-DD format.
-        :param end_date: Optional end date in YYYY-MM-DD format.
         """
         _user, brand = MCPContextService.resolve_brand(
             self.request, required_scope="posts:read", brand_id=brand_id
@@ -128,11 +158,15 @@ class PostGleeMCPToolset(MCPToolset):
         )
         return ContentPostResponseSerializer(posts, many=True).data
 
-    def get_post(self, post_id: str) -> dict[str, Any]:
+    def get_post(
+        self,
+        post_id: Annotated[
+            str,
+            Field(description="UUID of the ContentPost to retrieve."),
+        ],
+    ) -> dict[str, Any]:
         """
         Get full details and per-platform publishing status of a post by ID.
-
-        :param post_id: UUID of the ContentPost.
         """
         user = MCPContextService.require_scope(self.request, "posts:read")
         try:
@@ -143,21 +177,38 @@ class PostGleeMCPToolset(MCPToolset):
 
     def create_post(
         self,
-        caption: str,
-        platforms: list[str],
-        scheduled_at: str | None = None,
-        platform_settings: dict[str, Any] | None = None,
-        brand_id: str | None = None,
+        caption: Annotated[
+            str,
+            Field(description="The text body/content of the social media post."),
+        ],
+        platforms: Annotated[
+            list[str],
+            Field(
+                description='List of target platforms to publish/schedule to. Supported values: "facebook", "linkedin", "threads", "twitter".'
+            ),
+        ],
+        scheduled_at: Annotated[
+            str | None,
+            Field(
+                description="Optional ISO-8601 datetime string (e.g. '2026-11-01T14:00:00Z') to schedule the post for a future date and time. Omit or pass null to publish immediately."
+            ),
+        ] = None,
+        platform_settings: Annotated[
+            dict[str, Any] | None,
+            Field(
+                description='Optional per-platform overrides, e.g. {"linkedin": {"caption": "Custom LinkedIn caption"}}.'
+            ),
+        ] = None,
+        brand_id: Annotated[
+            str | None,
+            Field(
+                description="Optional UUID of the target brand. Defaults to the user's active brand."
+            ),
+        ] = None,
     ) -> dict[str, Any]:
         """
-        Create and publish (or schedule) a text post to one or more connected platforms.
+        Schedule a text post for a future date/time (by passing `scheduled_at`) OR create and publish a text post immediately (by omitting `scheduled_at`).
         Supported text platforms: facebook, linkedin, threads, twitter.
-
-        :param caption: The text body of the post.
-        :param platforms: List of target platforms (e.g. ["linkedin", "twitter"]).
-        :param scheduled_at: Optional ISO-8601 datetime string for scheduling in the future. If omitted, publishes immediately.
-        :param platform_settings: Optional per-platform overrides, e.g. {"linkedin": {"caption": "..."}}.
-        :param brand_id: Optional UUID of the target brand (defaults to the user's active brand).
         """
         user, brand = MCPContextService.resolve_brand(
             self.request, required_scope="posts:write", brand_id=brand_id
@@ -199,20 +250,35 @@ class PostGleeMCPToolset(MCPToolset):
 
     def update_post(
         self,
-        post_id: str,
-        caption: str | None = None,
-        scheduled_at: str | None = None,
-        platforms: list[str] | None = None,
-        platform_settings: dict[str, Any] | None = None,
+        post_id: Annotated[
+            str,
+            Field(
+                description="UUID of the pending or scheduled ContentPost to update."
+            ),
+        ],
+        caption: Annotated[
+            str | None,
+            Field(description="Optional updated caption text."),
+        ] = None,
+        scheduled_at: Annotated[
+            str | None,
+            Field(
+                description="Optional updated ISO-8601 scheduled datetime string (e.g. '2026-11-02T09:00:00Z') to reschedule the post."
+            ),
+        ] = None,
+        platforms: Annotated[
+            list[str] | None,
+            Field(
+                description='Optional updated list of target platforms (e.g. ["linkedin", "twitter"]).'
+            ),
+        ] = None,
+        platform_settings: Annotated[
+            dict[str, Any] | None,
+            Field(description="Optional updated per-platform settings dictionary."),
+        ] = None,
     ) -> dict[str, Any]:
         """
-        Update a pending or scheduled post's caption, schedule time, platforms, or platform settings.
-
-        :param post_id: UUID of the ContentPost to update.
-        :param caption: Optional updated caption text.
-        :param scheduled_at: Optional updated ISO-8601 scheduled datetime string.
-        :param platforms: Optional updated list of target platforms.
-        :param platform_settings: Optional updated per-platform settings dictionary.
+        Update or reschedule an existing pending/scheduled post's caption, scheduled time (`scheduled_at`), target platforms, or platform settings.
         """
         user = MCPContextService.require_scope(self.request, "posts:write")
         try:
@@ -254,11 +320,17 @@ class PostGleeMCPToolset(MCPToolset):
         )
         return ContentPostResponseSerializer(updated).data
 
-    def delete_post(self, post_id: str) -> dict[str, Any]:
+    def delete_post(
+        self,
+        post_id: Annotated[
+            str,
+            Field(
+                description="UUID of the pending or scheduled ContentPost to delete."
+            ),
+        ],
+    ) -> dict[str, Any]:
         """
         Delete a pending or scheduled post by ID.
-
-        :param post_id: UUID of the ContentPost to delete.
         """
         user = MCPContextService.require_scope(self.request, "posts:write")
         try:
