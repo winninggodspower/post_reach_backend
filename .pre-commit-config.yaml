@@ -19,7 +19,7 @@ repos:
         args: ["--multi-line=3", "--profile=black", "--filter-files"]
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.16.0  # 🌟 Updated to fix the ast.Str crash
+    rev: v3.22.0
     hooks:
       - id: pyupgrade
         args: [--py311-plus]
@@ -28,6 +28,6 @@ repos:
     rev: 0.11.23
     hooks:
       - id: pip-compile
-        args: [pyproject.toml, -o, requirements.txt]
+        args: [--universal, pyproject.toml, -o, requirements.txt]
         stages: [pre-push]
         files: ^pyproject\.toml$

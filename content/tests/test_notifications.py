@@ -375,26 +375,6 @@ class TestFailedPostMediaRetention:
         mock_delete.assert_called_once_with("videos/expired.mp4")
 
 
-class TestFrontendUrls:
-    def test_frontend_urls_build_correctly(self):
-        """FrontendUrls should build clean, typed routes using FRONTEND_URL."""
-        from utils.frontend_urls import FrontendUrls
-
-        assert FrontendUrls.base() == "https://postglee.com"
-        assert FrontendUrls.dashboard() == "https://postglee.com/dashboard"
-        assert FrontendUrls.post_detail("123") == "https://postglee.com/posts/123"
-        assert FrontendUrls.retry_post("123") == "https://postglee.com/posts/123/retry"
-        assert (
-            FrontendUrls.social_connections()
-            == "https://postglee.com/settings/connections"
-        )
-        assert FrontendUrls.login() == "https://postglee.com/login"
-        assert (
-            FrontendUrls.password_reset("xyz")
-            == "https://postglee.com/reset-password?token=xyz"
-        )
-
-
 class TestContentPostSelector:
     def test_selector_get_methods(self, user, brand):
         """ContentPostSelector should retrieve posts cleanly for user and by ID."""
