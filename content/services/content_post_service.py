@@ -31,6 +31,7 @@ class ContentPostService:
         cls,
         *,
         user,
+        brand=None,
         media_keys: list[str] = None,
         caption: str = "",
         platforms: list[str],
@@ -42,7 +43,7 @@ class ContentPostService:
     ) -> ContentPost:
         """
         Full creation + dispatch pipeline:
-        1. Resolve the user's active brand (via UserService)
+        1. Resolve the user's active brand (via UserService) if brand is not provided
         2. Validate every requested platform has a connected SocialAccount
         3. Upload each media file to R2 (videos go to videos/ folder, photos to photos/)
         4. Create ContentPost + ContentMedia + ContentPostPlatform entries
@@ -55,7 +56,7 @@ class ContentPostService:
         platform_settings = platform_settings or {}
 
         # 1. Resolve brand via domain service
-        brand = UserService.get_active_brand(user)
+        brand = brand or UserService.get_active_brand(user)
 
         # 2. Validate platform connections via domain service
         SocialAccountValidationService.ensure_platforms_connected(brand, platforms)

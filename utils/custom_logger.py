@@ -851,7 +851,7 @@ class RequestLoggingMiddleware(MiddlewareMixin):
         ):
             log_entry["user_id"] = str(request.user.pk)
 
-        raw_headers = {k: v for k, v in request.headers.items()}
+        raw_headers = {**request.headers}
         log_entry["request_headers"] = _sanitize_headers(raw_headers, self._redact_keys)
 
         body = _parse_request_body(cached_body)

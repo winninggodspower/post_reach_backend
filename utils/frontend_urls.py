@@ -15,9 +15,10 @@ class FrontendUrls:
     """Central namespace for all frontend URL and route generation."""
 
     @classmethod
-    def base(cls) -> str:
+    def base(cls, base_url: str | None = None) -> str:
         """Returns the configured frontend base URL without a trailing slash."""
-        return getattr(settings, "FRONTEND_URL", "https://postglee.com").rstrip("/")
+        url = base_url or getattr(settings, "FRONTEND_URL", "https://postglee.com")
+        return url.rstrip("/")
 
     @classmethod
     def dashboard(cls) -> str:
@@ -40,9 +41,9 @@ class FrontendUrls:
         return f"{cls.base()}/settings/connections"
 
     @classmethod
-    def login(cls) -> str:
+    def login(cls, base_url: str | None = None) -> str:
         """URL to login page."""
-        return f"{cls.base()}/login"
+        return f"{cls.base(base_url)}/signin"
 
     @classmethod
     def password_reset(cls, token: str) -> str:

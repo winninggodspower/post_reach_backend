@@ -1,4 +1,5 @@
-from django.contrib.auth import authenticate, get_user_model
+from django.conf import settings
+from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
@@ -111,3 +112,28 @@ class UserService:
     @log_exceptions()
     def get_active_brand(user):
         return user.active_brand or BrandService.get_default_brand(user)
+
+    @staticmethod
+    @log_exceptions()
+    def establish_session(request, user):
+        """
+        Establish a Django session for the user so browser-based flows
+        (such as OAuth 2.1 authorization / consent) recognize the signed-in user.
+        """
+        if request is None:
+            return
+        raw_request = getattr(request, "_request", request)
+        if not hasattr(raw_request, "session"):
+            return
+        backend = getattr(user, "backend", None) or settings.AUTHENTICATION_BACKENDS[0]
+        login(raw_request, user, backend=backend)
+
+    @staticmethod
+    @log_exceptions()
+    def end_session(request):
+        """End the active Django session (if any) upon logout."""
+        if request is None:
+            return
+        raw_request = getattr(request, "_request", request)
+        if hasattr(raw_request, "session"):
+            logout(raw_request)

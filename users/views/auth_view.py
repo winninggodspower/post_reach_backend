@@ -1,6 +1,7 @@
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
 from integrations.services.google_auth_service import GoogleAuthService
@@ -50,6 +51,8 @@ class RegisterUserView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        UserService.establish_session(request, user)
+
         return CustomSuccessResponse(
             data=get_auth_response_data(user),
             message="Registration successful.",
@@ -88,6 +91,8 @@ class SignInView(APIView):
                 errors={"detail": str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        UserService.establish_session(request, user)
 
         return CustomSuccessResponse(
             data=get_auth_response_data(user),
@@ -133,6 +138,8 @@ class GoogleSignInView(APIView):
                 last_name=last_name,
                 profile_picture_url=profile_picture_url,
             )
+
+            UserService.establish_session(request, user)
 
             return CustomSuccessResponse(
                 data=get_auth_response_data(user),
@@ -252,3 +259,16 @@ class PasswordResetViewSet(viewsets.ViewSet):
         return CustomSuccessResponse(
             message="Password reset successful. You can now sign in with your new password.",
         )
+
+
+class SignOutView(APIView):
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_summary="Sign out and clear session",
+        operation_description="Ends the current Django session used by browser-based OAuth authorization flows.",
+        responses={200: "Signed out successfully"},
+    )
+    def post(self, request):
+        UserService.end_session(request)
+        return CustomSuccessResponse(message="Signed out successfully.")

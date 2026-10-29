@@ -17,6 +17,7 @@ from users.serializers import (
     UserReceivedInvitationSerializer,
 )
 from users.services.invitation_service import BrandInvitationService
+from users.services.user_service import UserService
 from users.views.utils import get_auth_response_data
 from utils.responses import CustomErrorResponse, CustomSuccessResponse
 
@@ -339,6 +340,7 @@ class RegisterAndAcceptInvitationView(APIView):
                 last_name=serializer.validated_data.get("last_name", ""),
                 handle=serializer.validated_data.get("handle"),
             )
+            UserService.establish_session(request, user)
             return CustomSuccessResponse(
                 data=get_auth_response_data(user),
                 message="Account registered and invitation accepted successfully.",
