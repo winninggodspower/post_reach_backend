@@ -6,6 +6,7 @@ keeping query logic decoupled from mutation/business logic services.
 All public methods are classmethods or staticmethods and have zero side-effects.
 """
 
+import calendar
 from datetime import date, datetime, time
 from typing import Optional
 from uuid import UUID
@@ -127,6 +128,48 @@ class ContentPostSelector:
             boundary_time = time.max if is_end_of_day else time.min
             return timezone.make_aware(datetime.combine(val, boundary_time))
         return val
+
+    @classmethod
+    def resolve_calendar_date_range(
+        cls, start_date=None, end_date=None
+    ) -> tuple[date, date]:
+        """
+        Parses and resolves calendar date ranges.
+        Accepts strings ('YYYY-MM-DD') or date/datetime objects.
+        Defaults to the current calendar month if omitted.
+        """
+        parsed_start = start_date
+        parsed_end = end_date
+
+        if isinstance(start_date, str):
+            parsed_start = parse_date(start_date)
+            if start_date and not parsed_start:
+                raise ValueError("Invalid start_date format. Please use YYYY-MM-DD.")
+        elif isinstance(start_date, datetime):
+            parsed_start = start_date.date()
+
+        if isinstance(end_date, str):
+            parsed_end = parse_date(end_date)
+            if end_date and not parsed_end:
+                raise ValueError("Invalid end_date format. Please use YYYY-MM-DD.")
+        elif isinstance(end_date, datetime):
+            parsed_end = end_date.date()
+
+        today = timezone.now().date()
+        if not parsed_start and not parsed_end:
+            parsed_start = today.replace(day=1)
+            _, last_day = calendar.monthrange(today.year, today.month)
+            parsed_end = today.replace(day=last_day)
+        elif not parsed_start and parsed_end:
+            parsed_start = parsed_end.replace(day=1)
+        elif parsed_start and not parsed_end:
+            _, last_day = calendar.monthrange(parsed_start.year, parsed_start.month)
+            parsed_end = parsed_start.replace(day=last_day)
+
+        if parsed_start > parsed_end:
+            raise ValueError("start_date cannot be after end_date.")
+
+        return parsed_start, parsed_end
 
     @classmethod
     def get_calendar_posts(

@@ -1,4 +1,3 @@
-import calendar
 from typing import Annotated, Any
 
 from django.utils import timezone
@@ -129,32 +128,11 @@ class PostGleeMCPToolset(MCPToolset):
             self.request, required_scope="posts:read", brand_id=brand_id
         )
 
-        parsed_start = parse_date(start_date) if start_date else None
-        parsed_end = parse_date(end_date) if end_date else None
-
-        if start_date and not parsed_start:
-            raise ValueError("Invalid start_date format. Please use YYYY-MM-DD.")
-        if end_date and not parsed_end:
-            raise ValueError("Invalid end_date format. Please use YYYY-MM-DD.")
-
-        today = timezone.now().date()
-        if not parsed_start and not parsed_end:
-            parsed_start = today.replace(day=1)
-            _, last_day = calendar.monthrange(today.year, today.month)
-            parsed_end = today.replace(day=last_day)
-        elif not parsed_start and parsed_end:
-            parsed_start = parsed_end.replace(day=1)
-        elif parsed_start and not parsed_end:
-            _, last_day = calendar.monthrange(parsed_start.year, parsed_start.month)
-            parsed_end = parsed_start.replace(day=last_day)
-
-        if parsed_start > parsed_end:
-            raise ValueError("start_date cannot be after end_date.")
-
+        start, end = ContentPostSelector.resolve_calendar_date_range(start_date, end_date)
         posts = ContentPostSelector.get_calendar_posts(
             brand=brand,
-            start_date=parsed_start,
-            end_date=parsed_end,
+            start_date=start,
+            end_date=end,
         )
         return ContentPostResponseSerializer(posts, many=True).data
 

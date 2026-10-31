@@ -1,5 +1,3 @@
-import calendar
-
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from drf_yasg import openapi
@@ -243,35 +241,13 @@ class ContentPostViewSet(viewsets.ViewSet):
         start_date_str = request.query_params.get("start_date")
         end_date_str = request.query_params.get("end_date")
 
-        start_date = parse_date(start_date_str) if start_date_str else None
-        end_date = parse_date(end_date_str) if end_date_str else None
-
-        if start_date_str and not start_date:
-            return CustomErrorResponse(
-                "Invalid start_date format. Please use YYYY-MM-DD.",
-                status=status.HTTP_400_BAD_REQUEST,
+        try:
+            start_date, end_date = ContentPostSelector.resolve_calendar_date_range(
+                start_date_str, end_date_str
             )
-        if end_date_str and not end_date:
+        except ValueError as exc:
             return CustomErrorResponse(
-                "Invalid end_date format. Please use YYYY-MM-DD.",
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Default date bounds to current month if omitted
-        today = timezone.now().date()
-        if not start_date and not end_date:
-            start_date = today.replace(day=1)
-            _, last_day = calendar.monthrange(today.year, today.month)
-            end_date = today.replace(day=last_day)
-        elif not start_date and end_date:
-            start_date = end_date.replace(day=1)
-        elif start_date and not end_date:
-            _, last_day = calendar.monthrange(start_date.year, start_date.month)
-            end_date = start_date.replace(day=last_day)
-
-        if start_date > end_date:
-            return CustomErrorResponse(
-                "start_date cannot be after end_date.",
+                str(exc),
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
