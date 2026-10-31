@@ -1,4 +1,5 @@
 from datetime import timedelta
+
 import pytest
 from django.urls import reverse
 from django.utils import timezone
@@ -52,7 +53,9 @@ class TestDeveloperApplicationListCreate:
         assert response.data["success"] is True
         assert response.data["data"] == []
 
-    def test_list_applications_scoped_to_user(self, auth_client, developer_user, other_user):
+    def test_list_applications_scoped_to_user(
+        self, auth_client, developer_user, other_user
+    ):
         # Create app for developer_user
         app1 = Application.objects.create(
             user=developer_user,
@@ -85,7 +88,10 @@ class TestDeveloperApplicationListCreate:
         payload = {
             "name": "Social Dashboard App",
             "client_type": "confidential",
-            "redirect_uris": ["https://dashboard.example.com/callback", "https://localhost:3000/callback"],
+            "redirect_uris": [
+                "https://dashboard.example.com/callback",
+                "https://localhost:3000/callback",
+            ],
         }
         response = auth_client.post(url, data=payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
@@ -136,7 +142,9 @@ class TestDeveloperApplicationDetail:
             authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
             redirect_uris="https://analytics.example.com/callback",
         )
-        url = reverse("developer-application-detail", kwargs={"client_id": app.client_id})
+        url = reverse(
+            "developer-application-detail", kwargs={"client_id": app.client_id}
+        )
         response = auth_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         data = response.data["data"]
@@ -153,7 +161,9 @@ class TestDeveloperApplicationDetail:
             authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
             redirect_uris="https://other.com/callback",
         )
-        url = reverse("developer-application-detail", kwargs={"client_id": app.client_id})
+        url = reverse(
+            "developer-application-detail", kwargs={"client_id": app.client_id}
+        )
         response = auth_client.get(url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -165,10 +175,15 @@ class TestDeveloperApplicationDetail:
             authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
             redirect_uris="https://example.com/callback",
         )
-        url = reverse("developer-application-detail", kwargs={"client_id": app.client_id})
+        url = reverse(
+            "developer-application-detail", kwargs={"client_id": app.client_id}
+        )
         payload = {
             "name": "Updated Name",
-            "redirect_uris": ["https://example.com/callback", "https://example.com/new-callback"],
+            "redirect_uris": [
+                "https://example.com/callback",
+                "https://example.com/new-callback",
+            ],
         }
         response = auth_client.patch(url, data=payload, format="json")
         assert response.status_code == status.HTTP_200_OK
@@ -202,7 +217,9 @@ class TestDeveloperApplicationDetail:
             access_token=token,
         )
 
-        url = reverse("developer-application-detail", kwargs={"client_id": app.client_id})
+        url = reverse(
+            "developer-application-detail", kwargs={"client_id": app.client_id}
+        )
         response = auth_client.delete(url)
         assert response.status_code == status.HTTP_200_OK
 
@@ -222,7 +239,10 @@ class TestDeveloperApplicationSecretRegeneration:
         )
         initial_hash = app.client_secret
 
-        url = reverse("developer-application-regenerate-secret", kwargs={"client_id": app.client_id})
+        url = reverse(
+            "developer-application-regenerate-secret",
+            kwargs={"client_id": app.client_id},
+        )
         response = auth_client.post(url)
         assert response.status_code == status.HTTP_200_OK
         data = response.data["data"]
@@ -244,10 +264,16 @@ class TestDeveloperApplicationSecretRegeneration:
             redirect_uris="https://example.com/callback",
             client_secret="",
         )
-        url = reverse("developer-application-regenerate-secret", kwargs={"client_id": app.client_id})
+        url = reverse(
+            "developer-application-regenerate-secret",
+            kwargs={"client_id": app.client_id},
+        )
         response = auth_client.post(url)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "public applications do not use client secrets" in response.data["message"].lower()
+        assert (
+            "public applications do not use client secrets"
+            in response.data["message"].lower()
+        )
 
     def test_regenerate_secret_other_user_forbidden(self, auth_client, other_user):
         app = Application.objects.create(
@@ -257,7 +283,9 @@ class TestDeveloperApplicationSecretRegeneration:
             authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
             redirect_uris="https://other.com/callback",
         )
-        url = reverse("developer-application-regenerate-secret", kwargs={"client_id": app.client_id})
+        url = reverse(
+            "developer-application-regenerate-secret",
+            kwargs={"client_id": app.client_id},
+        )
         response = auth_client.post(url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
-

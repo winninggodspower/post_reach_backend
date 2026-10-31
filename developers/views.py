@@ -53,7 +53,11 @@ class DeveloperApplicationListCreateView(APIView):
         except ValueError as exc:
             return CustomErrorResponse(
                 message="Failed to create application.",
-                errors=exc.args[0] if isinstance(exc.args[0], dict) else {"detail": str(exc)},
+                errors=(
+                    exc.args[0]
+                    if isinstance(exc.args[0], dict)
+                    else {"detail": str(exc)}
+                ),
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -79,16 +83,24 @@ class DeveloperApplicationDetailView(APIView):
         try:
             app = DeveloperApplicationService.get_application(request.user, client_id)
         except ValueError as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_404_NOT_FOUND)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_404_NOT_FOUND
+            )
 
         serializer = ApplicationSerializer(app)
-        return CustomSuccessResponse(data=serializer.data, message="Application details retrieved successfully.")
+        return CustomSuccessResponse(
+            data=serializer.data, message="Application details retrieved successfully."
+        )
 
     @swagger_auto_schema(
         operation_summary="Update developer OAuth application",
         operation_description="Updates the application name, redirect URIs, or allowed origins.",
         request_body=ApplicationUpdateSerializer,
-        responses={200: ApplicationSerializer, 400: "Validation error", 404: "Application not found"},
+        responses={
+            200: ApplicationSerializer,
+            400: "Validation error",
+            404: "Application not found",
+        },
     )
     def patch(self, request, client_id: str):
         serializer = ApplicationUpdateSerializer(data=request.data)
@@ -102,28 +114,43 @@ class DeveloperApplicationDetailView(APIView):
             )
         except ValueError as exc:
             if "not found" in str(exc).lower():
-                return CustomErrorResponse(message=str(exc), status=status.HTTP_404_NOT_FOUND)
+                return CustomErrorResponse(
+                    message=str(exc), status=status.HTTP_404_NOT_FOUND
+                )
             return CustomErrorResponse(
                 message="Failed to update application.",
-                errors=exc.args[0] if isinstance(exc.args[0], dict) else {"detail": str(exc)},
+                errors=(
+                    exc.args[0]
+                    if isinstance(exc.args[0], dict)
+                    else {"detail": str(exc)}
+                ),
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         response_serializer = ApplicationSerializer(app)
-        return CustomSuccessResponse(data=response_serializer.data, message="Application updated successfully.")
+        return CustomSuccessResponse(
+            data=response_serializer.data, message="Application updated successfully."
+        )
 
     @swagger_auto_schema(
         operation_summary="Delete developer OAuth application",
         operation_description="Deletes the application and immediately revokes all active tokens issued to it.",
-        responses={200: "Application deleted successfully", 404: "Application not found"},
+        responses={
+            200: "Application deleted successfully",
+            404: "Application not found",
+        },
     )
     def delete(self, request, client_id: str):
         try:
             DeveloperApplicationService.delete_application(request.user, client_id)
         except ValueError as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_404_NOT_FOUND)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_404_NOT_FOUND
+            )
 
-        return CustomSuccessResponse(message="Application deleted successfully and all active tokens were revoked.")
+        return CustomSuccessResponse(
+            message="Application deleted successfully and all active tokens were revoked."
+        )
 
 
 class DeveloperApplicationSecretRegenerateView(APIView):
@@ -134,14 +161,24 @@ class DeveloperApplicationSecretRegenerateView(APIView):
     @swagger_auto_schema(
         operation_summary="Regenerate client secret",
         operation_description="Generates a new client secret for a confidential application, invalidating the old one.",
-        responses={200: RegenerateSecretResponseSerializer, 400: "Public clients cannot have secrets", 404: "Not found"},
+        responses={
+            200: RegenerateSecretResponseSerializer,
+            400: "Public clients cannot have secrets",
+            404: "Not found",
+        },
     )
     def post(self, request, client_id: str):
         try:
-            new_secret = DeveloperApplicationService.regenerate_client_secret(request.user, client_id)
+            new_secret = DeveloperApplicationService.regenerate_client_secret(
+                request.user, client_id
+            )
         except ValueError as exc:
             err_msg = str(exc)
-            status_code = status.HTTP_404_NOT_FOUND if "not found" in err_msg.lower() else status.HTTP_400_BAD_REQUEST
+            status_code = (
+                status.HTTP_404_NOT_FOUND
+                if "not found" in err_msg.lower()
+                else status.HTTP_400_BAD_REQUEST
+            )
             return CustomErrorResponse(message=err_msg, status=status_code)
 
         data = {
@@ -149,7 +186,9 @@ class DeveloperApplicationSecretRegenerateView(APIView):
             "client_secret": new_secret,
             "message": "Client secret regenerated successfully. Make sure to save it now.",
         }
-        return CustomSuccessResponse(data=data, message="Client secret regenerated successfully.")
+        return CustomSuccessResponse(
+            data=data, message="Client secret regenerated successfully."
+        )
 
 
 class DeveloperScopesView(APIView):
@@ -171,9 +210,13 @@ class DeveloperScopesView(APIView):
         scopes_list = [
             {
                 "scope": scope_key,
-                "name": friendly_names.get(scope_key, scope_key.replace(":", " ").title()),
+                "name": friendly_names.get(
+                    scope_key, scope_key.replace(":", " ").title()
+                ),
                 "description": desc,
             }
             for scope_key, desc in raw_scopes.items()
         ]
-        return CustomSuccessResponse(data=scopes_list, message="Supported scopes retrieved successfully.")
+        return CustomSuccessResponse(
+            data=scopes_list, message="Supported scopes retrieved successfully."
+        )

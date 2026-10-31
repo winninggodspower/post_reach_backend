@@ -50,13 +50,20 @@ class TestDeveloperSwaggerDocs:
         data = response.json()
         assert data["info"]["title"] == "PostGlee Internal API"
 
-    def test_internal_swagger_protected_in_production_from_anonymous_users(self, settings):
+    def test_internal_swagger_protected_in_production_from_anonymous_users(
+        self, settings
+    ):
         settings.DEBUG = False
         client = APIClient()
         response = client.get("/swagger.json")
-        assert response.status_code in [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN]
+        assert response.status_code in [
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        ]
 
-    def test_internal_swagger_protected_in_production_from_regular_users(self, settings):
+    def test_internal_swagger_protected_in_production_from_regular_users(
+        self, settings
+    ):
         settings.DEBUG = False
         user = User.objects.create_user(
             email="regular@example.com",
@@ -80,4 +87,3 @@ class TestDeveloperSwaggerDocs:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["info"]["title"] == "PostGlee Internal API"
-

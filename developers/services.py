@@ -97,7 +97,10 @@ class DeveloperApplicationService:
         if "allowed_origins" in data and data["allowed_origins"] is not None:
             app.allowed_origins = data["allowed_origins"].strip()
 
-        if "post_logout_redirect_uris" in data and data["post_logout_redirect_uris"] is not None:
+        if (
+            "post_logout_redirect_uris" in data
+            and data["post_logout_redirect_uris"] is not None
+        ):
             app.post_logout_redirect_uris = data["post_logout_redirect_uris"].strip()
 
         try:
@@ -105,7 +108,11 @@ class DeveloperApplicationService:
         except DjangoValidationError as exc:
             CustomLogger.warning(
                 "Application validation failed during update",
-                extra={"user_id": str(user.id), "client_id": client_id, "errors": exc.message_dict},
+                extra={
+                    "user_id": str(user.id),
+                    "client_id": client_id,
+                    "errors": exc.message_dict,
+                },
             )
             raise ValueError(exc.message_dict) from exc
 
@@ -162,4 +169,3 @@ class DeveloperApplicationService:
             .distinct()
             .count()
         )
-

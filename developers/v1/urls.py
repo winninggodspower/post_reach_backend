@@ -17,4 +17,3 @@ urlpatterns = [
     path("posts/calendar/", PostCalendarView.as_view(), name="v1-post-calendar"),
     path("posts/<uuid:post_id>/", PostDetailView.as_view(), name="v1-post-detail"),
 ]
-

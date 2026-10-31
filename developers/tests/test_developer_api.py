@@ -1,5 +1,6 @@
-from datetime import timedelta
 import secrets
+from datetime import timedelta
+
 import pytest
 from django.urls import reverse
 from django.utils import timezone
@@ -190,4 +191,3 @@ class TestDeveloperScopesDiscovery:
         assert "accounts:read" in scope_keys
         assert "posts:read" in scope_keys
         assert "posts:write" in scope_keys
-

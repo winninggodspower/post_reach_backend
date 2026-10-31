@@ -15,7 +15,9 @@ class InternalSwaggerPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if settings.DEBUG:
             return True
-        return bool(request.user and request.user.is_authenticated and request.user.is_staff)
+        return bool(
+            request.user and request.user.is_authenticated and request.user.is_staff
+        )
 
 
 class BearerSchemaGenerator(OpenAPISchemaGenerator):
@@ -59,7 +61,10 @@ class DeveloperV1SchemaGenerator(OpenAPISchemaGenerator):
                 "description": "OAuth 2.1 access token. Pass in Authorization header as: Bearer <access_token>",
             },
         }
-        schema.security = [{"OAuth2": ["accounts:read", "posts:read", "posts:write"]}, {"Bearer": []}]
+        schema.security = [
+            {"OAuth2": ["accounts:read", "posts:read", "posts:write"]},
+            {"Bearer": []},
+        ]
         return schema
 
 

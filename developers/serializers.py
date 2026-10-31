@@ -42,7 +42,11 @@ class ApplicationSerializer(serializers.ModelSerializer):
         return obj.allowed_origins.split() if obj.allowed_origins else []
 
     def get_post_logout_redirect_uris_list(self, obj: Application) -> list[str]:
-        return obj.post_logout_redirect_uris.split() if obj.post_logout_redirect_uris else []
+        return (
+            obj.post_logout_redirect_uris.split()
+            if obj.post_logout_redirect_uris
+            else []
+        )
 
     def get_active_users_count(self, obj: Application) -> int:
         return DeveloperApplicationService.get_active_users_count(obj)
@@ -99,7 +103,9 @@ class ApplicationCreateSerializer(serializers.Serializer):
         for field in ["redirect_uris", "allowed_origins", "post_logout_redirect_uris"]:
             val = data_copy.get(field)
             if isinstance(val, list):
-                data_copy[field] = " ".join(str(item).strip() for item in val if str(item).strip())
+                data_copy[field] = " ".join(
+                    str(item).strip() for item in val if str(item).strip()
+                )
         return super().to_internal_value(data_copy)
 
     def validate_name(self, value: str) -> str:
@@ -111,7 +117,9 @@ class ApplicationCreateSerializer(serializers.Serializer):
     def validate_redirect_uris(self, value: str) -> str:
         cleaned = value.strip()
         if not cleaned:
-            raise serializers.ValidationError("At least one valid redirect URI is required.")
+            raise serializers.ValidationError(
+                "At least one valid redirect URI is required."
+            )
         return cleaned
 
 
@@ -144,7 +152,9 @@ class ApplicationUpdateSerializer(serializers.Serializer):
             if field in data_copy:
                 val = data_copy[field]
                 if isinstance(val, list):
-                    data_copy[field] = " ".join(str(item).strip() for item in val if str(item).strip())
+                    data_copy[field] = " ".join(
+                        str(item).strip() for item in val if str(item).strip()
+                    )
         return super().to_internal_value(data_copy)
 
     def validate_name(self, value: str) -> str:
@@ -158,4 +168,3 @@ class RegenerateSecretResponseSerializer(serializers.Serializer):
     client_id = serializers.CharField()
     client_secret = serializers.CharField()
     message = serializers.CharField()
-

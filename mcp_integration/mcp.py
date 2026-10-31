@@ -128,7 +128,9 @@ class PostGleeMCPToolset(MCPToolset):
             self.request, required_scope="posts:read", brand_id=brand_id
         )
 
-        start, end = ContentPostSelector.resolve_calendar_date_range(start_date, end_date)
+        start, end = ContentPostSelector.resolve_calendar_date_range(
+            start_date, end_date
+        )
         posts = ContentPostSelector.get_calendar_posts(
             brand=brand,
             start_date=start,

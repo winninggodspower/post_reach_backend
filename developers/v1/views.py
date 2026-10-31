@@ -30,11 +30,15 @@ def _resolve_target_brand(user, brand_id=None):
         try:
             return BrandService.get_brand_by_id(user, brand_id)
         except Exception as exc:
-            raise ValueError(f"Brand '{brand_id}' not found or not accessible.") from exc
+            raise ValueError(
+                f"Brand '{brand_id}' not found or not accessible."
+            ) from exc
 
     active_brand = UserService.get_active_brand(user)
     if not active_brand:
-        raise ValueError("No active brand found. Please select an active brand or specify brand_id.")
+        raise ValueError(
+            "No active brand found. Please select an active brand or specify brand_id."
+        )
     return active_brand
 
 
@@ -59,7 +63,9 @@ class BrandListView(APIView):
             many=True,
             context={"active_brand_id": active_brand_id, "user": request.user},
         )
-        return CustomSuccessResponse(data=serializer.data, message="Brands retrieved successfully.")
+        return CustomSuccessResponse(
+            data=serializer.data, message="Brands retrieved successfully."
+        )
 
 
 class AccountListView(APIView):
@@ -87,9 +93,13 @@ class AccountListView(APIView):
         try:
             brand = _resolve_target_brand(request.user, brand_id)
         except ValueError as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_404_NOT_FOUND)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_404_NOT_FOUND
+            )
 
-        accounts = sorted(brand.social_accounts.all(), key=lambda acc: acc.last_connected_at)
+        accounts = sorted(
+            brand.social_accounts.all(), key=lambda acc: acc.last_connected_at
+        )
         serializer = ConnectedAccountSerializer(accounts, many=True)
         return CustomSuccessResponse(
             data={
@@ -119,7 +129,9 @@ class PostListCreateView(APIView):
         manual_parameters=[
             openapi.Parameter("brand_id", openapi.IN_QUERY, type=openapi.TYPE_STRING),
             openapi.Parameter("platform", openapi.IN_QUERY, type=openapi.TYPE_STRING),
-            openapi.Parameter("content_type", openapi.IN_QUERY, type=openapi.TYPE_STRING),
+            openapi.Parameter(
+                "content_type", openapi.IN_QUERY, type=openapi.TYPE_STRING
+            ),
             openapi.Parameter("limit", openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
         ],
         responses={200: ContentPostResponseSerializer(many=True)},
@@ -133,7 +145,9 @@ class PostListCreateView(APIView):
         try:
             brand = _resolve_target_brand(request.user, brand_id)
         except ValueError as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_404_NOT_FOUND)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_404_NOT_FOUND
+            )
 
         parsed_limit = int(limit) if limit and limit.isdigit() else None
         posts = ContentPostSelector.get_scheduled_posts(
@@ -152,7 +166,9 @@ class PostListCreateView(APIView):
         responses={201: ContentPostResponseSerializer},
     )
     def post(self, request):
-        serializer = TextPostCreateSerializer(data=request.data, context={"request": request})
+        serializer = TextPostCreateSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
@@ -160,7 +176,9 @@ class PostListCreateView(APIView):
         try:
             brand = _resolve_target_brand(request.user, brand_id)
         except ValueError as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_404_NOT_FOUND)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_404_NOT_FOUND
+            )
 
         try:
             post = ContentPostService.create_content_post(
@@ -174,10 +192,16 @@ class PostListCreateView(APIView):
                 scheduled_at=data.get("scheduled_at"),
             )
         except Exception as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_400_BAD_REQUEST)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_400_BAD_REQUEST
+            )
 
         response_serializer = ContentPostResponseSerializer(post)
-        status_msg = "Post scheduled successfully." if data.get("scheduled_at") else "Post created and queued for publishing."
+        status_msg = (
+            "Post scheduled successfully."
+            if data.get("scheduled_at")
+            else "Post created and queued for publishing."
+        )
         return CustomSuccessResponse(
             data=response_serializer.data,
             message=status_msg,
@@ -197,8 +221,18 @@ class PostCalendarView(APIView):
         operation_description="Returns scheduled and published posts within a date range (requires 'posts:read' scope).",
         manual_parameters=[
             openapi.Parameter("brand_id", openapi.IN_QUERY, type=openapi.TYPE_STRING),
-            openapi.Parameter("start_date", openapi.IN_QUERY, type=openapi.TYPE_STRING, description="YYYY-MM-DD"),
-            openapi.Parameter("end_date", openapi.IN_QUERY, type=openapi.TYPE_STRING, description="YYYY-MM-DD"),
+            openapi.Parameter(
+                "start_date",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                description="YYYY-MM-DD",
+            ),
+            openapi.Parameter(
+                "end_date",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                description="YYYY-MM-DD",
+            ),
         ],
         responses={200: ContentPostResponseSerializer(many=True)},
     )
@@ -210,12 +244,18 @@ class PostCalendarView(APIView):
         try:
             brand = _resolve_target_brand(request.user, brand_id)
         except ValueError as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_404_NOT_FOUND)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_404_NOT_FOUND
+            )
 
         try:
-            start_date, end_date = ContentPostSelector.resolve_calendar_date_range(start_date, end_date)
+            start_date, end_date = ContentPostSelector.resolve_calendar_date_range(
+                start_date, end_date
+            )
         except ValueError as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_400_BAD_REQUEST)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_400_BAD_REQUEST
+            )
 
         posts = ContentPostSelector.get_calendar_posts(
             brand=brand,
@@ -245,9 +285,13 @@ class PostDetailView(APIView):
     )
     def get(self, request, post_id: str):
         try:
-            post = ContentPostSelector.get_content_post(post_id=post_id, user=request.user)
+            post = ContentPostSelector.get_content_post(
+                post_id=post_id, user=request.user
+            )
         except ContentPost.DoesNotExist:
-            return CustomErrorResponse(message="Content post not found.", status=status.HTTP_404_NOT_FOUND)
+            return CustomErrorResponse(
+                message="Content post not found.", status=status.HTTP_404_NOT_FOUND
+            )
 
         serializer = ContentPostResponseSerializer(post)
         return CustomSuccessResponse(data=serializer.data)
@@ -260,21 +304,33 @@ class PostDetailView(APIView):
     )
     def patch(self, request, post_id: str):
         try:
-            post = ContentPostSelector.get_content_post(post_id=post_id, user=request.user)
+            post = ContentPostSelector.get_content_post(
+                post_id=post_id, user=request.user
+            )
         except ContentPost.DoesNotExist:
-            return CustomErrorResponse(message="Content post not found.", status=status.HTTP_404_NOT_FOUND)
+            return CustomErrorResponse(
+                message="Content post not found.", status=status.HTTP_404_NOT_FOUND
+            )
 
-        serializer = ContentPostUpdateSerializer(data=request.data, context={"request": request})
+        serializer = ContentPostUpdateSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
         try:
-            updated = ContentPostService.update_content_post(content_post=post, validated_data=data)
+            updated = ContentPostService.update_content_post(
+                content_post=post, validated_data=data
+            )
         except Exception as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_400_BAD_REQUEST)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_400_BAD_REQUEST
+            )
 
         response_serializer = ContentPostResponseSerializer(updated)
-        return CustomSuccessResponse(data=response_serializer.data, message="Post updated successfully.")
+        return CustomSuccessResponse(
+            data=response_serializer.data, message="Post updated successfully."
+        )
 
     @swagger_auto_schema(
         operation_summary="Delete / cancel a post (v1)",
@@ -283,14 +339,19 @@ class PostDetailView(APIView):
     )
     def delete(self, request, post_id: str):
         try:
-            post = ContentPostSelector.get_content_post(post_id=post_id, user=request.user)
+            post = ContentPostSelector.get_content_post(
+                post_id=post_id, user=request.user
+            )
         except ContentPost.DoesNotExist:
-            return CustomErrorResponse(message="Content post not found.", status=status.HTTP_404_NOT_FOUND)
+            return CustomErrorResponse(
+                message="Content post not found.", status=status.HTTP_404_NOT_FOUND
+            )
 
         try:
             ContentPostService.delete_content_post(post)
         except Exception as exc:
-            return CustomErrorResponse(message=str(exc), status=status.HTTP_400_BAD_REQUEST)
+            return CustomErrorResponse(
+                message=str(exc), status=status.HTTP_400_BAD_REQUEST
+            )
 
         return CustomSuccessResponse(message="Post deleted successfully.")
-
