@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "analytics.apps.AnalyticsConfig",
     "subscriptions.apps.SubscriptionsConfig",
     "mcp_integration.apps.McpIntegrationConfig",
+    "developers.apps.DevelopersConfig",
     # Third-party apps
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",

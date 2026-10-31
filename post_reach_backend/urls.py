@@ -15,6 +15,8 @@ urlpatterns = [
     path("api/content/", include("content.urls")),
     path("api/admin/analytics/", include("analytics.urls")),
     path("api/subscriptions/", include("subscriptions.urls")),
+    path("api/developers/", include("developers.urls")),
+    path("api/v1/", include("developers.v1.urls")),
     # OAuth 2.1 discovery metadata at root (/.well-known/*) and OAuth endpoints at /oauth/*
     *oauth2_urls.metadata_urlpatterns,
     path("oauth/", include("oauth2_provider.urls", namespace="oauth2_provider")),
