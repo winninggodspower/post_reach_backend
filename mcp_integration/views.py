@@ -17,6 +17,7 @@ class PostGleeMCPView(MCPServerStreamableHttpView):
     `/.well-known/oauth-protected-resource` in `WWW-Authenticate` on 401.
     """
 
+    swagger_schema = None  # Exclude from Swagger docs (MCP is JSON-RPC / SSE for AI clients, not REST)
     authentication_classes = [OAuth2ProtectedResourceAuthentication]
     permission_classes = [IsAuthenticated]
 
